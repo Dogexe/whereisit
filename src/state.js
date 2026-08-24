@@ -3,8 +3,8 @@ import { CATEGORIES } from "./categories.js";
 export const state = {
   lang: "th", dark: false,
   tab: "home", insightsTab: "budgets",
-  insightsMonthNum: new Date().toISOString().slice(5, 7), insightsYear: String(new Date().getFullYear()),
-  txFilterType: "all", txFilterDay: "all", txFilterMonthNum: "all", txFilterYear: "all", txFilterCategory: "all", txSearch: "",
+  insightsMonthNum: new Date().toISOString().slice(5, 7), insightsYear: String(new Date().getFullYear()), insightsPeriodMode: "month",
+  txFilterType: "all", txFilterMonthNum: "all", txFilterYear: "all", txFilterCategory: "all", txSearch: "", txPeriodMode: "all",
   formType: "expense", formDate: new Date().toISOString().slice(0, 10),
   formCategory: CATEGORIES.expense[0], editingId: null, categoryManual: false,
   budgetEditId: null, billEditId: null, goalEditId: null, goalContributeId: null

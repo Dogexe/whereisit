@@ -21,6 +21,29 @@ export function computeBudgets(forMonth) {
     };
   });
 }
+// Same shape as computeBudgets, but sums a whole year's spend per category
+// and compares it against the monthly limit x12 (there's no separate yearly
+// limit field -- budgets are defined as one monthly figure per category).
+export function computeBudgetsForYear(forYear) {
+  const targetYear = forYear || String(new Date().getFullYear());
+  const spentByCategory = {};
+  transactions.filter((t) => t.type === "expense" && t.date.slice(0, 4) === targetYear).forEach((t) => {
+    spentByCategory[t.category] = (spentByCategory[t.category] || 0) + t.amount;
+  });
+  return budgets.map((b) => {
+    const spent = spentByCategory[b.category] || 0;
+    const yearLimit = b.limit * 12;
+    const pct = Math.min(100, Math.round((spent / yearLimit) * 100));
+    const over = spent > yearLimit;
+    const near = !over && spent / yearLimit >= 0.8;
+    return {
+      category: b.category, spentFmt: fmtMoney(spent), limitFmt: fmtMoney(yearLimit), pct,
+      barColor: over ? "var(--color-expense)" : (near ? "var(--color-warning)" : "var(--color-accent)"),
+      badgeClass: over ? "badge-expense" : (near ? "badge-warn" : "badge-brand"),
+      statusLabel: over ? L().overBudget : pct + "%"
+    };
+  });
+}
 // Returns an alert message if adding/editing `tx` pushed its budget category
 // to 80%+ of its monthly limit, or null if no budget applies / still under.
 export function checkBudgetAlert(tx) {
@@ -112,6 +135,23 @@ export function computeBreakdown(forMonth) {
     color: CHART_COLORS[i % CHART_COLORS.length]
   }));
 }
+// Same shape as computeBreakdown, but sums a whole year's spend per category.
+export function computeBreakdownForYear(forYear) {
+  const targetYear = forYear || String(new Date().getFullYear());
+  const totals = {};
+  transactions.filter((t) => t.type === "expense" && t.date.slice(0, 4) === targetYear).forEach((t) => {
+    totals[t.category] = (totals[t.category] || 0) + t.amount;
+  });
+  const entries = Object.entries(totals).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  const max = entries.length ? entries[0][1] : 1;
+  const sum = entries.reduce((a, [, v]) => a + v, 0) || 1;
+  return entries.map(([cat, total], i) => ({
+    category: cat, total, totalFmt: fmtMoney(total),
+    pct: Math.max(4, Math.round((total / max) * 100)),
+    sharePct: (total / sum) * 100,
+    color: CHART_COLORS[i % CHART_COLORS.length]
+  }));
+}
 export function pieChartSvg(entries) {
   const total = entries.reduce((a, e) => a + e.total, 0) || 1;
   // r + sw/2 must stay under the viewBox half-size (70) or the ring's
@@ -126,11 +166,6 @@ export function pieChartSvg(entries) {
   }).join("");
   return `<svg width="140" height="140" viewBox="0 0 140 140">${circles}</svg>`;
 }
-export const DAY_NUMS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0"));
-export const MONTH_NUMS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0"));
-export function monthOnlyLabel(mm) {
-  return new Date(2000, parseInt(mm, 10) - 1, 1).toLocaleDateString(state.lang === "en" ? "en-US" : "th-TH", { month: "short" });
-}
 // Thai locale conventionally displays the Buddhist Era year (Gregorian + 543);
 // dates/keys stay Gregorian internally, this only affects what's shown.
 export function yearLabel(yyyy) { return state.lang === "en" ? yyyy : String(Number(yyyy) + 543); }
@@ -138,6 +173,14 @@ export function availableYears() {
   const years = new Set(transactions.map((t) => t.date.slice(0, 4)));
   years.add(String(new Date().getFullYear()));
   return Array.from(years).sort().reverse();
+}
+// "YYYY-MM" keys for every month that has at least one transaction, newest
+// first, always including the current month so the month picker never
+// starts empty on a fresh install.
+export function availableMonthKeys() {
+  const keys = new Set(transactions.map((t) => monthKey(t.date)));
+  keys.add(monthKey(new Date().toISOString()));
+  return Array.from(keys).sort().reverse();
 }
 export function computeTrend() {
   const byMonth = {};

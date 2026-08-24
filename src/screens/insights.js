@@ -1,11 +1,24 @@
 import { L } from "../i18n.js";
 import { state } from "../state.js";
-import { $, escapeHtml, optionsHtml, monthLabel, refreshIcons } from "../utils.js";
+import { $, escapeHtml, monthLabel, refreshIcons } from "../utils.js";
 import {
-  availableYears, MONTH_NUMS, monthOnlyLabel, yearLabel, computeBudgets,
-  computeBreakdown, pieChartSvg, computeTrend
+  availableYears, yearLabel, computeBudgets, computeBudgetsForYear,
+  computeBreakdown, computeBreakdownForYear, pieChartSvg, computeTrend
 } from "../derived.js";
+import { periodPickerHtml, wirePeriodPicker } from "./period-picker.js";
 
+function renderInsightsPeriodPicker() {
+  $("insightsPeriodPickerRow").innerHTML = periodPickerHtml("insights", ["month", "year"], state.insightsPeriodMode, state.insightsMonthNum, state.insightsYear);
+  wirePeriodPicker("insights", {
+    onMode: (m) => { state.insightsPeriodMode = m; renderInsightsPeriodPicker(); renderInsightsBody(); },
+    onValue: (v) => {
+      if (state.insightsPeriodMode === "month") { const [y, m] = v.split("-"); state.insightsYear = y; state.insightsMonthNum = m; }
+      else { state.insightsYear = v; }
+      renderInsightsPeriodPicker();
+      renderInsightsBody();
+    }
+  });
+}
 export function renderInsights() {
   const l = L();
   const years = availableYears();
@@ -20,27 +33,24 @@ export function renderInsights() {
       <label class="tab-opt"><input type="radio" name="insights-tab" value="breakdown" ${state.insightsTab === "breakdown" ? "checked" : ""}>${escapeHtml(l.categoryTab)}</label>
       <label class="tab-opt"><input type="radio" name="insights-tab" value="trend" ${state.insightsTab === "trend" ? "checked" : ""}>${escapeHtml(l.trendTab)}</label>
     </div>
-    <div class="filter-row" id="insightsMonthRow" style="${state.insightsTab === "trend" ? "display:none" : ""};margin-bottom:18px">
-      <select class="input" id="insightsMonthSelect">${optionsHtml(MONTH_NUMS, state.insightsMonthNum, monthOnlyLabel)}</select>
-      <select class="input" id="insightsYearSelect">${optionsHtml(years, state.insightsYear, yearLabel)}</select>
-    </div>
+    <div class="filter-row" id="insightsPeriodPickerRow" style="${state.insightsTab === "trend" ? "display:none" : ""};margin-bottom:18px"></div>
     <div id="insightsBody"></div>
   `;
+  renderInsightsPeriodPicker();
   renderInsightsBody();
   document.querySelectorAll('input[name="insights-tab"]').forEach((r) => r.addEventListener("change", (e) => {
     state.insightsTab = e.target.value;
-    $("insightsMonthRow").style.display = state.insightsTab === "trend" ? "none" : "";
+    $("insightsPeriodPickerRow").style.display = state.insightsTab === "trend" ? "none" : "";
     renderInsightsBody();
   }));
-  $("insightsMonthSelect").addEventListener("change", (e) => { state.insightsMonthNum = e.target.value; renderInsightsBody(); });
-  $("insightsYearSelect").addEventListener("change", (e) => { state.insightsYear = e.target.value; renderInsightsBody(); });
 }
 export function renderInsightsBody() {
   const l = L();
   const body = $("insightsBody");
+  const isYearMode = state.insightsPeriodMode === "year";
   const targetMonthKey = state.insightsYear + "-" + state.insightsMonthNum;
   if (state.insightsTab === "budgets") {
-    const rows = computeBudgets(targetMonthKey);
+    const rows = isYearMode ? computeBudgetsForYear(state.insightsYear) : computeBudgets(targetMonthKey);
     body.innerHTML = `<div class="insight-cards">${rows.map((b) => `
       <div class="insight-card">
         <div class="head"><span class="cat">${escapeHtml(b.category)}</span><span class="badge ${b.badgeClass}">${escapeHtml(b.statusLabel)}</span></div>
@@ -48,15 +58,15 @@ export function renderInsightsBody() {
         <div class="foot"><span>${b.spentFmt} ${escapeHtml(l.spentSoFar)}</span><span>${escapeHtml(l.budgetOf)} ${b.limitFmt}</span></div>
       </div>`).join("")}</div>`;
   } else if (state.insightsTab === "breakdown") {
-    const rows = computeBreakdown(targetMonthKey);
-    const monthLbl = monthLabel(targetMonthKey);
+    const rows = isYearMode ? computeBreakdownForYear(state.insightsYear) : computeBreakdown(targetMonthKey);
+    const periodLbl = isYearMode ? String(yearLabel(state.insightsYear)) : monthLabel(targetMonthKey);
     const listHtml = rows.map((d) => `
         <div class="breakdown-row">
           <div class="row1"><span><span class="legend-dot" style="background:${d.color}"></span>${escapeHtml(d.category)}</span><span class="right">${d.totalFmt} · ${Math.round(d.sharePct)}%</span></div>
           <div class="bar-track"><div class="bar-fill" style="width:${d.pct}%;background:${d.color}"></div></div>
         </div>`).join("") || `<div class="empty-note">${escapeHtml(l.noExpensesMonth)}</div>`;
     body.innerHTML = `
-      <div style="font-size:12px;color:var(--color-muted);margin-bottom:14px">${escapeHtml(l.expenseByCategory)} — ${escapeHtml(monthLbl)}</div>
+      <div style="font-size:12px;color:var(--color-muted);margin-bottom:14px">${escapeHtml(l.expenseByCategory)} — ${escapeHtml(periodLbl)}</div>
       ${rows.length ? `
       <div class="breakdown-columns">
         <div style="display:flex;justify-content:center;margin-bottom:16px">${pieChartSvg(rows)}</div>
