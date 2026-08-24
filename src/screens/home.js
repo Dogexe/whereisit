@@ -11,7 +11,7 @@ import { pushTx, pushRows, syncNow, billToRow } from "../sync.js";
 import { showToast } from "../toast.js";
 import { setTab, renderScreen } from "./router.js";
 import { resetForm } from "./add.js";
-import { txRowHtml, wireTxRowActions } from "./tx-row.js";
+import { groupedTxRowsHtml, wireTxRowActions } from "./tx-row.js";
 
 // Only caller is renderHome's "mark paid" button -- kept here rather than
 // derived.js since unlike that module's pure computations this mutates
@@ -91,7 +91,7 @@ export function renderHome() {
           <button type="button" class="btn btn-ghost" id="goAddBtn">${escapeHtml(l.addShort)}</button>
         </div>
         <div class="list-card">
-          ${recent.map((t) => txRowHtml(t)).join("") || `<div class="empty-note">${escapeHtml(l.noTransactionsYet)}</div>`}
+          ${recent.length ? groupedTxRowsHtml(recent) : `<div class="empty-note">${escapeHtml(l.noTransactionsYet)}</div>`}
         </div>
       </div>
       <div class="home-col-side">

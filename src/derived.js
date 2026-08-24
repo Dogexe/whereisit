@@ -1,5 +1,5 @@
 import { state, transactions, budgets, bills } from "./state.js";
-import { monthKey, fmtMoney, monthLabel } from "./utils.js";
+import { monthKey, fmtMoney, monthLabel, dateLabel } from "./utils.js";
 import { L } from "./i18n.js";
 
 export function computeBudgets(forMonth) {
@@ -60,6 +60,27 @@ export function byRecency(a, b) {
   const byDate = b.date.localeCompare(a.date);
   if (byDate !== 0) return byDate;
   return (b.updatedAt || 0) - (a.updatedAt || 0);
+}
+// Splits an already-sorted (byRecency) transaction list into consecutive
+// same-date runs, each labeled "Today"/"Yesterday" or the plain date. Does
+// not itself sort or filter -- callers pass in whatever order they want
+// preserved within and across groups.
+export function groupByDate(txs) {
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayIso = yesterday.toISOString().slice(0, 10);
+  const groups = [];
+  let current = null;
+  for (const t of txs) {
+    if (!current || current.date !== t.date) {
+      const label = t.date === todayIso ? L().todayLabel : t.date === yesterdayIso ? L().yesterdayLabel : dateLabel(t.date);
+      current = { date: t.date, label, items: [] };
+      groups.push(current);
+    }
+    current.items.push(t);
+  }
+  return groups;
 }
 export function monthKeyOf(date) { return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0"); }
 export function billDueCycle(day) { return monthKeyOf(nextBillDueDate(day)); }

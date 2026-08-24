@@ -3,7 +3,7 @@ import { state, transactions } from "../state.js";
 import { $, escapeHtml, optionsHtml, refreshIcons } from "../utils.js";
 import { CATEGORIES } from "../categories.js";
 import { byRecency, availableYears, DAY_NUMS, MONTH_NUMS, monthOnlyLabel, yearLabel } from "../derived.js";
-import { txRowHtml, wireTxRowActions } from "./tx-row.js";
+import { groupedTxRowsHtml, wireTxRowActions } from "./tx-row.js";
 
 export function filteredTxList() {
   let rows = transactions.slice();
@@ -19,8 +19,9 @@ export function filteredTxList() {
 export function renderTxListOnly() {
   const l = L();
   const rows = filteredTxList();
-  const html = rows.map((t) => txRowHtml(Object.assign({}, t, { __actions: true }))).join("")
-    || `<div class="empty-note">${escapeHtml(l.noResults)}</div>`;
+  const html = rows.length
+    ? groupedTxRowsHtml(rows.map((t) => Object.assign({}, t, { __actions: true })))
+    : `<div class="empty-note">${escapeHtml(l.noResults)}</div>`;
   $("txListContainer").innerHTML = html;
   wireTxRowActions();
   refreshIcons();

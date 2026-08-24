@@ -1,6 +1,7 @@
 import { L } from "../i18n.js";
 import { iconFor, rowTone } from "../categories.js";
-import { iconAvatar, escapeHtml, dateLabel, fmtMoney, EDIT_ICON, DELETE_ICON } from "../utils.js";
+import { iconAvatar, escapeHtml, fmtMoney, EDIT_ICON, DELETE_ICON } from "../utils.js";
+import { groupByDate } from "../derived.js";
 import { editTx, deleteTx } from "./add.js";
 
 export function txRowHtml(t) {
@@ -12,7 +13,7 @@ export function txRowHtml(t) {
       ${iconAvatar(iconFor(t.category), tone.bg, tone.color)}
       <div class="info">
         <div class="cat">${escapeHtml(t.category)}</div>
-        <div class="meta">${dateLabel(t.date)}${t.note ? " · " + escapeHtml(t.note) : ""}</div>
+        ${t.note ? `<div class="meta">${escapeHtml(t.note)}</div>` : ""}
       </div>
       <div class="amt" style="color:${amountColor}">${sign}${fmtMoney(t.amount)}</div>
       ${t.__actions ? `
@@ -21,6 +22,14 @@ export function txRowHtml(t) {
         <button type="button" class="btn btn-icon" style="color:var(--color-expense-700)" data-delete="${t.id}" aria-label="${escapeHtml(L().deleteAria)}">${DELETE_ICON}</button>
       </div>` : ""}
     </div>`;
+}
+// Renders an already-sorted (byRecency) transaction list as consecutive
+// date-header + row groups. Shared by Home's Recent Activity and the
+// Transactions screen so both stay visually consistent.
+export function groupedTxRowsHtml(txs) {
+  return groupByDate(txs).map((g) => `
+    <div class="tx-date-group">${escapeHtml(g.label)}</div>
+    ${g.items.map((t) => txRowHtml(t)).join("")}`).join("");
 }
 export function wireTxRowActions() {
   document.querySelectorAll("[data-edit]").forEach((btn) => btn.addEventListener("click", () => editTx(btn.getAttribute("data-edit"))));

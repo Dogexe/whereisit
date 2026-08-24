@@ -135,6 +135,8 @@
   .section-head h3 { font-size: 15px; font-weight: 700; }
   .section-head:first-of-type { margin-top: 0; }
 
+  .tx-date-group { padding: 14px 4px 4px; font-size: 12px; font-weight: 700; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.02em; }
+  .tx-date-group:first-child { padding-top: 4px; }
   .tx-row { display: flex; align-items: center; gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--color-divider); }
   .tx-row:last-child { border-bottom: none; }
   .tx-row .info { min-width: 0; flex: 1; }
