@@ -5,8 +5,8 @@ import { saveToStorage, saveSettings } from "./storage.js";
 import { L } from "./i18n.js";
 import { showToast } from "./toast.js";
 import { mergeRowsById, mergeBudgetsByCategory } from "./merge.js";
-import { markPending, clearPending, getPendingRows } from "./pending.js";
-import { getWatermark, advanceWatermark } from "./watermark.js";
+import { markPending, clearPending, getPendingRows, clearAllPending } from "./pending.js";
+import { getWatermark, advanceWatermark, resetWatermark } from "./watermark.js";
 
 // Set once by main.js at boot (see setSyncRerenderCallback) -- avoids sync.js
 // importing renderScreen from main.js, which would make the two modules
@@ -96,6 +96,34 @@ export function markAllPending() {
   markPending("budgets", budgets.map((b) => budgetToRow(b, false)));
   markPending("bills", bills.map((b) => billToRow(b, false)));
   markPending("goals", goals.map((g) => goalToRow(g, false)));
+}
+
+// Clears everything scoped to the signed-in account -- transactions,
+// budgets, bills, goals, the pending upload queue, and the pull watermark
+// -- from both memory and localStorage. Called from main.js's auth
+// listener on SIGNED_OUT (the clean case) and on SIGNED_IN when
+// account.js's shouldWipeLocalData() finds a *different* account signing
+// in on this device (the safety net for when SIGNED_OUT never fired
+// cleanly -- app closed mid-session, an expired token, sign-in arriving
+// via a different flow). Without this, the outgoing account's still-loaded
+// local data would get marked pending by markAllPending() and uploaded
+// into the new account.
+//
+// Deliberately leaves state.lang/state.dark untouched: those are device
+// preferences, not account data, and must survive a sign-out. Clearing the
+// in-memory budgets/bills/goals arrays first and then calling
+// saveSettings() persists lang/dark unchanged alongside the now-empty
+// arrays in the same write, rather than needing a separate
+// settings-preserving code path.
+export function wipeLocalAccountData() {
+  setTransactions([]);
+  setBudgets([]);
+  setBills([]);
+  setGoals([]);
+  saveToStorage();
+  saveSettings();
+  clearAllPending();
+  resetWatermark();
 }
 
 // A pull's tombstone can remove a local record that still has an uncleared
