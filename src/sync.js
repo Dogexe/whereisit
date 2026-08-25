@@ -7,6 +7,7 @@ import { showToast } from "./toast.js";
 import { mergeRowsById, mergeBudgetsByCategory } from "./merge.js";
 import { markPending, clearPending, getPendingRows, clearAllPending } from "./pending.js";
 import { getWatermark, advanceWatermark, resetWatermark } from "./watermark.js";
+import { fetchAllPages } from "./paginate.js";
 
 // Set once by main.js at boot (see setSyncRerenderCallback) -- avoids sync.js
 // importing renderScreen from main.js, which would make the two modules
@@ -163,17 +164,37 @@ function dropPendingForRemovedIds(table, liveArray) {
 // but that's harmless: mergeRowsById/mergeBudgetsByCategory only overwrite
 // on a strictly newer updatedAt, so re-receiving an already-merged row is a
 // no-op. Trading a few redundant bytes for never silently dropping a row.
+//
+// Ordered by updated_at then id, both ascending: paginating with .range()
+// below requires a stable total order across pages, and updated_at alone
+// isn't one -- two rows can share the exact same client-supplied
+// millisecond timestamp (the same reason .gte() above exists), and without
+// a deterministic tiebreaker, rows sharing a timestamp could land on
+// either side of a page boundary inconsistently between requests and be
+// skipped entirely. `id` is unique per row, so (updated_at, id) always is
+// a total order regardless of how many rows share a timestamp.
 function watermarkedQuery(table) {
-  let q = sb.from(table).select("*").eq("user_id", currentUser.id);
+  let q = sb.from(table).select("*").eq("user_id", currentUser.id)
+    .order("updated_at", { ascending: true }).order("id", { ascending: true });
   const wm = getWatermark(table);
   if (wm) q = q.gte("updated_at", wm);
   return q;
 }
 
+// Supabase caps a single select() at 1000 rows and returns no error when it
+// silently truncates (see paginate.js) -- fetchAllPages pages through
+// .range() until a short page signals the end, so a table with more than
+// 1000 matching rows (most likely on a fresh device's very first pull)
+// still gets everything instead of an arbitrary subset that would then
+// wrongly advance the watermark past whatever didn't fit in that subset.
+function pullAllPages(table) {
+  return fetchAllPages((offset, limit) => watermarkedQuery(table).range(offset, offset + limit - 1));
+}
+
 async function pullTransactions() {
   if (!sb || !currentUser) return false;
   try {
-    const { data, error } = await watermarkedQuery("transactions");
+    const { data, error } = await pullAllPages("transactions");
     if (error) throw error;
     setTransactions(mergeRowsById(transactions, data, rowToTx));
     saveToStorage();
@@ -184,14 +205,16 @@ async function pullTransactions() {
 async function pullBudgets() {
   if (!sb || !currentUser) return false;
   try {
-    const { data, error } = await watermarkedQuery("budgets");
+    const { data, error } = await pullAllPages("budgets");
     if (error) throw error;
     // Matches the original: an empty result (now also the steady-state
     // case once the watermark has caught up, not just a genuinely empty
     // cloud table) skips the merge (and the localStorage write) entirely
     // rather than calling saveSettings() with an unchanged array -- see
     // mergeBudgetsByCategory's own doc comment for why this whole
-    // function's shape is a preserved quirk, not a fix.
+    // function's shape is a preserved quirk, not a fix. `data` here is
+    // already the combined result across every page, not just the first,
+    // so this check is correct even when budgets spans multiple pages.
     if (!data || !data.length) return true;
     setBudgets(mergeBudgetsByCategory(budgets, data, budgetRowToObj));
     saveSettings();
@@ -202,7 +225,7 @@ async function pullBudgets() {
 async function pullBills() {
   if (!sb || !currentUser) return false;
   try {
-    const { data, error } = await watermarkedQuery("bills");
+    const { data, error } = await pullAllPages("bills");
     if (error) throw error;
     setBills(mergeRowsById(bills, data, rowToBill));
     saveSettings();
@@ -213,7 +236,7 @@ async function pullBills() {
 async function pullGoals() {
   if (!sb || !currentUser) return false;
   try {
-    const { data, error } = await watermarkedQuery("goals");
+    const { data, error } = await pullAllPages("goals");
     if (error) throw error;
     setGoals(mergeRowsById(goals, data, rowToGoal));
     saveSettings();
