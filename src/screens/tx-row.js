@@ -41,25 +41,23 @@ export function groupedTxRowsHtml(txs) {
     ${g.items.map((t) => txRowHtml(t)).join("")}`).join("");
 }
 
-// .tx-trail-group (amount + Edit/Delete, joined) is the only thing that
-// transforms -- closed shifts it right by REVEAL so the buttons sit
-// clipped past the row's edge (overflow:hidden on .tx-row-wrap), open
-// resets to its natural flex position, flush after .tx-lead. Because the
-// group's flex-shrink:0 box is always reserved by .tx-lead's flex:1
-// sibling regardless of transform, and the group's transform only ever
-// shifts it right of (or to) that natural spot, it can never slide left
-// into .tx-lead's territory -- category/note can't be covered by
-// construction, no z-index/pointer-events juggling needed.
+// .tx-trail-group (amount + Edit/Delete) reveals by expanding its own
+// width from "just the amount" to "amount + REVEAL", not by sliding --
+// see the CSS comment on .tx-trail-group for why: it's what lets
+// .tx-lead reclaim the full row width at rest instead of always
+// reserving room for actions it isn't showing.
 let openRow = null;
 function closeRow(rowEl) {
   const group = rowEl.querySelector(".tx-trail-group");
-  if (group) group.style.transform = "translateX(" + REVEAL + "px)";
+  const base = parseFloat(rowEl.dataset.trailWidth || "0");
+  if (group) group.style.width = base + "px";
   rowEl.dataset.open = "0";
   if (openRow === rowEl) openRow = null;
 }
 function openRowTo(rowEl) {
   if (openRow && openRow !== rowEl) closeRow(openRow);
-  rowEl.querySelector(".tx-trail-group").style.transform = "translateX(0px)";
+  const base = parseFloat(rowEl.dataset.trailWidth || "0");
+  rowEl.querySelector(".tx-trail-group").style.width = (base + REVEAL) + "px";
   rowEl.dataset.open = "1";
   openRow = rowEl;
 }
@@ -68,34 +66,40 @@ export function wireTxRowActions() {
   document.querySelectorAll(".tx-row-wrap").forEach((rowEl) => {
     const group = rowEl.querySelector(".tx-trail-group");
     const handle = rowEl.querySelector(".tx-trail"); // drag surface is just the amount, so it never fights Edit/Delete's own clicks
+    // Measured once, before any drag/width override -- the amount's own
+    // natural width, so the group can start at exactly that (no reserved
+    // dead space for actions) and only grow by REVEAL when opened.
+    const naturalWidth = handle.getBoundingClientRect().width;
+    rowEl.dataset.trailWidth = String(naturalWidth);
+    group.style.width = naturalWidth + "px";
     let dragging = false, startX = 0, startOffset = 0, moved = false;
 
     handle.addEventListener("pointerdown", (e) => {
       dragging = true; moved = false;
       startX = e.clientX;
-      startOffset = rowEl.dataset.open === "1" ? 0 : REVEAL;
+      startOffset = rowEl.dataset.open === "1" ? REVEAL : 0;
       group.classList.add("dragging");
       handle.setPointerCapture(e.pointerId);
     });
     handle.addEventListener("pointermove", (e) => {
       if (!dragging) return;
-      const delta = e.clientX - startX;
+      const delta = startX - e.clientX; // dragging left grows the reveal
       if (Math.abs(delta) > 4) moved = true;
       const raw = startOffset + delta;
       let clamped;
       if (raw < 0) clamped = -Math.sqrt(-raw) * 2;
       else if (raw > REVEAL) clamped = REVEAL + Math.sqrt(raw - REVEAL) * 2;
       else clamped = raw;
-      group.style.transform = "translateX(" + clamped + "px)";
+      group.style.width = (naturalWidth + clamped) + "px";
     });
     function endDrag(e) {
       if (!dragging) return;
       dragging = false;
       group.classList.remove("dragging");
-      const delta = (e.clientX || 0) - startX;
+      const delta = startX - (e.clientX || 0);
       const finalOffset = startOffset + delta;
       if (!moved && rowEl.dataset.open === "1") { closeRow(rowEl); return; }
-      if (finalOffset < REVEAL / 2) openRowTo(rowEl); else closeRow(rowEl);
+      if (finalOffset > REVEAL / 2) openRowTo(rowEl); else closeRow(rowEl);
     }
     handle.addEventListener("pointerup", endDrag);
     handle.addEventListener("pointercancel", endDrag);

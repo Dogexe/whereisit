@@ -5,6 +5,17 @@ Status: **built and verified live in the browser** (`src/screens/settings.js`,
 navigation / drill-down sub-pages) was previewed earlier and explicitly
 not chosen.
 
+**Follow-up fix**: the Cross-device Sync row originally showed two
+overlapping sentences when signed out — the short status line
+(`syncSignedOut`, "Sign in with Google to sync across devices") *and* a
+separate, longer help sentence (`syncHelp`, "Sign in with Google above
+to sync your data across devices automatically — no code needed.")
+directly under it, wrapping to 3 lines and making the row feel
+cluttered compared to every other row in the redesign. Removed
+`syncHelp` entirely (it wasn't used anywhere else) and collapsed the
+row back to a single status line, matching the tight one-line rhythm
+of the rest of the card.
+
 **The three open decisions were resolved with sensible defaults, as
 directed, rather than re-asked:**
 1. **Collapsed-group persistence**: implemented. `state.settingsGroupOpen

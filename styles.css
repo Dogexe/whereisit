@@ -145,20 +145,26 @@
   .tx-row-wrap .amt { font-size: 14px; font-weight: 700; flex-shrink: 0; }
   .tx-row-inner { display: flex; align-items: stretch; touch-action: pan-y; user-select: none; }
   .tx-lead { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; padding: 12px 4px 12px 4px; }
-  /* .tx-trail-group (amount + Edit/Delete) is one flex-shrink:0 unit that
-     slides as a whole -- closed shifts it right by exactly its own width
-     (88px) so the buttons sit clipped past the row's edge via .tx-row-wrap's
-     overflow:hidden (which also makes them non-interactive there, no
-     pointer-events trick needed); open resets to translateX(0), its natural
-     flex position flush after .tx-lead. Since .tx-lead's box is always
-     rowWidth-minus-this-group (constant, transform doesn't affect flex
-     layout) and the group's transform only ever shifts it right of that
-     natural spot or back to it, it can never slide left into .tx-lead's
-     territory -- category/note can't be covered by construction. */
-  .tx-trail-group { display: flex; align-items: center; flex-shrink: 0; will-change: transform; transition: transform 240ms cubic-bezier(.22,1,.36,1); }
+  /* .tx-trail-group (amount + Edit/Delete) reveals by expanding its own
+     width, not by sliding -- closed, its width is set (in JS) to exactly
+     the amount's natural width, so .tx-lead's flex:1 gets the row's full
+     remaining space and category/note are never truncated more than they
+     need to be at rest. Open adds exactly REVEAL (88px, the actions'
+     width) to that, and overflow:hidden clips the actions portion
+     whenever the group is narrower than its full content -- so Edit/
+     Delete are genuinely absent from layout and non-interactive at rest,
+     no pointer-events trick needed. Because .tx-lead recomputes its flex
+     box every frame as the group's width transitions, category/note
+     visibly (and only) squeeze to make room while the row is actually
+     opening -- this trades pure transform-only compositing (see the
+     swipe-to-reveal spec's earlier revisions) for a width transition,
+     deliberately, to get "full text at rest" right. .tx-trail and
+     .tx-row-actions both need flex-shrink:0 so they're clipped by the
+     group's overflow, never squished, as its width changes. */
+  .tx-trail-group { display: flex; align-items: center; flex-shrink: 0; overflow: hidden; transition: width 240ms cubic-bezier(.22,1,.36,1); }
   .tx-trail-group.dragging { transition: none; }
-  .tx-trail { display: flex; align-items: center; padding: 12px 0 12px 8px; cursor: grab; }
-  .tx-row-actions { display: flex; align-items: center; gap: 4px; padding: 12px 12px; }
+  .tx-trail { display: flex; align-items: center; flex-shrink: 0; padding: 12px 0 12px 8px; cursor: grab; }
+  .tx-row-actions { display: flex; align-items: center; flex-shrink: 0; gap: 4px; padding: 12px 12px; }
   .empty-note { padding: 36px 0; text-align: center; color: var(--color-muted); font-size: 13px; }
 
   .budget-item .row1 { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
@@ -213,9 +219,6 @@
   .toggle-row { display: flex; align-items: center; gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--color-divider); }
   .toggle-row:last-child { border-bottom: none; }
   .toggle-row .label { flex: 1; font-size: 15px; font-weight: 500; }
-  .toggle-row .lbl { flex: 1; min-width: 0; }
-  .toggle-row .lbl .t { font-size: 15px; font-weight: 500; }
-  .toggle-row .lbl .s { font-size: 12px; color: var(--color-muted); margin-top: 2px; }
   /* export rows are real <button>s (keyboard/a11y) styled to look like a
      .toggle-row -- reset button chrome, then reapply the row layout. */
   button.toggle-row { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 12px; padding: 12px 4px; width: 100%; cursor: pointer; font: inherit; color: inherit; text-align: left; border-bottom: 1px solid var(--color-divider); }
@@ -290,12 +293,19 @@
     .screen { background: var(--color-bg); }
   }
 
-  /* — desktop: same bottom bar, just a wider stage with multi-column screens — */
+  /* — desktop: same bottom bar, just a wider stage with multi-column screens —
+     grid tracks use minmax(0, Nfr) rather than bare Nfr: a bare fr track's
+     minimum defaults to auto (based on its content's min-content size), so
+     a wide child anywhere inside -- long unwrapped text, or a
+     JS-driven width like the swipeable transaction row's reveal --
+     pushes the whole track (and everything up to the page) wider instead
+     of shrinking to fit, a classic CSS Grid "blowout". minmax(0, Nfr)
+     caps each track's minimum at 0 so the fr distribution actually holds. */
   @media (min-width: 880px) {
     .screen { max-width: 1120px; }
     .add-form { max-width: 480px; }
-    .home-columns { display: grid; grid-template-columns: 1.4fr 1fr; gap: 32px; align-items: start; }
+    .home-columns { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 32px; align-items: start; }
     .home-columns .hero-card { margin-top: 0; }
-    .breakdown-columns { display: grid; grid-template-columns: 260px 1fr; gap: 32px; align-items: start; }
-    .insight-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+    .breakdown-columns { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 32px; align-items: start; }
+    .insight-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
   }

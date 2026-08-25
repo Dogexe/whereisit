@@ -14,6 +14,7 @@ import {
 import { showToast } from "../toast.js";
 import { renderChrome, renderScreen } from "./router.js";
 import { deferredInstallPrompt, setDeferredInstallPrompt } from "../pwa-install.js";
+import { exportToGoogleSheets } from "../sheets-export.js";
 
 // Both are simple named lists edited inline in Settings; share one row/CRUD shape.
 export function manageRowHtml(name, sub, amt, editAttr, deleteAttr) {
@@ -306,12 +307,9 @@ export function renderSettings() {
       <div>
         <div class="settings-section-label">${escapeHtml(l.syncSection)}</div>
         <div class="list-card">
-          <div class="toggle-row" style="align-items:flex-start">
+          <div class="toggle-row">
             ${iconAvatar("cloud", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
-            <div class="lbl">
-              <div class="t"><span id="syncStatus" class="${lastSyncStatus.ok === true ? "ok" : (lastSyncStatus.ok === false ? "err" : "")}"><span class="sync-dot"></span><span>${escapeHtml(currentUser ? lastSyncStatus.text : l.syncSignedOut)}</span></span></div>
-              <div class="s">${escapeHtml(l.syncHelp)}</div>
-            </div>
+            <span id="syncStatus" class="label ${lastSyncStatus.ok === true ? "ok" : (lastSyncStatus.ok === false ? "err" : "")}"><span class="sync-dot"></span><span>${escapeHtml(currentUser ? lastSyncStatus.text : l.syncSignedOut)}</span></span>
             <button type="button" class="btn btn-secondary btn-sm" id="syncNowBtn" ${currentUser ? "" : "disabled"}>${escapeHtml(l.syncNowBtn)}</button>
           </div>
           ${deferredInstallPrompt ? `
@@ -328,6 +326,10 @@ export function renderSettings() {
           <button type="button" class="toggle-row" id="exportJsonBtn">
             ${iconAvatar("download", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
             <span class="label">${escapeHtml(l.exportJsonBtn)}</span>
+          </button>
+          <button type="button" class="toggle-row" id="exportSheetsBtn">
+            ${iconAvatar("table", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+            <span class="label">${escapeHtml(l.exportSheetsBtn)}</span>
           </button>
         </div>
       </div>
@@ -421,6 +423,7 @@ export function renderSettings() {
     document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
     showToast(L().toastJson);
   });
+  $("exportSheetsBtn").addEventListener("click", exportToGoogleSheets);
 
   wireInlineCrud("Budget", "budgetEditId", deleteBudget, saveBudgetForm);
   wireInlineCrud("Bill", "billEditId", deleteBill, saveBillForm);
