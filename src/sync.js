@@ -80,7 +80,7 @@ export async function pushRows(table, rows) {
   try {
     const { error } = await sb.from(table).upsert(rows);
     if (error) throw error;
-    clearPending(table, rows.map((r) => r.id));
+    clearPending(table, rows);
     return true;
   } catch (e) { return false; }
 }
@@ -112,7 +112,7 @@ export function markAllPending() {
 // its own doc comment), so a pending budget entry can't go stale this way.
 function dropPendingForRemovedIds(table, liveArray) {
   const liveIds = new Set(liveArray.map((x) => x.id));
-  const stale = getPendingRows(table).filter((r) => !r.deleted && !liveIds.has(r.id)).map((r) => r.id);
+  const stale = getPendingRows(table).filter((r) => !r.deleted && !liveIds.has(r.id));
   clearPending(table, stale);
 }
 
@@ -121,12 +121,24 @@ function dropPendingForRemovedIds(table, liveArray) {
 // full pull (see watermark.js). A tombstone is just a row with
 // deleted:true and a fresh updated_at (txToRow/budgetToRow/billToRow/
 // goalToRow always stamp deletes with Date.now() at delete time -- see
-// deleteTx and friends), so it satisfies this same `.gt()` filter exactly
-// like any other change and still arrives.
+// deleteTx and friends), so it satisfies this same filter exactly like any
+// other change and still arrives.
+//
+// Uses .gte(), not .gt(): updated_at is a client-supplied millisecond
+// timestamp (Date.now()), so two different writes landing in the same
+// millisecond -- unlikely but real, e.g. two devices pushing at once --
+// can share the exact value the watermark just advanced to. A strict .gt()
+// would then permanently exclude the later of the two from every future
+// pull, a silent, unrecoverable miss (worse for a tombstone: the deleted
+// record would never get removed elsewhere). .gte() means the row(s)
+// already at the boundary get re-fetched every cycle once any data exists,
+// but that's harmless: mergeRowsById/mergeBudgetsByCategory only overwrite
+// on a strictly newer updatedAt, so re-receiving an already-merged row is a
+// no-op. Trading a few redundant bytes for never silently dropping a row.
 function watermarkedQuery(table) {
   let q = sb.from(table).select("*").eq("user_id", currentUser.id);
   const wm = getWatermark(table);
-  if (wm) q = q.gt("updated_at", wm);
+  if (wm) q = q.gte("updated_at", wm);
   return q;
 }
 

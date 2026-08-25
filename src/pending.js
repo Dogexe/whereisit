@@ -52,10 +52,22 @@ export function markPending(table, rows) {
   persist();
 }
 
-export function clearPending(table, ids) {
-  if (!ids.length) return;
+// Takes the actual row objects that were just confirmed pushed (the same
+// shape markPending takes), not bare ids -- and only removes a table's
+// pending entry for a row's id if the map still holds that *exact* object
+// (reference equality). This matters when two pushes for the same id
+// overlap: edit X (push A starts, marking A pending) then edit X again
+// before A resolves (push B starts, overwriting the map entry with B). If A
+// then resolves successfully first, clearing by id alone would wipe out B's
+// still-unconfirmed entry even though B never actually reached the network
+// -- reference equality means A's success can only ever clear A's own
+// entry, leaving B correctly pending for the next retry.
+export function clearPending(table, rows) {
+  if (!rows.length) return;
   let changed = false;
-  ids.forEach((id) => { if (pending[table].delete(id)) changed = true; });
+  rows.forEach((row) => {
+    if (pending[table].get(row.id) === row) { pending[table].delete(row.id); changed = true; }
+  });
   if (changed) persist();
 }
 
