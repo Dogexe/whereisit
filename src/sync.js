@@ -74,16 +74,32 @@ export function goalToRow(g, deleted) {
 // network call actually confirms success. This is where the boolean this
 // function returns gets consumed for real, rather than discarded like every
 // call site used to do.
+//
+// Sent in chunks of PUSH_CHUNK_SIZE rather than one upsert: markAllPending()
+// on a device with thousands of records would otherwise build a single
+// request large enough to risk exceeding a payload size limit. Pending is
+// cleared per chunk as each one confirms, via the same reference-equality
+// clearPending() as everywhere else -- not once at the end -- so a failure
+// partway through (e.g. chunk 4 of 7) leaves the chunks that already
+// succeeded (1-3) cleared and everything from the failure point on (4-7)
+// still pending; the loop stops at the first failure rather than pressing
+// on with later chunks, since those later rows are already sitting
+// correctly-marked in the pending map from the markPending() call above
+// and will simply retry on the next cycle.
+const PUSH_CHUNK_SIZE = 500;
 export async function pushRows(table, rows) {
   if (!rows.length) return true;
   markPending(table, rows);
   if (!sb || !currentUser) return true;
-  try {
-    const { error } = await sb.from(table).upsert(rows);
-    if (error) throw error;
-    clearPending(table, rows);
-    return true;
-  } catch (e) { return false; }
+  for (let i = 0; i < rows.length; i += PUSH_CHUNK_SIZE) {
+    const chunk = rows.slice(i, i + PUSH_CHUNK_SIZE);
+    try {
+      const { error } = await sb.from(table).upsert(chunk);
+      if (error) throw error;
+      clearPending(table, chunk);
+    } catch (e) { return false; }
+  }
+  return true;
 }
 export async function pushTx(t) { return pushRows("transactions", [txToRow(t, false)]); }
 export async function pushDeleteTx(t) { return pushRows("transactions", [txToRow(t, true)]); }
