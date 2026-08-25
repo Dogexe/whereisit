@@ -6,6 +6,7 @@ import { L } from "./i18n.js";
 import { showToast } from "./toast.js";
 import { mergeRowsById, mergeBudgetsByCategory } from "./merge.js";
 import { markPending, clearPending, getPendingRows } from "./pending.js";
+import { getWatermark, advanceWatermark } from "./watermark.js";
 
 // Set once by main.js at boot (see setSyncRerenderCallback) -- avoids sync.js
 // importing renderScreen from main.js, which would make the two modules
@@ -115,48 +116,68 @@ function dropPendingForRemovedIds(table, liveArray) {
   clearPending(table, stale);
 }
 
+// Filters a pull to rows changed since the last-seen watermark for that
+// table, when one exists; a table with no watermark yet gets an unfiltered
+// full pull (see watermark.js). A tombstone is just a row with
+// deleted:true and a fresh updated_at (txToRow/budgetToRow/billToRow/
+// goalToRow always stamp deletes with Date.now() at delete time -- see
+// deleteTx and friends), so it satisfies this same `.gt()` filter exactly
+// like any other change and still arrives.
+function watermarkedQuery(table) {
+  let q = sb.from(table).select("*").eq("user_id", currentUser.id);
+  const wm = getWatermark(table);
+  if (wm) q = q.gt("updated_at", wm);
+  return q;
+}
+
 async function pullTransactions() {
   if (!sb || !currentUser) return false;
   try {
-    const { data, error } = await sb.from("transactions").select("*").eq("user_id", currentUser.id);
+    const { data, error } = await watermarkedQuery("transactions");
     if (error) throw error;
     setTransactions(mergeRowsById(transactions, data, rowToTx));
     saveToStorage();
+    advanceWatermark("transactions", data);
     return true;
   } catch (e) { return false; }
 }
 async function pullBudgets() {
   if (!sb || !currentUser) return false;
   try {
-    const { data, error } = await sb.from("budgets").select("*").eq("user_id", currentUser.id);
+    const { data, error } = await watermarkedQuery("budgets");
     if (error) throw error;
-    // Matches the original: an empty cloud result skips the merge (and the
-    // localStorage write) entirely rather than calling saveSettings() with
-    // an unchanged array -- see mergeBudgetsByCategory's own doc comment for
-    // why this whole function's shape is a preserved quirk, not a fix.
+    // Matches the original: an empty result (now also the steady-state
+    // case once the watermark has caught up, not just a genuinely empty
+    // cloud table) skips the merge (and the localStorage write) entirely
+    // rather than calling saveSettings() with an unchanged array -- see
+    // mergeBudgetsByCategory's own doc comment for why this whole
+    // function's shape is a preserved quirk, not a fix.
     if (!data || !data.length) return true;
     setBudgets(mergeBudgetsByCategory(budgets, data, budgetRowToObj));
     saveSettings();
+    advanceWatermark("budgets", data);
     return true;
   } catch (e) { return false; }
 }
 async function pullBills() {
   if (!sb || !currentUser) return false;
   try {
-    const { data, error } = await sb.from("bills").select("*").eq("user_id", currentUser.id);
+    const { data, error } = await watermarkedQuery("bills");
     if (error) throw error;
     setBills(mergeRowsById(bills, data, rowToBill));
     saveSettings();
+    advanceWatermark("bills", data);
     return true;
   } catch (e) { return false; }
 }
 async function pullGoals() {
   if (!sb || !currentUser) return false;
   try {
-    const { data, error } = await sb.from("goals").select("*").eq("user_id", currentUser.id);
+    const { data, error } = await watermarkedQuery("goals");
     if (error) throw error;
     setGoals(mergeRowsById(goals, data, rowToGoal));
     saveSettings();
+    advanceWatermark("goals", data);
     return true;
   } catch (e) { return false; }
 }
