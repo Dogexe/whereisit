@@ -5,6 +5,7 @@ import { saveToStorage, saveSettings } from "./storage.js";
 import { L } from "./i18n.js";
 import { showToast } from "./toast.js";
 import { mergeRowsById, mergeBudgetsByCategory } from "./merge.js";
+import { markPending, clearPending, getPendingRows } from "./pending.js";
 
 // Set once by main.js at boot (see setSyncRerenderCallback) -- avoids sync.js
 // importing renderScreen from main.js, which would make the two modules
@@ -64,16 +65,55 @@ export function goalToRow(g, deleted) {
   };
 }
 
+// Marks every row pending the moment a push is attempted -- before the
+// !sb/!currentUser checks below, so an edit made while signed out or before
+// the Supabase client is ready is still queued for the next successful
+// sign-in's markAllPending() sweep -- and clears each id only once the
+// network call actually confirms success. This is where the boolean this
+// function returns gets consumed for real, rather than discarded like every
+// call site used to do.
 export async function pushRows(table, rows) {
-  if (!sb || !currentUser || !rows.length) return true;
+  if (!rows.length) return true;
+  markPending(table, rows);
+  if (!sb || !currentUser) return true;
   try {
     const { error } = await sb.from(table).upsert(rows);
     if (error) throw error;
+    clearPending(table, rows.map((r) => r.id));
     return true;
   } catch (e) { return false; }
 }
 export async function pushTx(t) { return pushRows("transactions", [txToRow(t, false)]); }
 export async function pushDeleteTx(t) { return pushRows("transactions", [txToRow(t, true)]); }
+
+// Called once from main.js's auth listener on a genuine new sign-in (the
+// SIGNED_IN event, not a page-load session restore) -- a fresh or
+// long-offline device needs exactly one full upload of everything it
+// currently has locally, not a resend every 25s once that's done.
+export function markAllPending() {
+  markPending("transactions", transactions.map((t) => txToRow(t, false)));
+  markPending("budgets", budgets.map((b) => budgetToRow(b, false)));
+  markPending("bills", bills.map((b) => billToRow(b, false)));
+  markPending("goals", goals.map((g) => goalToRow(g, false)));
+}
+
+// A pull's tombstone can remove a local record that still has an uncleared
+// (failed-to-push) pending create/edit sitting in the pending map from
+// before the pull ran -- e.g. an edit that failed to push while offline,
+// followed by another device deleting that same record before this device
+// came back online. mergeRowsById makes an incoming tombstone always win
+// over a local record regardless of timestamp, so once the pull above has
+// removed the id from the live array, the stale pending entry must be
+// dropped too -- otherwise the push phase right after would resurrect a row
+// another device already deleted, both locally on the next pull elsewhere
+// and in the cloud. Budgets don't need this: pullBudgets/
+// mergeBudgetsByCategory never actually removes a row on a tombstone (see
+// its own doc comment), so a pending budget entry can't go stale this way.
+function dropPendingForRemovedIds(table, liveArray) {
+  const liveIds = new Set(liveArray.map((x) => x.id));
+  const stale = getPendingRows(table).filter((r) => !r.deleted && !liveIds.has(r.id)).map((r) => r.id);
+  clearPending(table, stale);
+}
 
 async function pullTransactions() {
   if (!sb || !currentUser) return false;
@@ -153,13 +193,23 @@ export async function syncNow() {
   // Pushing that stale copy before pulling would re-upload it with a fresh
   // timestamp and silently resurrect it in the cloud (and everywhere else).
   const pullTxOk = await pullTransactions();
+  dropPendingForRemovedIds("transactions", transactions);
   const pullBudgetOk = await pullBudgets();
   const pullBillOk = await pullBills();
+  dropPendingForRemovedIds("bills", bills);
   const pullGoalOk = await pullGoals();
-  const pushTxOk = await pushRows("transactions", transactions.map((t) => txToRow(t, false)));
-  const pushBudgetOk = await pushRows("budgets", budgets.map((b) => budgetToRow(b, false)));
-  const pushBillOk = await pushRows("bills", bills.map((b) => billToRow(b, false)));
-  const pushGoalOk = await pushRows("goals", goals.map((g) => goalToRow(g, false)));
+  dropPendingForRemovedIds("goals", goals);
+  // Every individual create/edit/delete already pushed its own single row
+  // immediately (see pushTx/pushRows calls throughout the screens/ modules)
+  // -- this is a retry pass for whatever's still pending because that push
+  // never happened or failed (offline, not signed in yet, a transient
+  // error), not a resend of the entire table. In the normal case each of
+  // these four arrays is empty and pushRows's own `if (!rows.length) return
+  // true` guard means this makes zero network calls.
+  const pushTxOk = await pushRows("transactions", getPendingRows("transactions"));
+  const pushBudgetOk = await pushRows("budgets", getPendingRows("budgets"));
+  const pushBillOk = await pushRows("bills", getPendingRows("bills"));
+  const pushGoalOk = await pushRows("goals", getPendingRows("goals"));
   if (pushTxOk && pushBudgetOk && pushBillOk && pushGoalOk && pullTxOk && pullBudgetOk && pullBillOk && pullGoalOk) {
     setSyncStatus(L().syncLatest + new Date().toLocaleTimeString(state.lang === "en" ? "en-US" : "th-TH"), true);
     lastSyncFailed = false;

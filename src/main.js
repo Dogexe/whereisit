@@ -2,9 +2,10 @@ import { L } from "./i18n.js";
 import { state } from "./state.js";
 import { refreshIcons } from "./utils.js";
 import { loadFromStorage } from "./storage.js";
+import { loadPending } from "./pending.js";
 import { applyTheme } from "./theme.js";
 import {
-  sb, setCurrentUser, currentUser, hasLiveInputRisk, syncNow, setSyncStatus, setSyncRerenderCallback
+  sb, setCurrentUser, currentUser, hasLiveInputRisk, syncNow, setSyncStatus, setSyncRerenderCallback, markAllPending
 } from "./sync.js";
 import { setDeferredInstallPrompt } from "./pwa-install.js";
 import { initErrorReporting } from "./error-report.js";
@@ -26,6 +27,7 @@ registerRenderers({
 initErrorReporting();
 setSyncRerenderCallback(renderScreen);
 loadFromStorage();
+loadPending();
 applyTheme();
 renderScreen();
 refreshIcons();
@@ -46,6 +48,12 @@ if (sb) {
     if (window.location.hash || window.location.search) {
       window.history.replaceState(null, "", window.location.origin + window.location.pathname);
     }
+    // "SIGNED_IN" only fires for a genuine new sign-in (fresh OAuth
+    // completion, or a long-offline device re-authenticating) -- not for
+    // "INITIAL_SESSION" (an already-signed-in page load restoring its
+    // existing session) or "TOKEN_REFRESHED", so this runs once per actual
+    // sign-in rather than once per reload/refresh.
+    if (event === "SIGNED_IN") markAllPending();
     if (state.tab === "settings" && !hasLiveInputRisk()) renderSettings();
     if (currentUser) syncNow();
   });
