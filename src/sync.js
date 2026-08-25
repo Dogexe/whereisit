@@ -4,6 +4,7 @@ import { state, transactions, budgets, bills, goals, setTransactions, setBudgets
 import { saveToStorage, saveSettings } from "./storage.js";
 import { L } from "./i18n.js";
 import { showToast } from "./toast.js";
+import { mergeRowsById, mergeBudgetsByCategory } from "./merge.js";
 
 // Set once by main.js at boot (see setSyncRerenderCallback) -- avoids sync.js
 // importing renderScreen from main.js, which would make the two modules
@@ -79,14 +80,7 @@ async function pullTransactions() {
   try {
     const { data, error } = await sb.from("transactions").select("*").eq("user_id", currentUser.id);
     if (error) throw error;
-    const byId = new Map(transactions.map((t) => [t.id, t]));
-    (data || []).forEach((r) => {
-      const rTime = new Date(r.updated_at).getTime();
-      if (r.deleted) { byId.delete(r.id); return; }
-      const local = byId.get(r.id);
-      if (!local || (local.updatedAt || 0) < rTime) byId.set(r.id, rowToTx(r));
-    });
-    setTransactions(Array.from(byId.values()));
+    setTransactions(mergeRowsById(transactions, data, rowToTx));
     saveToStorage();
     return true;
   } catch (e) { return false; }
@@ -96,13 +90,12 @@ async function pullBudgets() {
   try {
     const { data, error } = await sb.from("budgets").select("*").eq("user_id", currentUser.id);
     if (error) throw error;
+    // Matches the original: an empty cloud result skips the merge (and the
+    // localStorage write) entirely rather than calling saveSettings() with
+    // an unchanged array -- see mergeBudgetsByCategory's own doc comment for
+    // why this whole function's shape is a preserved quirk, not a fix.
     if (!data || !data.length) return true;
-    const byCat = new Map(budgets.map((b) => [b.category, b]));
-    data.forEach((r) => {
-      if (r.deleted) return;
-      byCat.set(r.category, budgetRowToObj(r));
-    });
-    setBudgets(Array.from(byCat.values()));
+    setBudgets(mergeBudgetsByCategory(budgets, data, budgetRowToObj));
     saveSettings();
     return true;
   } catch (e) { return false; }
@@ -112,14 +105,7 @@ async function pullBills() {
   try {
     const { data, error } = await sb.from("bills").select("*").eq("user_id", currentUser.id);
     if (error) throw error;
-    const byId = new Map(bills.map((b) => [b.id, b]));
-    (data || []).forEach((r) => {
-      const rTime = new Date(r.updated_at).getTime();
-      if (r.deleted) { byId.delete(r.id); return; }
-      const local = byId.get(r.id);
-      if (!local || (local.updatedAt || 0) < rTime) byId.set(r.id, rowToBill(r));
-    });
-    setBills(Array.from(byId.values()));
+    setBills(mergeRowsById(bills, data, rowToBill));
     saveSettings();
     return true;
   } catch (e) { return false; }
@@ -129,14 +115,7 @@ async function pullGoals() {
   try {
     const { data, error } = await sb.from("goals").select("*").eq("user_id", currentUser.id);
     if (error) throw error;
-    const byId = new Map(goals.map((g) => [g.id, g]));
-    (data || []).forEach((r) => {
-      const rTime = new Date(r.updated_at).getTime();
-      if (r.deleted) { byId.delete(r.id); return; }
-      const local = byId.get(r.id);
-      if (!local || (local.updatedAt || 0) < rTime) byId.set(r.id, rowToGoal(r));
-    });
-    setGoals(Array.from(byId.values()));
+    setGoals(mergeRowsById(goals, data, rowToGoal));
     saveSettings();
     return true;
   } catch (e) { return false; }
