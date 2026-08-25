@@ -74,3 +74,12 @@ export function clearPending(table, rows) {
 export function getPendingRows(table) {
   return Array.from(pending[table].values());
 }
+
+// Wipes every table's pending queue outright -- used when local account
+// data itself is being wiped (a sign-out, or a different account signing
+// in on this device), where a queued upload of the outgoing account's data
+// would be exactly the leak that wipe exists to prevent.
+export function clearAllPending() {
+  TABLES.forEach((t) => { pending[t] = new Map(); });
+  persist();
+}
