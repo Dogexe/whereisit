@@ -4,7 +4,7 @@ import {
   $, uid, icon, iconAvatar, escapeHtml, fmtMoney, optionsHtml, refreshIcons,
   EDIT_ICON, DELETE_ICON, PLUS_ICON
 } from "../utils.js";
-import { CATEGORIES, GOAL_TONES, GOAL_ICONS } from "../categories.js";
+import { CATEGORIES, GOAL_TONES, GOAL_ICONS, iconFor, rowTone } from "../categories.js";
 import { saveSettings } from "../storage.js";
 import { applyTheme } from "../theme.js";
 import {
@@ -17,9 +17,14 @@ import { deferredInstallPrompt, setDeferredInstallPrompt } from "../pwa-install.
 import { exportToGoogleSheets } from "../sheets-export.js";
 
 // Both are simple named lists edited inline in Settings; share one row/CRUD shape.
-export function manageRowHtml(name, sub, amt, editAttr, deleteAttr) {
+// `iconHtml` is a pre-built iconAvatar() string -- category icon for
+// budgets/bills, matching the same icon-led row shape as every other
+// row in this redesigned Settings screen (toggle rows, group headers,
+// transaction rows) instead of being the one bare-text exception.
+export function manageRowHtml(iconHtml, name, sub, amt, editAttr, deleteAttr) {
   return `
     <div class="manage-row">
+      ${iconHtml}
       <div class="info"><div class="name">${escapeHtml(name)}</div><div class="sub">${escapeHtml(sub)}</div></div>
       ${amt ? `<div class="amt">${amt}</div>` : ""}
       <div class="row-actions">
@@ -27,6 +32,14 @@ export function manageRowHtml(name, sub, amt, editAttr, deleteAttr) {
         <button type="button" class="btn btn-icon" style="color:var(--color-expense-700)" ${deleteAttr} aria-label="${escapeHtml(L().deleteAria)}">${DELETE_ICON}</button>
       </div>
     </div>`;
+}
+// Budgets and bills are always expense-side, so rowTone("expense")
+// resolves to the same accent purple already used for every other icon
+// in this Settings card -- only the glyph varies, exactly like
+// transaction rows vary their glyph by category on a fixed tone.
+function categoryIconAvatar(category) {
+  const tone = rowTone("expense");
+  return iconAvatar(iconFor(category), tone.bg, tone.color, "sm", 'width="15" height="15"');
 }
 // Wraps a set of field inputs with the standard Save/Cancel action row used
 // by every inline add/edit form (budgets, bills, goals, goal contributions).
@@ -51,7 +64,7 @@ export function wireInlineCrud(prefix, stateKey, deleteFn, saveFn, onOpen) {
 }
 
 export function budgetRowHtml(b) {
-  return manageRowHtml(b.category, L().budgetOf + " " + fmtMoney(b.limit), null, `data-edit-budget="${b.id}"`, `data-delete-budget="${b.id}"`);
+  return manageRowHtml(categoryIconAvatar(b.category), b.category, L().budgetOf + " " + fmtMoney(b.limit), null, `data-edit-budget="${b.id}"`, `data-delete-budget="${b.id}"`);
 }
 export function budgetFormHtml() {
   const l = L();
@@ -113,7 +126,7 @@ export function deleteBudget(id) {
 }
 
 export function billRowHtml(b) {
-  return manageRowHtml(b.name, L().dueOn + b.day, fmtMoney(b.amount), `data-edit-bill="${b.id}"`, `data-delete-bill="${b.id}"`);
+  return manageRowHtml(categoryIconAvatar(b.category), b.name, L().dueOn + b.day, fmtMoney(b.amount), `data-edit-bill="${b.id}"`, `data-delete-bill="${b.id}"`);
 }
 export function billFormHtml() {
   const l = L();

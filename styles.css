@@ -241,10 +241,10 @@
   #syncStatus.ok .sync-dot { background: var(--color-income); }
   #syncStatus.err .sync-dot { background: var(--color-expense); }
 
-  .manage-row { display: flex; align-items: center; gap: 10px; padding: 12px 4px; border-bottom: 1px solid var(--color-divider); }
+  .manage-row { display: flex; align-items: center; gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--color-divider); }
   .manage-row:last-child { border-bottom: none; }
   .manage-row .info { min-width: 0; flex: 1; }
-  .manage-row .name { font-size: 14px; font-weight: 500; }
+  .manage-row .name { font-size: 15px; font-weight: 500; }
   .manage-row .sub { font-size: 12px; color: var(--color-muted); margin-top: 2px; }
   .manage-row .amt { font-size: 14px; font-weight: 600; flex-shrink: 0; }
   .row-actions { display: flex; gap: 4px; flex-shrink: 0; }
