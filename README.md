@@ -9,7 +9,6 @@ Personal income & expense tracker with Google sign-in, cross-device sync, budget
 ![Made with JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat-square&logo=javascript&logoColor=black)
 ![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=flat-square&logo=supabase&logoColor=white)
 ![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8?style=flat-square&logo=pwa&logoColor=white)
-![No build step](https://img.shields.io/badge/build%20step-none-333333?style=flat-square)
 
 </div>
 
@@ -21,6 +20,7 @@ Personal income & expense tracker with Google sign-in, cross-device sync, budget
 - **Recurring bills** — see what's due in the next 7 days on the home screen and mark it paid in one tap, which logs the transaction for you
 - **Savings goals** — set a target, add funds over time, watch the progress bar fill
 - **Insights** — budget progress, a category breakdown with a donut chart, and a 6-month income/expense trend
+- **Data export** — CSV, JSON, or a fresh Google Sheet, on demand
 - **Light/dark mode**
 - **Thai / English** interface
 - **Installable PWA** — add to your home screen, keeps working offline
@@ -28,7 +28,7 @@ Personal income & expense tracker with Google sign-in, cross-device sync, budget
 
 ## Tech
 
-Plain HTML/CSS/JavaScript, no framework, no build step, no bundler — one file. Data and auth run on [Supabase](https://supabase.com/) (Postgres + Google OAuth); hosting is [GitHub Pages](https://pages.github.com/); offline/installability comes from a small hand-written service worker and web manifest.
+Vanilla HTML/CSS/JavaScript (ES modules), no framework — bundled with [esbuild](https://esbuild.github.io/) and deployed by a GitHub Actions workflow. Data and auth run on [Supabase](https://supabase.com/) (Postgres + Google OAuth); the Google Sheets export talks to Google's Sheets API directly via Google Identity Services. Hosting is [GitHub Pages](https://pages.github.com/); offline/installability comes from a small hand-written service worker and web manifest.
 
 ---
 
