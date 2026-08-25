@@ -275,101 +275,113 @@ export function renderSettings() {
     <h2 class="screen-title" style="margin-bottom:22px">${escapeHtml(l.settingsTitle)}</h2>
     <div class="settings-block">
 
-      <div class="settings-columns">
-        <div class="settings-col">
-          <div class="profile-row">
-            ${avatarUrl ? `<img class="avatar" src="${escapeHtml(avatarUrl)}" alt="">` : `<div class="avatar">${currentUser ? escapeHtml((name || "?").slice(0, 1).toUpperCase()) : icon("user")}</div>`}
-            <div>
-              <div class="profile-name">${escapeHtml(name)}</div>
-              <div class="profile-sub">${escapeHtml(currentUser ? l.personalAccount : "")}</div>
-            </div>
-            <button type="button" class="btn btn-secondary btn-sm" id="authBtn">${escapeHtml(currentUser ? l.signOutBtn : l.signInGoogle)}</button>
-          </div>
+      <div class="profile-row">
+        ${avatarUrl ? `<img class="avatar" src="${escapeHtml(avatarUrl)}" alt="">` : `<div class="avatar">${currentUser ? escapeHtml((name || "?").slice(0, 1).toUpperCase()) : icon("user")}</div>`}
+        <div>
+          <div class="profile-name">${escapeHtml(name)}</div>
+          <div class="profile-sub">${escapeHtml(currentUser ? l.personalAccount : "")}</div>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" id="authBtn">${escapeHtml(currentUser ? l.signOutBtn : l.signInGoogle)}</button>
+      </div>
 
-          <div>
-            <div class="settings-section-label">${escapeHtml(l.languageSection)}</div>
-            <div class="tabs block" role="radiogroup">
+      <div>
+        <div class="settings-section-label">${escapeHtml(l.displaySection)}</div>
+        <div class="list-card">
+          <div class="toggle-row">
+            ${iconAvatar("languages", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+            <span class="label">${escapeHtml(l.languageSection)}</span>
+            <div class="tabs" role="radiogroup" style="flex-shrink:0">
               <label class="tab-opt"><input type="radio" name="lang-switch" value="th" ${state.lang === "th" ? "checked" : ""}>ไทย</label>
               <label class="tab-opt"><input type="radio" name="lang-switch" value="en" ${state.lang === "en" ? "checked" : ""}>English</label>
             </div>
           </div>
-
-          <div>
-            <div class="settings-section-label">${escapeHtml(l.displaySection)}</div>
-            <div class="list-card">
-              <div class="toggle-row">
-                ${iconAvatar("moon", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
-                <span class="label">${escapeHtml(l.darkModeBtn)}</span>
-                <button type="button" class="switch ${state.dark ? "on" : ""}" id="darkSwitch"><span class="thumb"></span></button>
-              </div>
-            </div>
+          <div class="toggle-row">
+            ${iconAvatar("moon", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+            <span class="label">${escapeHtml(l.darkModeBtn)}</span>
+            <button type="button" class="switch ${state.dark ? "on" : ""}" id="darkSwitch"><span class="thumb"></span></button>
           </div>
         </div>
+      </div>
 
-        <div class="settings-col">
-          <div>
-            <div class="settings-section-label">${escapeHtml(l.syncSection)}</div>
-            <div class="sync-box">
-              <span id="syncStatus" class="${lastSyncStatus.ok === true ? "ok" : (lastSyncStatus.ok === false ? "err" : "")}"><span class="sync-dot"></span><span>${escapeHtml(currentUser ? lastSyncStatus.text : l.syncSignedOut)}</span></span>
-              <div style="font-size:11.5px;color:var(--color-muted)">${escapeHtml(l.syncHelp)}</div>
-              <button type="button" class="btn btn-secondary" id="syncNowBtn" ${currentUser ? "" : "disabled"}>${escapeHtml(l.syncNowBtn)}</button>
+      <div>
+        <div class="settings-section-label">${escapeHtml(l.syncSection)}</div>
+        <div class="list-card">
+          <div class="toggle-row" style="align-items:flex-start">
+            ${iconAvatar("cloud", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+            <div class="lbl">
+              <div class="t"><span id="syncStatus" class="${lastSyncStatus.ok === true ? "ok" : (lastSyncStatus.ok === false ? "err" : "")}"><span class="sync-dot"></span><span>${escapeHtml(currentUser ? lastSyncStatus.text : l.syncSignedOut)}</span></span></div>
+              <div class="s">${escapeHtml(l.syncHelp)}</div>
             </div>
+            <button type="button" class="btn btn-secondary btn-sm" id="syncNowBtn" ${currentUser ? "" : "disabled"}>${escapeHtml(l.syncNowBtn)}</button>
           </div>
-
           ${deferredInstallPrompt ? `
-          <div>
+          <div style="padding:10px 4px">
             <button type="button" class="btn btn-primary btn-block" id="installAppBtn">
               ${icon("download-cloud")}
               ${escapeHtml(l.installAppBtn)}
             </button>
           </div>` : ""}
+          <button type="button" class="toggle-row" id="exportCsvBtn">
+            ${iconAvatar("download", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+            <span class="label">${escapeHtml(l.exportCsvBtn)}</span>
+          </button>
+          <button type="button" class="toggle-row" id="exportJsonBtn">
+            ${iconAvatar("download", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+            <span class="label">${escapeHtml(l.exportJsonBtn)}</span>
+          </button>
+        </div>
+      </div>
 
-          <div>
-            <div class="settings-section-label">${escapeHtml(l.dataSection)}</div>
-            <div style="display:flex;flex-direction:column;gap:8px">
-              <button type="button" class="btn btn-secondary btn-block" id="exportCsvBtn">
-                ${icon("download")}
-                ${escapeHtml(l.exportCsvBtn)}
-              </button>
-              <button type="button" class="btn btn-secondary btn-block" id="exportJsonBtn">
-                ${icon("download")}
-                ${escapeHtml(l.exportJsonBtn)}
-              </button>
+      <div>
+        <div class="settings-section-label">${escapeHtml(l.manageSection)}</div>
+        <div class="list-card">
+          <details class="settings-group" data-group="budgets" ${state.settingsGroupOpen.budgets ? "open" : ""}>
+            <summary>
+              ${iconAvatar("wallet", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+              <span class="label">${escapeHtml(l.budgetsSection)}</span>
+              <span class="settings-badge-count">${budgets.length}</span>
+              ${icon("chevron-right")}
+            </summary>
+            <div class="settings-group-body">
+              <div style="text-align:right;margin-bottom:10px">
+                <button type="button" class="btn btn-ghost" id="addBudgetBtn">${escapeHtml(l.addBudgetBtn)}</button>
+              </div>
+              <div id="budgetFormSlot">${budgetFormHtml()}</div>
+              ${budgets.map(budgetRowHtml).join("") || `<div class="empty-note">${escapeHtml(l.noBudgets)}</div>`}
             </div>
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <div class="section-add-row">
-          <div class="settings-section-label" style="margin:0">${escapeHtml(l.budgetsSection)}</div>
-          <button type="button" class="btn btn-ghost" id="addBudgetBtn">${escapeHtml(l.addBudgetBtn)}</button>
-        </div>
-        <div id="budgetFormSlot">${budgetFormHtml()}</div>
-        <div class="list-card">
-          ${budgets.map(budgetRowHtml).join("") || `<div class="empty-note">${escapeHtml(l.noBudgets)}</div>`}
-        </div>
-      </div>
-
-      <div>
-        <div class="section-add-row">
-          <div class="settings-section-label" style="margin:0">${escapeHtml(l.billsSection)}</div>
-          <button type="button" class="btn btn-ghost" id="addBillBtn">${escapeHtml(l.addBillBtn)}</button>
-        </div>
-        <div id="billFormSlot">${billFormHtml()}</div>
-        <div class="list-card">
-          ${bills.map(billRowHtml).join("") || `<div class="empty-note">${escapeHtml(l.noBills)}</div>`}
-        </div>
-      </div>
-
-      <div>
-        <div class="section-add-row">
-          <div class="settings-section-label" style="margin:0">${escapeHtml(l.goalsSection)}</div>
-          <button type="button" class="btn btn-ghost" id="addGoalBtn">${escapeHtml(l.addGoalBtn)}</button>
-        </div>
-        <div id="goalFormSlot">${state.goalEditId ? goalFormHtml() : ""}</div>
-        <div class="insight-cards" style="padding-bottom:0">
-          ${goals.map(goalCardHtml).join("") || `<div class="empty-note">${escapeHtml(l.noGoals)}</div>`}
+          </details>
+          <details class="settings-group" data-group="bills" ${state.settingsGroupOpen.bills ? "open" : ""}>
+            <summary>
+              ${iconAvatar("receipt", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+              <span class="label">${escapeHtml(l.billsSection)}</span>
+              <span class="settings-badge-count">${bills.length}</span>
+              ${icon("chevron-right")}
+            </summary>
+            <div class="settings-group-body">
+              <div style="text-align:right;margin-bottom:10px">
+                <button type="button" class="btn btn-ghost" id="addBillBtn">${escapeHtml(l.addBillBtn)}</button>
+              </div>
+              <div id="billFormSlot">${billFormHtml()}</div>
+              ${bills.map(billRowHtml).join("") || `<div class="empty-note">${escapeHtml(l.noBills)}</div>`}
+            </div>
+          </details>
+          <details class="settings-group" data-group="goals" ${state.settingsGroupOpen.goals ? "open" : ""}>
+            <summary>
+              ${iconAvatar("target", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+              <span class="label">${escapeHtml(l.goalsSection)}</span>
+              <span class="settings-badge-count">${goals.length}</span>
+              ${icon("chevron-right")}
+            </summary>
+            <div class="settings-group-body">
+              <div style="text-align:right;margin-bottom:10px">
+                <button type="button" class="btn btn-ghost" id="addGoalBtn">${escapeHtml(l.addGoalBtn)}</button>
+              </div>
+              <div id="goalFormSlot">${state.goalEditId ? goalFormHtml() : ""}</div>
+              <div class="insight-cards" style="padding-bottom:0">
+                ${goals.map(goalCardHtml).join("") || `<div class="empty-note">${escapeHtml(l.noGoals)}</div>`}
+              </div>
+            </div>
+          </details>
         </div>
       </div>
 
@@ -389,6 +401,9 @@ export function renderSettings() {
       setDeferredInstallPrompt(null);
       renderSettings();
     });
+  });
+  document.querySelectorAll(".settings-group").forEach((d) => {
+    d.addEventListener("toggle", () => { state.settingsGroupOpen[d.getAttribute("data-group")] = d.open; });
   });
   $("exportCsvBtn").addEventListener("click", function () {
     const l = L();

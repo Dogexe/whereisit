@@ -44,7 +44,7 @@ export function renderTxListOnly() {
   const l = L();
   const rows = filteredTxList();
   const html = rows.length
-    ? groupedTxRowsHtml(rows.map((t) => Object.assign({}, t, { __actions: true })))
+    ? groupedTxRowsHtml(rows)
     : `<div class="empty-note">${escapeHtml(l.noResults)}</div>`;
   $("txListContainer").innerHTML = html;
   wireTxRowActions();

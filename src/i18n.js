@@ -28,6 +28,7 @@ export const STRINGS = {
   personalAccount: ["บัญชีส่วนตัว", "Personal account"], languageSection: ["ภาษา", "Language"],
   displaySection: ["การแสดงผล", "Display"],
   syncSection: ["ซิงค์ข้ามอุปกรณ์", "Cross-device sync"], dataSection: ["ข้อมูล", "Data"],
+  manageSection: ["จัดการ", "Manage"],
   exportCsvBtn: ["ส่งออก CSV", "Export CSV"], exportJsonBtn: ["ส่งออกข้อมูล (JSON)", "Export data (JSON)"],
   billsSection: ["รายการที่ต้องจ่ายประจำ", "Recurring bills"],
   dueOn: ["ทุกวันที่ ", "Due on day "],
