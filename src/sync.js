@@ -4,6 +4,9 @@ import { state, transactions, budgets, bills, goals, setTransactions, setBudgets
 import { saveToStorage, saveSettings } from "./storage.js";
 import { L } from "./i18n.js";
 import { showToast } from "./toast.js";
+import { mergeRowsById, mergeBudgetsByCategory } from "./merge.js";
+import { markPending, clearPending, getPendingRows } from "./pending.js";
+import { getWatermark, advanceWatermark } from "./watermark.js";
 
 // Set once by main.js at boot (see setSyncRerenderCallback) -- avoids sync.js
 // importing renderScreen from main.js, which would make the two modules
@@ -63,81 +66,130 @@ export function goalToRow(g, deleted) {
   };
 }
 
+// Marks every row pending the moment a push is attempted -- before the
+// !sb/!currentUser checks below, so an edit made while signed out or before
+// the Supabase client is ready is still queued for the next successful
+// sign-in's markAllPending() sweep -- and clears each id only once the
+// network call actually confirms success. This is where the boolean this
+// function returns gets consumed for real, rather than discarded like every
+// call site used to do.
 export async function pushRows(table, rows) {
-  if (!sb || !currentUser || !rows.length) return true;
+  if (!rows.length) return true;
+  markPending(table, rows);
+  if (!sb || !currentUser) return true;
   try {
     const { error } = await sb.from(table).upsert(rows);
     if (error) throw error;
+    clearPending(table, rows);
     return true;
   } catch (e) { return false; }
 }
 export async function pushTx(t) { return pushRows("transactions", [txToRow(t, false)]); }
 export async function pushDeleteTx(t) { return pushRows("transactions", [txToRow(t, true)]); }
 
+// Called once from main.js's auth listener on a genuine new sign-in (the
+// SIGNED_IN event, not a page-load session restore) -- a fresh or
+// long-offline device needs exactly one full upload of everything it
+// currently has locally, not a resend every 25s once that's done.
+export function markAllPending() {
+  markPending("transactions", transactions.map((t) => txToRow(t, false)));
+  markPending("budgets", budgets.map((b) => budgetToRow(b, false)));
+  markPending("bills", bills.map((b) => billToRow(b, false)));
+  markPending("goals", goals.map((g) => goalToRow(g, false)));
+}
+
+// A pull's tombstone can remove a local record that still has an uncleared
+// (failed-to-push) pending create/edit sitting in the pending map from
+// before the pull ran -- e.g. an edit that failed to push while offline,
+// followed by another device deleting that same record before this device
+// came back online. mergeRowsById makes an incoming tombstone always win
+// over a local record regardless of timestamp, so once the pull above has
+// removed the id from the live array, the stale pending entry must be
+// dropped too -- otherwise the push phase right after would resurrect a row
+// another device already deleted, both locally on the next pull elsewhere
+// and in the cloud. Budgets don't need this: pullBudgets/
+// mergeBudgetsByCategory never actually removes a row on a tombstone (see
+// its own doc comment), so a pending budget entry can't go stale this way.
+function dropPendingForRemovedIds(table, liveArray) {
+  const liveIds = new Set(liveArray.map((x) => x.id));
+  const stale = getPendingRows(table).filter((r) => !r.deleted && !liveIds.has(r.id));
+  clearPending(table, stale);
+}
+
+// Filters a pull to rows changed since the last-seen watermark for that
+// table, when one exists; a table with no watermark yet gets an unfiltered
+// full pull (see watermark.js). A tombstone is just a row with
+// deleted:true and a fresh updated_at (txToRow/budgetToRow/billToRow/
+// goalToRow always stamp deletes with Date.now() at delete time -- see
+// deleteTx and friends), so it satisfies this same filter exactly like any
+// other change and still arrives.
+//
+// Uses .gte(), not .gt(): updated_at is a client-supplied millisecond
+// timestamp (Date.now()), so two different writes landing in the same
+// millisecond -- unlikely but real, e.g. two devices pushing at once --
+// can share the exact value the watermark just advanced to. A strict .gt()
+// would then permanently exclude the later of the two from every future
+// pull, a silent, unrecoverable miss (worse for a tombstone: the deleted
+// record would never get removed elsewhere). .gte() means the row(s)
+// already at the boundary get re-fetched every cycle once any data exists,
+// but that's harmless: mergeRowsById/mergeBudgetsByCategory only overwrite
+// on a strictly newer updatedAt, so re-receiving an already-merged row is a
+// no-op. Trading a few redundant bytes for never silently dropping a row.
+function watermarkedQuery(table) {
+  let q = sb.from(table).select("*").eq("user_id", currentUser.id);
+  const wm = getWatermark(table);
+  if (wm) q = q.gte("updated_at", wm);
+  return q;
+}
+
 async function pullTransactions() {
   if (!sb || !currentUser) return false;
   try {
-    const { data, error } = await sb.from("transactions").select("*").eq("user_id", currentUser.id);
+    const { data, error } = await watermarkedQuery("transactions");
     if (error) throw error;
-    const byId = new Map(transactions.map((t) => [t.id, t]));
-    (data || []).forEach((r) => {
-      const rTime = new Date(r.updated_at).getTime();
-      if (r.deleted) { byId.delete(r.id); return; }
-      const local = byId.get(r.id);
-      if (!local || (local.updatedAt || 0) < rTime) byId.set(r.id, rowToTx(r));
-    });
-    setTransactions(Array.from(byId.values()));
+    setTransactions(mergeRowsById(transactions, data, rowToTx));
     saveToStorage();
+    advanceWatermark("transactions", data);
     return true;
   } catch (e) { return false; }
 }
 async function pullBudgets() {
   if (!sb || !currentUser) return false;
   try {
-    const { data, error } = await sb.from("budgets").select("*").eq("user_id", currentUser.id);
+    const { data, error } = await watermarkedQuery("budgets");
     if (error) throw error;
+    // Matches the original: an empty result (now also the steady-state
+    // case once the watermark has caught up, not just a genuinely empty
+    // cloud table) skips the merge (and the localStorage write) entirely
+    // rather than calling saveSettings() with an unchanged array -- see
+    // mergeBudgetsByCategory's own doc comment for why this whole
+    // function's shape is a preserved quirk, not a fix.
     if (!data || !data.length) return true;
-    const byCat = new Map(budgets.map((b) => [b.category, b]));
-    data.forEach((r) => {
-      if (r.deleted) return;
-      byCat.set(r.category, budgetRowToObj(r));
-    });
-    setBudgets(Array.from(byCat.values()));
+    setBudgets(mergeBudgetsByCategory(budgets, data, budgetRowToObj));
     saveSettings();
+    advanceWatermark("budgets", data);
     return true;
   } catch (e) { return false; }
 }
 async function pullBills() {
   if (!sb || !currentUser) return false;
   try {
-    const { data, error } = await sb.from("bills").select("*").eq("user_id", currentUser.id);
+    const { data, error } = await watermarkedQuery("bills");
     if (error) throw error;
-    const byId = new Map(bills.map((b) => [b.id, b]));
-    (data || []).forEach((r) => {
-      const rTime = new Date(r.updated_at).getTime();
-      if (r.deleted) { byId.delete(r.id); return; }
-      const local = byId.get(r.id);
-      if (!local || (local.updatedAt || 0) < rTime) byId.set(r.id, rowToBill(r));
-    });
-    setBills(Array.from(byId.values()));
+    setBills(mergeRowsById(bills, data, rowToBill));
     saveSettings();
+    advanceWatermark("bills", data);
     return true;
   } catch (e) { return false; }
 }
 async function pullGoals() {
   if (!sb || !currentUser) return false;
   try {
-    const { data, error } = await sb.from("goals").select("*").eq("user_id", currentUser.id);
+    const { data, error } = await watermarkedQuery("goals");
     if (error) throw error;
-    const byId = new Map(goals.map((g) => [g.id, g]));
-    (data || []).forEach((r) => {
-      const rTime = new Date(r.updated_at).getTime();
-      if (r.deleted) { byId.delete(r.id); return; }
-      const local = byId.get(r.id);
-      if (!local || (local.updatedAt || 0) < rTime) byId.set(r.id, rowToGoal(r));
-    });
-    setGoals(Array.from(byId.values()));
+    setGoals(mergeRowsById(goals, data, rowToGoal));
     saveSettings();
+    advanceWatermark("goals", data);
     return true;
   } catch (e) { return false; }
 }
@@ -174,13 +226,23 @@ export async function syncNow() {
   // Pushing that stale copy before pulling would re-upload it with a fresh
   // timestamp and silently resurrect it in the cloud (and everywhere else).
   const pullTxOk = await pullTransactions();
+  dropPendingForRemovedIds("transactions", transactions);
   const pullBudgetOk = await pullBudgets();
   const pullBillOk = await pullBills();
+  dropPendingForRemovedIds("bills", bills);
   const pullGoalOk = await pullGoals();
-  const pushTxOk = await pushRows("transactions", transactions.map((t) => txToRow(t, false)));
-  const pushBudgetOk = await pushRows("budgets", budgets.map((b) => budgetToRow(b, false)));
-  const pushBillOk = await pushRows("bills", bills.map((b) => billToRow(b, false)));
-  const pushGoalOk = await pushRows("goals", goals.map((g) => goalToRow(g, false)));
+  dropPendingForRemovedIds("goals", goals);
+  // Every individual create/edit/delete already pushed its own single row
+  // immediately (see pushTx/pushRows calls throughout the screens/ modules)
+  // -- this is a retry pass for whatever's still pending because that push
+  // never happened or failed (offline, not signed in yet, a transient
+  // error), not a resend of the entire table. In the normal case each of
+  // these four arrays is empty and pushRows's own `if (!rows.length) return
+  // true` guard means this makes zero network calls.
+  const pushTxOk = await pushRows("transactions", getPendingRows("transactions"));
+  const pushBudgetOk = await pushRows("budgets", getPendingRows("budgets"));
+  const pushBillOk = await pushRows("bills", getPendingRows("bills"));
+  const pushGoalOk = await pushRows("goals", getPendingRows("goals"));
   if (pushTxOk && pushBudgetOk && pushBillOk && pushGoalOk && pullTxOk && pullBudgetOk && pullBillOk && pullGoalOk) {
     setSyncStatus(L().syncLatest + new Date().toLocaleTimeString(state.lang === "en" ? "en-US" : "th-TH"), true);
     lastSyncFailed = false;
