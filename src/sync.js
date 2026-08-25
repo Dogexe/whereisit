@@ -24,6 +24,10 @@ try {
 } catch (e) { sb = null; }
 
 export let currentUser = null;
+// Bumped by setCurrentUser() (bottom of file) whenever the signed-in
+// identity actually changes -- see its own doc comment, and the pull*
+// functions' shared doc comment below, for what this guards against.
+let syncEpoch = 0;
 export let lastSyncStatus = { text: "", ok: null };
 
 export function setSyncStatus(text, ok) {
@@ -181,14 +185,12 @@ function dropPendingForRemovedIds(table, liveArray) {
 // on a strictly newer updatedAt, so re-receiving an already-merged row is a
 // no-op. Trading a few redundant bytes for never silently dropping a row.
 //
-// Ordered by updated_at then id, both ascending: paginating with .range()
-// below requires a stable total order across pages, and updated_at alone
-// isn't one -- two rows can share the exact same client-supplied
-// millisecond timestamp (the same reason .gte() above exists), and without
-// a deterministic tiebreaker, rows sharing a timestamp could land on
-// either side of a page boundary inconsistently between requests and be
-// skipped entirely. `id` is unique per row, so (updated_at, id) always is
-// a total order regardless of how many rows share a timestamp.
+// Ordered by updated_at then id, both ascending: keyset pagination below
+// requires a stable total order to anchor its cursor on, and updated_at
+// alone isn't one -- two rows can share the exact same client-supplied
+// millisecond timestamp (the same reason .gte() above exists). `id` is
+// unique per row, so (updated_at, id) always is a total order regardless
+// of how many rows share a timestamp.
 function watermarkedQuery(table) {
   let q = sb.from(table).select("*").eq("user_id", currentUser.id)
     .order("updated_at", { ascending: true }).order("id", { ascending: true });
@@ -198,31 +200,66 @@ function watermarkedQuery(table) {
 }
 
 // Supabase caps a single select() at 1000 rows and returns no error when it
-// silently truncates (see paginate.js) -- fetchAllPages pages through
-// .range() until a short page signals the end, so a table with more than
-// 1000 matching rows (most likely on a fresh device's very first pull)
-// still gets everything instead of an arbitrary subset that would then
-// wrongly advance the watermark past whatever didn't fit in that subset.
+// silently truncates (see paginate.js) -- fetchAllPages pages through until
+// a short page signals the end, so a table with more than 1000 matching
+// rows (most likely on a fresh device's very first pull) still gets
+// everything instead of an arbitrary subset that would then wrongly
+// advance the watermark past whatever didn't fit in that subset.
+//
+// Uses keyset (cursor) pagination, not .range(offset, ...): see
+// paginate.js's own doc comment for why offset pagination is unsafe here
+// specifically (a concurrent write during a multi-page fetch can shift
+// positions and silently skip a row). `.or()` builds the standard
+// "strictly after this (updated_at, id) pair" composite filter -- greater
+// updated_at, OR equal updated_at with a greater id as the tiebreaker --
+// which stays correct regardless of what else changes in the table while
+// this pull is still in progress.
 function pullAllPages(table) {
-  return fetchAllPages((offset, limit) => watermarkedQuery(table).range(offset, offset + limit - 1));
+  return fetchAllPages((cursor, limit) => {
+    let q = watermarkedQuery(table).limit(limit);
+    if (cursor) {
+      q = q.or(`updated_at.gt.${cursor.updatedAt},and(updated_at.eq.${cursor.updatedAt},id.gt.${cursor.id})`);
+    }
+    return q;
+  });
 }
 
-async function pullTransactions() {
+// Every pull* function takes the syncEpoch value captured at the *start*
+// of the syncNow() call that's driving it (see syncNow below), and
+// rechecks it against the live syncEpoch immediately after its network
+// call resolves, before touching any local state. setCurrentUser() bumps
+// syncEpoch whenever the signed-in account's identity actually changes
+// (sign-out, or a different account signing in) -- so if that happened
+// while this pull was in flight, the epoch check fails and the result is
+// discarded instead of being merged into (now a different account's)
+// local state. Without this, a pull started for account A that resolves
+// *after* account B has signed in (and wipeLocalAccountData() has already
+// run) would call setTransactions()/setBudgets()/etc and silently
+// repopulate B's local state with A's data -- a leak this whole feature
+// exists to prevent, just arriving through the pull side instead of the
+// push side. (The push side doesn't need this same guard: every pushed
+// row already carries its own user_id, and this project's RLS policies
+// enforce auth.uid() = user_id server-side, so a stale push under a
+// mismatched account is rejected by Postgres regardless of anything this
+// client does.)
+async function pullTransactions(epoch) {
   if (!sb || !currentUser) return false;
   try {
     const { data, error } = await pullAllPages("transactions");
     if (error) throw error;
+    if (epoch !== syncEpoch) return false;
     setTransactions(mergeRowsById(transactions, data, rowToTx));
     saveToStorage();
     advanceWatermark("transactions", data);
     return true;
   } catch (e) { return false; }
 }
-async function pullBudgets() {
+async function pullBudgets(epoch) {
   if (!sb || !currentUser) return false;
   try {
     const { data, error } = await pullAllPages("budgets");
     if (error) throw error;
+    if (epoch !== syncEpoch) return false;
     // Matches the original: an empty result (now also the steady-state
     // case once the watermark has caught up, not just a genuinely empty
     // cloud table) skips the merge (and the localStorage write) entirely
@@ -238,22 +275,24 @@ async function pullBudgets() {
     return true;
   } catch (e) { return false; }
 }
-async function pullBills() {
+async function pullBills(epoch) {
   if (!sb || !currentUser) return false;
   try {
     const { data, error } = await pullAllPages("bills");
     if (error) throw error;
+    if (epoch !== syncEpoch) return false;
     setBills(mergeRowsById(bills, data, rowToBill));
     saveSettings();
     advanceWatermark("bills", data);
     return true;
   } catch (e) { return false; }
 }
-async function pullGoals() {
+async function pullGoals(epoch) {
   if (!sb || !currentUser) return false;
   try {
     const { data, error } = await pullAllPages("goals");
     if (error) throw error;
+    if (epoch !== syncEpoch) return false;
     setGoals(mergeRowsById(goals, data, rowToGoal));
     saveSettings();
     advanceWatermark("goals", data);
@@ -288,16 +327,20 @@ export async function syncNow() {
   }
   syncInFlight = true;
   setSyncStatus(L().syncSyncing, null);
+  // Captured once, passed to every pull* call below -- see their shared
+  // doc comment for why (discarding a pull's result if the signed-in
+  // account changed while it was in flight).
+  const epoch = syncEpoch;
   // Pull first: a device/session that hasn't yet learned about a deletion
   // made elsewhere still holds the old (or hardcoded default) row locally.
   // Pushing that stale copy before pulling would re-upload it with a fresh
   // timestamp and silently resurrect it in the cloud (and everywhere else).
-  const pullTxOk = await pullTransactions();
+  const pullTxOk = await pullTransactions(epoch);
   dropPendingForRemovedIds("transactions", transactions);
-  const pullBudgetOk = await pullBudgets();
-  const pullBillOk = await pullBills();
+  const pullBudgetOk = await pullBudgets(epoch);
+  const pullBillOk = await pullBills(epoch);
   dropPendingForRemovedIds("bills", bills);
-  const pullGoalOk = await pullGoals();
+  const pullGoalOk = await pullGoals(epoch);
   dropPendingForRemovedIds("goals", goals);
   // Every individual create/edit/delete already pushed its own single row
   // immediately (see pushTx/pushRows calls throughout the screens/ modules)
@@ -345,4 +388,13 @@ export async function signOutUser() {
 // Reassigning an imported `let` binding from another module isn't allowed in
 // ES modules (only mutation is) -- main.js's auth-state-change listener calls
 // this instead of assigning `currentUser` directly.
-export function setCurrentUser(user) { currentUser = user; }
+//
+// Bumps syncEpoch whenever the signed-in identity actually changes (a
+// sign-out, or a different account signing in) -- but not on a same-account
+// token refresh, which calls this too with an unchanged id.
+export function setCurrentUser(user) {
+  const newId = user ? user.id : null;
+  const oldId = currentUser ? currentUser.id : null;
+  if (newId !== oldId) syncEpoch++;
+  currentUser = user;
+}

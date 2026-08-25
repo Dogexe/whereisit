@@ -61,34 +61,48 @@ if (sb) {
       wipeLocalAccountData();
       if (!hasLiveInputRisk()) renderScreen();
     }
-    // "SIGNED_IN" only fires for a genuine new sign-in (fresh OAuth
-    // completion, or a long-offline device re-authenticating) -- not for
-    // "INITIAL_SESSION" (an already-signed-in page load restoring its
-    // existing session) or "TOKEN_REFRESHED", so this runs once per actual
-    // sign-in rather than once per reload/refresh.
+    // The account-mismatch check runs for both "SIGNED_IN" (a genuine new
+    // sign-in -- fresh OAuth completion, or a long-offline device
+    // re-authenticating) and "INITIAL_SESSION" (an already-signed-in page
+    // load restoring its existing session). It has to cover
+    // INITIAL_SESSION too: a user who already had cloud data loaded before
+    // this account-tracking code ever shipped will hit INITIAL_SESSION,
+    // not SIGNED_IN, on their first load afterward -- without recording
+    // their account id here, a later account switch on that device
+    // wouldn't have anything to compare against and would silently miss
+    // the wipe. "TOKEN_REFRESHED" is deliberately excluded from all of
+    // this -- same account, nothing to check.
     //
     // shouldWipeLocalData() is the safety net for when SIGNED_OUT above
     // never fired cleanly (app closed mid-session, an expired token,
     // sign-in arriving via a different flow): if the account id stored
-    // from whoever last signed in here doesn't match who's signing in now,
-    // whatever's currently local belongs to the *previous* account and
-    // must be wiped before markAllPending() gets anywhere near it --
+    // from whoever last used this device doesn't match who's signing in
+    // now, whatever's currently local belongs to the *previous* account
+    // and must be wiped before markAllPending() gets anywhere near it --
     // otherwise it would mark the old account's data pending and upload it
     // into the new one. No stored id at all (or the same id) is not a
     // wipe -- see account.js's own doc comment for why.
-    if (event === "SIGNED_IN") {
+    if (event === "SIGNED_IN" || event === "INITIAL_SESSION") {
       const incomingId = session ? session.user.id : null;
-      if (shouldWipeLocalData(getStoredUserId(), incomingId)) {
-        wipeLocalAccountData();
-        if (!hasLiveInputRisk()) renderScreen();
+      if (incomingId) {
+        if (shouldWipeLocalData(getStoredUserId(), incomingId)) {
+          wipeLocalAccountData();
+          if (!hasLiveInputRisk()) renderScreen();
+        }
+        setStoredUserId(incomingId);
       }
-      setStoredUserId(incomingId);
-      // resetWatermark() pairs with markAllPending() as the download-side
-      // counterpart: even on a same-account resume (no wipe above), a
-      // watermark left over from a stale/long-offline local state
-      // shouldn't filter out changes made elsewhere in the meantime.
-      markAllPending();
-      resetWatermark();
+      // The "one full upload/download" side effects stay exclusive to a
+      // genuine SIGNED_IN -- INITIAL_SESSION is continuity, not a fresh
+      // sign-in, so it shouldn't trigger a full re-sync on every page load.
+      if (event === "SIGNED_IN") {
+        // resetWatermark() pairs with markAllPending() as the
+        // download-side counterpart: even on a same-account resume (no
+        // wipe above), a watermark left over from a stale/long-offline
+        // local state shouldn't filter out changes made elsewhere in the
+        // meantime.
+        markAllPending();
+        resetWatermark();
+      }
     }
     if (state.tab === "settings" && !hasLiveInputRisk()) renderSettings();
     if (currentUser) syncNow();
