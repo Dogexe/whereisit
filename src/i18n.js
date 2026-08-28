@@ -54,6 +54,7 @@ export const STRINGS = {
   upcomingBillsSection: ["รายการที่ใกล้ถึงกำหนด", "Upcoming bills"], markPaidBtn: ["จ่ายแล้ว", "Mark paid"],
   dueToday: ["ถึงกำหนดวันนี้", "Due today"], dueTomorrow: ["ถึงกำหนดพรุ่งนี้", "Due tomorrow"],
   dueInDays: ["อีก {n} วัน", "Due in {n} days"],
+  overdueByDay: ["เกินกำหนด 1 วัน", "Overdue by 1 day"], overdueByDays: ["เกินกำหนด {n} วัน", "Overdue by {n} days"],
   todayLabel: ["วันนี้", "Today"], yesterdayLabel: ["เมื่อวาน", "Yesterday"],
   goalsSection: ["เป้าหมายการออม", "Savings goals"], addGoalBtn: ["+ เพิ่มเป้าหมาย", "+ Add goal"],
   goalNameLabel: ["ชื่อเป้าหมาย", "Goal name"],

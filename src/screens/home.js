@@ -25,7 +25,7 @@ export function markBillPaid(id) {
     amount: bill.amount, note: bill.name, updatedAt: Date.now()
   };
   transactions.push(savedTx);
-  bill.lastPaidCycle = billDueCycle(bill.day);
+  bill.lastPaidCycle = billDueCycle(bill);
   bill.updatedAt = Date.now();
   saveToStorage();
   saveSettings();
@@ -100,16 +100,19 @@ export function renderHome() {
           <h3>${escapeHtml(l.upcomingBillsSection)}</h3>
         </div>
         <div class="list-card">
-          ${dueSoon.map((b) => `
-            <div class="manage-row">
-              ${iconAvatar("calendar-clock", "var(--color-warning-tint)", "var(--color-warning-text)")}
+          ${dueSoon.map((b) => {
+            const overdue = b.daysUntil < 0;
+            return `
+            <div class="manage-row${overdue ? " manage-row-overdue" : ""}">
+              ${iconAvatar("calendar-clock", overdue ? "var(--color-expense-tint)" : "var(--color-warning-tint)", overdue ? "var(--color-expense-700)" : "var(--color-warning-text)")}
               <div class="info">
                 <div class="name">${escapeHtml(b.name)}</div>
                 <div class="sub">${escapeHtml(dueSoonLabel(b.daysUntil))}</div>
               </div>
               <div class="amt">${fmtMoney(b.amount)}</div>
               <button type="button" class="btn btn-secondary btn-sm" data-mark-paid="${b.id}">${escapeHtml(l.markPaidBtn)}</button>
-            </div>`).join("")}
+            </div>`;
+          }).join("")}
         </div>` : ""}
         <div class="section-head" style="${dueSoon.length ? "" : "margin-top:0"}">
           <h3>${escapeHtml(l.budgetsThisMonth)}</h3>

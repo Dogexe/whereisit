@@ -57,20 +57,39 @@ export function checkBudgetAlert(tx) {
   if (spent / budget.limit >= 0.8) return L().toastBudgetNear.replace("{cat}", tx.category);
   return null;
 }
-// A bill's `day` recurs every month; find its next occurrence (today counts
-// as due) and how many days away that is.
-export function nextBillDueDate(day) {
+// A bill's `day` recurs every month. This used to roll forward to next
+// month as soon as `day` had passed, with no awareness of whether the
+// current cycle was actually paid -- so an unpaid bill could never go
+// overdue: by the day after it was due, the app already treated it as
+// next month's bill and dropped it off every due-soon list, with no
+// record it was ever missed. Takes the whole bill (needs `day` and
+// `lastPaidCycle`) so it can tell whether *this* cycle was paid: while
+// unpaid, the due date stays pinned to this cycle's date (so daysUntil
+// can go negative and the bill reads as overdue); it only rolls forward
+// once lastPaidCycle matches this cycle.
+//
+// Design choice: an overdue bill stays overdue only through the end of
+// its own calendar cycle, then rolls to next month's due date on the 1st
+// regardless of whether it was ever marked paid -- it is not held
+// indefinitely across month boundaries. Holding indefinitely would need
+// persisting which specific missed cycle is still outstanding, rather
+// than just "was the bill paid for its current cycle" -- and an
+// indefinitely-growing "47 days overdue" is a worse nudge than the bill
+// resetting to a fresh, still-visible countdown each month.
+export function nextBillDueDate(bill) {
   const now = new Date();
-  let dueMonth = now.getMonth(), dueYear = now.getFullYear();
-  if (day < now.getDate()) {
-    dueMonth += 1;
-    if (dueMonth > 11) { dueMonth = 0; dueYear += 1; }
-  }
-  const lastDayOfMonth = new Date(dueYear, dueMonth + 1, 0).getDate();
-  return new Date(dueYear, dueMonth, Math.min(day, lastDayOfMonth));
+  const dueYear = now.getFullYear(), dueMonth = now.getMonth();
+  const lastDayOfThisMonth = new Date(dueYear, dueMonth + 1, 0).getDate();
+  const thisCycleDate = new Date(dueYear, dueMonth, Math.min(bill.day, lastDayOfThisMonth));
+  if (bill.lastPaidCycle !== monthKeyOf(thisCycleDate)) return thisCycleDate;
+  // This cycle is already paid -- roll forward to next month's date.
+  let nextMonth = dueMonth + 1, nextYear = dueYear;
+  if (nextMonth > 11) { nextMonth = 0; nextYear += 1; }
+  const lastDayOfNextMonth = new Date(nextYear, nextMonth + 1, 0).getDate();
+  return new Date(nextYear, nextMonth, Math.min(bill.day, lastDayOfNextMonth));
 }
-export function daysUntilBillDue(day) {
-  const due = nextBillDueDate(day);
+export function daysUntilBillDue(bill) {
+  const due = nextBillDueDate(bill);
   due.setHours(0, 0, 0, 0);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -106,15 +125,25 @@ export function groupByDate(txs) {
   return groups;
 }
 export function monthKeyOf(date) { return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0"); }
-export function billDueCycle(day) { return monthKeyOf(nextBillDueDate(day)); }
+export function billDueCycle(bill) { return monthKeyOf(nextBillDueDate(bill)); }
 export function dueSoonLabel(n) {
+  if (n < 0) {
+    const overdueDays = -n;
+    return overdueDays === 1 ? L().overdueByDay : L().overdueByDays.replace("{n}", overdueDays);
+  }
   if (n === 0) return L().dueToday;
   if (n === 1) return L().dueTomorrow;
   return L().dueInDays.replace("{n}", n);
 }
+// No lower bound on daysUntil here -- an overdue bill (negative daysUntil)
+// must still pass this filter, not just a "due soon" one. The
+// lastPaidCycle !== dueCycle check is now a defensive backstop rather than
+// the primary paid-bill exclusion: nextBillDueDate() already rolls a paid
+// bill's date forward to a genuinely different cycle, so dueCycle and
+// lastPaidCycle only match here if that rollover somehow didn't happen.
 export function upcomingBills() {
   return bills
-    .map((b) => Object.assign({}, b, { daysUntil: daysUntilBillDue(b.day), dueCycle: billDueCycle(b.day) }))
+    .map((b) => Object.assign({}, b, { daysUntil: daysUntilBillDue(b), dueCycle: billDueCycle(b) }))
     .filter((b) => b.daysUntil <= 7 && b.lastPaidCycle !== b.dueCycle)
     .sort((a, b) => a.daysUntil - b.daysUntil);
 }

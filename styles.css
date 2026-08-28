@@ -247,6 +247,10 @@
   .manage-row .name { font-size: 15px; font-weight: 500; }
   .manage-row .sub { font-size: 12px; color: var(--color-muted); margin-top: 2px; }
   .manage-row .amt { font-size: 14px; font-weight: 600; flex-shrink: 0; }
+  /* Overdue bill rows (Home's upcoming-bills list and Settings' bill rows) --
+     reuses the expense color rather than inventing a new one, distinct from
+     the plain --color-muted "due soon" text every other row uses. */
+  .manage-row-overdue .sub { color: var(--color-expense-700); font-weight: 600; }
   .row-actions { display: flex; gap: 4px; flex-shrink: 0; }
   .section-add-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
   .inline-form { display: flex; flex-direction: column; gap: 12px; padding: 16px; margin-bottom: 12px; }
