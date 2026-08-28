@@ -3,7 +3,7 @@ import { state, transactions, bills } from "../state.js";
 import { $, uid, escapeHtml, icon, iconAvatar, fmtMoney, refreshIcons } from "../utils.js";
 import { CATEGORIES } from "../categories.js";
 import {
-  byRecency, computeBudgets, upcomingBills, monthTotal, pctDeltaLabel, prevMonthKey,
+  byRecency, computeBudgets, upcomingBills, monthTotal, monthHasTransactions, pctDeltaLabel, prevMonthKey,
   sparklineSvg, computeSparklinePoints, dueSoonLabel, billDueCycle, checkBudgetAlert
 } from "../derived.js";
 import { saveToStorage, saveSettings } from "../storage.js";
@@ -25,7 +25,7 @@ export function markBillPaid(id) {
     amount: bill.amount, note: bill.name, updatedAt: Date.now()
   };
   transactions.push(savedTx);
-  bill.lastPaidCycle = billDueCycle(bill.day);
+  bill.lastPaidCycle = billDueCycle(bill);
   bill.updatedAt = Date.now();
   saveToStorage();
   saveSettings();
@@ -47,9 +47,9 @@ export function renderHome() {
   const prevM = prevMonthKey();
   const curIncome = monthTotal(curM, "income"), prevIncome = monthTotal(prevM, "income");
   const curExpense = monthTotal(curM, "expense"), prevExpense = monthTotal(prevM, "expense");
-  const balanceDelta = pctDeltaLabel(curIncome - curExpense, prevIncome - prevExpense);
-  const incomeDelta = pctDeltaLabel(curIncome, prevIncome);
-  const expenseDelta = pctDeltaLabel(curExpense, prevExpense);
+  const balanceDelta = pctDeltaLabel(curIncome - curExpense, prevIncome - prevExpense, monthHasTransactions(prevM));
+  const incomeDelta = pctDeltaLabel(curIncome, prevIncome, monthHasTransactions(prevM, "income"));
+  const expenseDelta = pctDeltaLabel(curExpense, prevExpense, monthHasTransactions(prevM, "expense"));
   const sparkline = sparklineSvg(computeSparklinePoints(), "#ffffff", 150, 34, 2.5);
   const todayIso = new Date().toISOString().slice(0, 10);
   const spentToday = transactions.filter((t) => t.type === "expense" && t.date === todayIso).reduce((a, t) => a + t.amount, 0);
@@ -64,19 +64,19 @@ export function renderHome() {
           <div class="amount">${fmtMoney(income - expense)}</div>
           <div class="foot-row">
             ${sparkline}
-            <div class="delta-pill">${escapeHtml(balanceDelta)}</div>
+            ${balanceDelta !== null ? `<div class="delta-pill">${escapeHtml(balanceDelta)}</div>` : ""}
           </div>
         </div>
         <div class="stat-row">
           <div class="stat-card">
             <div class="head">${icon("arrow-down-left")}<span>${escapeHtml(l.incomeLabel)}</span></div>
             <div class="value">${fmtMoney(income)}</div>
-            <div class="delta" style="color:var(--color-income)">${escapeHtml(incomeDelta)} ${escapeHtml(l.vsLastMonth)}</div>
+            <div class="delta" style="color:var(--color-income)">${incomeDelta !== null ? escapeHtml(incomeDelta) + " " + escapeHtml(l.vsLastMonth) : "—"}</div>
           </div>
           <div class="stat-card">
             <div class="head">${icon("arrow-up-right")}<span>${escapeHtml(l.expenseLabel)}</span></div>
             <div class="value">${fmtMoney(expense)}</div>
-            <div class="delta" style="color:var(--color-expense)">${escapeHtml(expenseDelta)} ${escapeHtml(l.vsLastMonth)}</div>
+            <div class="delta" style="color:var(--color-expense)">${expenseDelta !== null ? escapeHtml(expenseDelta) + " " + escapeHtml(l.vsLastMonth) : "—"}</div>
           </div>
         </div>
 
@@ -100,16 +100,19 @@ export function renderHome() {
           <h3>${escapeHtml(l.upcomingBillsSection)}</h3>
         </div>
         <div class="list-card">
-          ${dueSoon.map((b) => `
-            <div class="manage-row">
-              ${iconAvatar("calendar-clock", "var(--color-warning-tint)", "var(--color-warning-text)")}
+          ${dueSoon.map((b) => {
+            const overdue = b.daysUntil < 0;
+            return `
+            <div class="manage-row${overdue ? " manage-row-overdue" : ""}">
+              ${iconAvatar("calendar-clock", overdue ? "var(--color-expense-tint)" : "var(--color-warning-tint)", overdue ? "var(--color-expense-700)" : "var(--color-warning-text)")}
               <div class="info">
                 <div class="name">${escapeHtml(b.name)}</div>
                 <div class="sub">${escapeHtml(dueSoonLabel(b.daysUntil))}</div>
               </div>
               <div class="amt">${fmtMoney(b.amount)}</div>
               <button type="button" class="btn btn-secondary btn-sm" data-mark-paid="${b.id}">${escapeHtml(l.markPaidBtn)}</button>
-            </div>`).join("")}
+            </div>`;
+          }).join("")}
         </div>` : ""}
         <div class="section-head" style="${dueSoon.length ? "" : "margin-top:0"}">
           <h3>${escapeHtml(l.budgetsThisMonth)}</h3>

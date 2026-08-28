@@ -2,22 +2,37 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- viewport-fit=cover: required for env(safe-area-inset-bottom) in
+     styles.css to resolve to an actual value rather than 0 -- without it
+     the fixed tab bar's bottom padding and .screen/.toast's matching
+     offsets have nothing to react to on a notched/gesture-nav phone,
+     particularly once installed standalone (manifest.json's
+     display:"standalone"), which draws edge-to-edge under the safe area. -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>รายรับ-รายจ่าย</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <meta name="theme-color" content="#6247ea" id="themeColorMeta">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- Font is self-hosted (fonts/*.woff2, @font-face in styles.css), not
+     loaded from Google Fonts -- sw.js never caches cross-origin requests,
+     so a CDN font never loads offline before its first successful online
+     fetch. See styles.css's @font-face comment for why this is two
+     families (Inter has no Thai glyphs at all), not one. -->
 <!-- Pinned to exact versions with Subresource Integrity: an unpinned
      @2 / @latest CDN URL means a breaking upstream release changes the
      live app with no change on our side and no version to roll back to.
      Bump the version, re-fetch the file, and recompute the sha384 hash
      (e.g. `curl -s <url> | openssl dgst -sha384 -binary | openssl base64 -A`)
-     together whenever these are intentionally upgraded. -->
+     together whenever these are intentionally upgraded. supabase-js stays
+     on the CDN, not bundled -- syncing can't work offline anyway, so
+     there's nothing to gain from self-hosting it the way the font and
+     icons were (those affect whether the UI itself renders offline). -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.min.js" integrity="sha384-yiVMs0R/Jyz7OhoXa/DsEMUSBLjEhr/QJta2ONO+zB6I8/GmNg/7AUFrZmAJV7KV" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/lucide@1.35.0/dist/umd/lucide.min.js" integrity="sha384-eZXpDHN86IMQuxntjYbYprDla50QW8NC+8P9nUywt9PSVNqZE2Ri3YZ2WWKoliDw" crossorigin="anonymous"></script>
+<!-- Lucide is no longer CDN-loaded at all (it used to be pinned+SRI'd
+     here) -- icons are self-hosted as an inline <use> sprite instead (see
+     icons/sprite.svg and utils.js's icon()), which is what actually makes
+     them render offline, not just pinned against a breaking release. -->
 <!-- Google Identity Services is loaded on demand from src/sheets-export.js
      (only the Google Sheets export flow needs it), not here -- it has no
      versioned CDN URL to pin, so it stays off the critical path instead. -->
@@ -33,23 +48,23 @@
   <div class="tabbar-wrap">
     <nav class="tabbar" id="tabbar">
       <button type="button" data-tab="home">
-        <i class="icon" data-lucide="layout-grid"></i>
+        <svg class="icon" aria-hidden="true"><use href="./icons/sprite.svg#layout-grid"></use></svg>
         <span data-l="tabHome"></span>
       </button>
       <button type="button" data-tab="transactions">
-        <i class="icon" data-lucide="list"></i>
+        <svg class="icon" aria-hidden="true"><use href="./icons/sprite.svg#list"></use></svg>
         <span data-l="tabTx"></span>
       </button>
       <button type="button" data-tab="add">
-        <i class="icon" data-lucide="plus-circle"></i>
+        <svg class="icon" aria-hidden="true"><use href="./icons/sprite.svg#plus-circle"></use></svg>
         <span data-l="tabAdd"></span>
       </button>
       <button type="button" data-tab="insights">
-        <i class="icon" data-lucide="pie-chart"></i>
+        <svg class="icon" aria-hidden="true"><use href="./icons/sprite.svg#pie-chart"></use></svg>
         <span data-l="tabInsights"></span>
       </button>
       <button type="button" data-tab="settings">
-        <i class="icon" data-lucide="settings"></i>
+        <svg class="icon" aria-hidden="true"><use href="./icons/sprite.svg#settings"></use></svg>
         <span data-l="tabSettings"></span>
       </button>
     </nav>
