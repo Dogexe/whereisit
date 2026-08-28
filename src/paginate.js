@@ -34,8 +34,21 @@
 // Supabase query builder directly, so the paging/accumulation logic here
 // can be unit-tested with a fake page source, independent of the real
 // network client.
-
-export const PAGE_SIZE = 1000;
+//
+// PAGE_SIZE must stay strictly below the Supabase project's own `max-rows`
+// setting (dashboard default: 1000). fetchAllPages below decides a page is
+// the last one when it returns fewer than `pageSize` rows -- that's only a
+// valid signal if the server is *capable* of returning a full `pageSize`
+// page. If `max-rows` were ever configured lower than PAGE_SIZE, every
+// query would be silently truncated to `max-rows` regardless of what this
+// code asked for, so a genuinely full page would come back short, get
+// misread as end-of-data, and the pull would silently truncate -- the
+// exact failure keyset pagination exists to prevent, reintroduced through
+// a dashboard setting instead of a code bug. Keeping PAGE_SIZE comfortably
+// below the default `max-rows` (500, not 1000) means a short page still
+// reliably means end-of-data even if the project's `max-rows` is ever
+// lowered somewhat, not just left at its default.
+export const PAGE_SIZE = 500;
 
 // fetchPage(cursor, limit) => Promise<{ data, error }>. `cursor` is null
 // for the first page, then `{ updatedAt, id }` of the last row of the
