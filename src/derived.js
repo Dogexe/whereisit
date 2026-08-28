@@ -44,6 +44,27 @@ export function computeBudgetsForYear(forYear) {
     };
   });
 }
+// computeBudgets()/computeBudgetsForYear() only iterate existing budgets,
+// so spending in an expense category nobody ever set a limit for never
+// appeared anywhere on the screen users read as "where my money went" --
+// with seeded data, health (no budget) and utilities (no budget) totaled
+// more than a third of all spending and showed up nowhere. These total
+// exactly what those omit: expense transactions whose category has no
+// matching budget entry.
+export function unbudgetedSpend(forMonth) {
+  const targetMonth = forMonth || new Date().toISOString().slice(0, 7);
+  const budgetedCats = new Set(budgets.map((b) => b.category));
+  return transactions
+    .filter((t) => t.type === "expense" && monthKey(t.date) === targetMonth && !budgetedCats.has(t.category))
+    .reduce((a, t) => a + t.amount, 0);
+}
+export function unbudgetedSpendForYear(forYear) {
+  const targetYear = forYear || String(new Date().getFullYear());
+  const budgetedCats = new Set(budgets.map((b) => b.category));
+  return transactions
+    .filter((t) => t.type === "expense" && t.date.slice(0, 4) === targetYear && !budgetedCats.has(t.category))
+    .reduce((a, t) => a + t.amount, 0);
+}
 // Returns an alert message if adding/editing `tx` pushed its budget category
 // to 80%+ of its monthly limit, or null if no budget applies / still under.
 export function checkBudgetAlert(tx) {

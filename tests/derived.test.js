@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { state, setBills, setTransactions } from "../src/state.js";
+import { state, setBills, setTransactions, setBudgets } from "../src/state.js";
 import {
   nextBillDueDate, daysUntilBillDue, billDueCycle, dueSoonLabel, upcomingBills, monthKeyOf,
-  pctDeltaLabel, monthHasTransactions
+  pctDeltaLabel, monthHasTransactions, unbudgetedSpend, unbudgetedSpendForYear
 } from "../src/derived.js";
 
 // derived.js's bill-due functions read the wall clock via `new Date()`
@@ -120,4 +120,32 @@ test("pctDeltaLabel: genuine increase against a real, nonzero prior period", () 
 
 test("pctDeltaLabel: genuine decrease against a real, nonzero prior period", () => {
   assert.equal(pctDeltaLabel(50, 100, true), "-50%");
+});
+
+test("unbudgetedSpend: totals expense transactions in categories with no budget, ignores budgeted ones and other months", () => {
+  setBudgets([{ id: "b1", category: "อาหารและเครื่องดื่ม", limit: 3000 }]);
+  setTransactions([
+    { id: "t1", type: "expense", date: "2026-03-05", category: "อาหารและเครื่องดื่ม", amount: 500 }, // budgeted, excluded
+    { id: "t2", type: "expense", date: "2026-03-10", category: "สุขภาพ", amount: 800 }, // unbudgeted
+    { id: "t3", type: "expense", date: "2026-03-15", category: "สาธารณูปโภค (ไฟ/น้ำ/เน็ต)", amount: 590 }, // unbudgeted
+    { id: "t4", type: "expense", date: "2026-04-01", category: "สุขภาพ", amount: 999 }, // wrong month, excluded
+    { id: "t5", type: "income", date: "2026-03-12", category: "สุขภาพ", amount: 5000 } // income, not expense, excluded
+  ]);
+  assert.equal(unbudgetedSpend("2026-03"), 1390);
+});
+
+test("unbudgetedSpend: zero when every expense category has a budget", () => {
+  setBudgets([{ id: "b1", category: "สุขภาพ", limit: 1000 }]);
+  setTransactions([{ id: "t1", type: "expense", date: "2026-03-05", category: "สุขภาพ", amount: 800 }]);
+  assert.equal(unbudgetedSpend("2026-03"), 0);
+});
+
+test("unbudgetedSpendForYear: same idea, summed across the whole year", () => {
+  setBudgets([{ id: "b1", category: "อาหารและเครื่องดื่ม", limit: 3000 }]);
+  setTransactions([
+    { id: "t1", type: "expense", date: "2026-01-05", category: "สุขภาพ", amount: 100 },
+    { id: "t2", type: "expense", date: "2026-11-20", category: "สุขภาพ", amount: 200 },
+    { id: "t3", type: "expense", date: "2025-12-31", category: "สุขภาพ", amount: 999 } // wrong year, excluded
+  ]);
+  assert.equal(unbudgetedSpendForYear("2026"), 300);
 });
