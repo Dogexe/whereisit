@@ -12,9 +12,12 @@ const GOOGLE_SHEETS_CLIENT_ID = "639941680335-9qbo20f7g1l4ok2venlf0rd6bkhtmh0u.a
 // ever needs, and keeps Google's consent screen narrow.
 const SHEETS_SCOPE = "https://www.googleapis.com/auth/drive.file";
 const FETCH_TIMEOUT_MS = 15000;
+const GIS_SCRIPT_SRC = "https://accounts.google.com/gsi/client";
+const GIS_LOAD_TIMEOUT_MS = 15000;
 
 let tokenClient = null;
 let cachedToken = null; // { accessToken, expiresAt }
+let gisLoadPromise = null;
 
 function fetchWithTimeout(url, options) {
   const controller = new AbortController();
@@ -22,11 +25,30 @@ function fetchWithTimeout(url, options) {
   return fetch(url, Object.assign({}, options, { signal: controller.signal })).finally(() => clearTimeout(timer));
 }
 
-function getAccessToken() {
-  if (cachedToken && cachedToken.expiresAt > Date.now() + 5000) return Promise.resolve(cachedToken.accessToken);
-  if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
-    return Promise.reject(new Error("Google Identity Services script not loaded"));
-  }
+// Google Identity Services is only needed for this Sheets export flow, not
+// on every page load -- unlike Supabase/Lucide, it's fetched on demand
+// (the first time a user actually clicks "Export to Google Sheets") rather
+// than via a <script> tag in index.html. Cached as a module-level promise
+// so a second export click while the script is still loading (or after it
+// already has) reuses the same load instead of injecting duplicate tags.
+function loadGisScript() {
+  if (window.google && window.google.accounts && window.google.accounts.oauth2) return Promise.resolve();
+  if (gisLoadPromise) return gisLoadPromise;
+  gisLoadPromise = new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("Google Identity Services script load timed out")), GIS_LOAD_TIMEOUT_MS);
+    const script = document.createElement("script");
+    script.src = GIS_SCRIPT_SRC;
+    script.async = true;
+    script.onload = () => { clearTimeout(timer); resolve(); };
+    script.onerror = () => { clearTimeout(timer); reject(new Error("Google Identity Services script failed to load")); };
+    document.head.appendChild(script);
+  }).catch((err) => { gisLoadPromise = null; throw err; });
+  return gisLoadPromise;
+}
+
+async function getAccessToken() {
+  if (cachedToken && cachedToken.expiresAt > Date.now() + 5000) return cachedToken.accessToken;
+  await loadGisScript();
   if (!tokenClient) {
     tokenClient = window.google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_SHEETS_CLIENT_ID,
