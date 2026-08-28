@@ -1,3 +1,40 @@
+  /* Self-hosted, not loaded from Google Fonts -- the service worker
+     (sw.js) explicitly skips cross-origin requests, so a CDN-hosted font
+     is never cached and never loads offline before its first successful
+     online fetch. Both are the exact variable-font files Google Fonts
+     itself already serves for these families (one file per script,
+     covering the whole 400-800 weight range this app actually uses --
+     see the h1-h4/badge/etc. font-weight rules below), just fetched once
+     and committed here instead of requested from fonts.gstatic.com.
+     Inter has NO Thai glyphs at all (verified against Google Fonts' own
+     served subsets -- only latin/latin-ext/cyrillic/cyrillic-ext/greek/
+     greek-ext/vietnamese exist for it, no "thai"), so Thai text was
+     always falling back to whatever font the OS happened to provide,
+     online or offline alike -- self-hosting Inter alone would not have
+     fixed that. Noto Sans Thai's "thai" subset is paired in as a second
+     family specifically to make Thai text (the app's primary language,
+     and the Baht sign "฿" used everywhere) render consistently from a
+     cached, self-hosted file too, not just Latin text. Combined weight:
+     ~47KB (Inter, latin subset) + ~26KB (Noto Sans Thai, thai subset) =
+     ~74KB for the full weight range in both scripts -- far lighter than
+     "the full Inter Thai set" implied, precisely because that set
+     doesn't exist. */
+  @font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 400 800;
+    font-display: swap;
+    src: url("./fonts/inter-latin.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: "Noto Sans Thai";
+    font-style: normal;
+    font-weight: 400 800;
+    font-display: swap;
+    src: url("./fonts/notosansthai-thai.woff2") format("woff2");
+    unicode-range: U+02D7, U+0303, U+0331, U+0E01-0E5B, U+200C-200D, U+25CC;
+  }
   :root {
     /* neutrals */
     --gray-0:#ffffff; --gray-50:#f6f6f8; --gray-100:#eeeef1; --gray-150:#e4e4e9; --gray-200:#d9dae0;
@@ -16,7 +53,12 @@
     --color-bg: #f6f6f8; --color-card: #ffffff; --color-surface: #eeeef1;
     --color-text: #15161a; --color-muted: #71747f; --color-tertiary: #9497a3; --color-divider: #e4e4e9; --color-border: #d9dae0;
     /* type + shape */
-    --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    /* "Noto Sans Thai" comes right after "Inter" so Thai-block characters
+       (which the self-hosted Inter file above has no glyphs for at all)
+       render from the self-hosted, cached Noto Sans Thai file instead of
+       skipping straight to whatever Thai font the OS happens to ship --
+       or none, on some platforms/older Android especially. */
+    --font-sans: "Inter", "Noto Sans Thai", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
     --radius-sm: 8px; --radius-md: 12px; --radius-lg: 18px; --radius-xl: 24px; --radius-pill: 999px;
     --shadow-xs: 0 1px 2px rgba(15,15,20,0.04);
     --shadow-sm: 0 2px 6px rgba(15,15,20,0.06);

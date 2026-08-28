@@ -39,14 +39,28 @@ export function parseDateText(text) {
 }
 export function monthLabel(key) { return new Date(key + "-01T00:00:00").toLocaleDateString(state.lang === "en" ? "en-US" : "th-TH", { month: "short", year: "2-digit" }); }
 export function escapeHtml(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
-export function icon(name, attrs) { return `<i class="icon" data-lucide="${name}"${attrs ? " " + attrs : ""}></i>`; }
+// References the self-hosted icons/sprite.svg (a <symbol> per icon this
+// app actually uses -- see that file's own doc comment) rather than the
+// CDN-loaded lucide.js this used to depend on. <use> renders immediately
+// once inserted, with no separate JS "activation" pass, so this markup is
+// valid on its own the moment it's part of the page -- unlike the old
+// <i data-lucide="name"> placeholder, which stayed an empty, invisible
+// element until lucide.createIcons() ran (and stayed invisible forever if
+// that script had never loaded, e.g. offline before its first successful
+// fetch -- exactly the bug this replaces).
+export function icon(name, attrs) { return `<svg class="icon"${attrs ? " " + attrs : ""} aria-hidden="true"><use href="./icons/sprite.svg#${name}"></use></svg>`; }
 export function iconAvatar(name, bg, color, sizeClass, iconAttrs) {
   return `<div class="icon-avatar${sizeClass ? " " + sizeClass : ""}" style="background:${bg};color:${color}">${icon(name, iconAttrs)}</div>`;
 }
 export const EDIT_ICON = icon("pencil");
 export const DELETE_ICON = icon("trash-2");
 export const PLUS_ICON = icon("plus");
-export function refreshIcons() { if (window.lucide) window.lucide.createIcons(); }
+// No-op: icon() above now renders real, immediately-valid SVG, so there's
+// no lucide.createIcons()-style activation pass left to run. Kept (rather
+// than deleting every "refresh icons after rendering" call site across
+// every screen) since each one is still harmless to call; safe to remove
+// entirely in a future cleanup pass.
+export function refreshIcons() {}
 // Builds <option> tags for a plain list of value strings. `labelFn` maps a
 // value to display text (defaults to the value itself); pass null as
 // `selected` when nothing should be pre-selected.
