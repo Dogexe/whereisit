@@ -1,5 +1,5 @@
 import { state, transactions, budgets, bills } from "./state.js";
-import { monthKey, fmtMoney, monthLabel, dateLabel } from "./utils.js";
+import { monthKey, fmtMoney, monthLabel, dateLabel, displayYear } from "./utils.js";
 import { L } from "./i18n.js";
 
 export function computeBudgets(forMonth) {
@@ -44,6 +44,27 @@ export function computeBudgetsForYear(forYear) {
     };
   });
 }
+// computeBudgets()/computeBudgetsForYear() only iterate existing budgets,
+// so spending in an expense category nobody ever set a limit for never
+// appeared anywhere on the screen users read as "where my money went" --
+// with seeded data, health (no budget) and utilities (no budget) totaled
+// more than a third of all spending and showed up nowhere. These total
+// exactly what those omit: expense transactions whose category has no
+// matching budget entry.
+export function unbudgetedSpend(forMonth) {
+  const targetMonth = forMonth || new Date().toISOString().slice(0, 7);
+  const budgetedCats = new Set(budgets.map((b) => b.category));
+  return transactions
+    .filter((t) => t.type === "expense" && monthKey(t.date) === targetMonth && !budgetedCats.has(t.category))
+    .reduce((a, t) => a + t.amount, 0);
+}
+export function unbudgetedSpendForYear(forYear) {
+  const targetYear = forYear || String(new Date().getFullYear());
+  const budgetedCats = new Set(budgets.map((b) => b.category));
+  return transactions
+    .filter((t) => t.type === "expense" && t.date.slice(0, 4) === targetYear && !budgetedCats.has(t.category))
+    .reduce((a, t) => a + t.amount, 0);
+}
 // Returns an alert message if adding/editing `tx` pushed its budget category
 // to 80%+ of its monthly limit, or null if no budget applies / still under.
 export function checkBudgetAlert(tx) {
@@ -57,20 +78,39 @@ export function checkBudgetAlert(tx) {
   if (spent / budget.limit >= 0.8) return L().toastBudgetNear.replace("{cat}", tx.category);
   return null;
 }
-// A bill's `day` recurs every month; find its next occurrence (today counts
-// as due) and how many days away that is.
-export function nextBillDueDate(day) {
+// A bill's `day` recurs every month. This used to roll forward to next
+// month as soon as `day` had passed, with no awareness of whether the
+// current cycle was actually paid -- so an unpaid bill could never go
+// overdue: by the day after it was due, the app already treated it as
+// next month's bill and dropped it off every due-soon list, with no
+// record it was ever missed. Takes the whole bill (needs `day` and
+// `lastPaidCycle`) so it can tell whether *this* cycle was paid: while
+// unpaid, the due date stays pinned to this cycle's date (so daysUntil
+// can go negative and the bill reads as overdue); it only rolls forward
+// once lastPaidCycle matches this cycle.
+//
+// Design choice: an overdue bill stays overdue only through the end of
+// its own calendar cycle, then rolls to next month's due date on the 1st
+// regardless of whether it was ever marked paid -- it is not held
+// indefinitely across month boundaries. Holding indefinitely would need
+// persisting which specific missed cycle is still outstanding, rather
+// than just "was the bill paid for its current cycle" -- and an
+// indefinitely-growing "47 days overdue" is a worse nudge than the bill
+// resetting to a fresh, still-visible countdown each month.
+export function nextBillDueDate(bill) {
   const now = new Date();
-  let dueMonth = now.getMonth(), dueYear = now.getFullYear();
-  if (day < now.getDate()) {
-    dueMonth += 1;
-    if (dueMonth > 11) { dueMonth = 0; dueYear += 1; }
-  }
-  const lastDayOfMonth = new Date(dueYear, dueMonth + 1, 0).getDate();
-  return new Date(dueYear, dueMonth, Math.min(day, lastDayOfMonth));
+  const dueYear = now.getFullYear(), dueMonth = now.getMonth();
+  const lastDayOfThisMonth = new Date(dueYear, dueMonth + 1, 0).getDate();
+  const thisCycleDate = new Date(dueYear, dueMonth, Math.min(bill.day, lastDayOfThisMonth));
+  if (bill.lastPaidCycle !== monthKeyOf(thisCycleDate)) return thisCycleDate;
+  // This cycle is already paid -- roll forward to next month's date.
+  let nextMonth = dueMonth + 1, nextYear = dueYear;
+  if (nextMonth > 11) { nextMonth = 0; nextYear += 1; }
+  const lastDayOfNextMonth = new Date(nextYear, nextMonth + 1, 0).getDate();
+  return new Date(nextYear, nextMonth, Math.min(bill.day, lastDayOfNextMonth));
 }
-export function daysUntilBillDue(day) {
-  const due = nextBillDueDate(day);
+export function daysUntilBillDue(bill) {
+  const due = nextBillDueDate(bill);
   due.setHours(0, 0, 0, 0);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -106,15 +146,25 @@ export function groupByDate(txs) {
   return groups;
 }
 export function monthKeyOf(date) { return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0"); }
-export function billDueCycle(day) { return monthKeyOf(nextBillDueDate(day)); }
+export function billDueCycle(bill) { return monthKeyOf(nextBillDueDate(bill)); }
 export function dueSoonLabel(n) {
+  if (n < 0) {
+    const overdueDays = -n;
+    return overdueDays === 1 ? L().overdueByDay : L().overdueByDays.replace("{n}", overdueDays);
+  }
   if (n === 0) return L().dueToday;
   if (n === 1) return L().dueTomorrow;
   return L().dueInDays.replace("{n}", n);
 }
+// No lower bound on daysUntil here -- an overdue bill (negative daysUntil)
+// must still pass this filter, not just a "due soon" one. The
+// lastPaidCycle !== dueCycle check is now a defensive backstop rather than
+// the primary paid-bill exclusion: nextBillDueDate() already rolls a paid
+// bill's date forward to a genuinely different cycle, so dueCycle and
+// lastPaidCycle only match here if that rollover somehow didn't happen.
 export function upcomingBills() {
   return bills
-    .map((b) => Object.assign({}, b, { daysUntil: daysUntilBillDue(b.day), dueCycle: billDueCycle(b.day) }))
+    .map((b) => Object.assign({}, b, { daysUntil: daysUntilBillDue(b), dueCycle: billDueCycle(b) }))
     .filter((b) => b.daysUntil <= 7 && b.lastPaidCycle !== b.dueCycle)
     .sort((a, b) => a.daysUntil - b.daysUntil);
 }
@@ -168,7 +218,7 @@ export function pieChartSvg(entries) {
 }
 // Thai locale conventionally displays the Buddhist Era year (Gregorian + 543);
 // dates/keys stay Gregorian internally, this only affects what's shown.
-export function yearLabel(yyyy) { return state.lang === "en" ? yyyy : String(Number(yyyy) + 543); }
+export function yearLabel(yyyy) { return String(displayYear(yyyy)); }
 export function availableYears() {
   const years = new Set(transactions.map((t) => t.date.slice(0, 4)));
   years.add(String(new Date().getFullYear()));
@@ -196,8 +246,26 @@ export function computeTrend() {
 export function monthTotal(key, type) {
   return transactions.filter((t) => t.type === type && monthKey(t.date) === key).reduce((a, t) => a + t.amount, 0);
 }
-export function pctDeltaLabel(cur, prev) {
-  if (!prev) return cur > 0 ? "+100%" : "+0%";
+// Whether any transaction of `type` falls in month `key` -- pass no type
+// to check for any transaction at all that month. Used to tell "the prior
+// period genuinely had no activity" apart from "the prior totals happen
+// to sum to zero": income/expense sums are never negative, so a zero sum
+// there really does mean no transactions, but balance (income - expense)
+// very normally lands on exactly 0 in a month with real transactions on
+// both sides, and that's not the same situation.
+export function monthHasTransactions(key, type) {
+  return transactions.some((t) => (!type || t.type === type) && monthKey(t.date) === key);
+}
+// Returns null (render no comparison badge) rather than a percentage
+// whenever there's nothing meaningful to compare against: either the
+// prior period had no transactions at all (hasPriorData is false --
+// comparing against zero used to render as a flat "+100%" on a brand-new
+// user's very first month, which reads as "your spending is up 100%"
+// with nothing to actually compare to), or prev is exactly 0 even with
+// real prior-period activity (a genuine income-equals-expense tie),
+// where a percentage change is a division by zero either way.
+export function pctDeltaLabel(cur, prev, hasPriorData) {
+  if (!hasPriorData || !prev) return null;
   const p = Math.round(((cur - prev) / prev) * 100);
   return (p >= 0 ? "+" : "") + p + "%";
 }

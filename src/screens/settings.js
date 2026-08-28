@@ -5,6 +5,7 @@ import {
   EDIT_ICON, DELETE_ICON, PLUS_ICON
 } from "../utils.js";
 import { CATEGORIES, GOAL_TONES, GOAL_ICONS, iconFor, rowTone } from "../categories.js";
+import { daysUntilBillDue, dueSoonLabel } from "../derived.js";
 import { saveSettings } from "../storage.js";
 import { applyTheme } from "../theme.js";
 import {
@@ -22,9 +23,9 @@ import { pushReminderState, enableBillReminders, disableBillReminders } from "..
 // budgets/bills, matching the same icon-led row shape as every other
 // row in this redesigned Settings screen (toggle rows, group headers,
 // transaction rows) instead of being the one bare-text exception.
-export function manageRowHtml(iconHtml, name, sub, amt, editAttr, deleteAttr) {
+export function manageRowHtml(iconHtml, name, sub, amt, editAttr, deleteAttr, extraClass) {
   return `
-    <div class="manage-row">
+    <div class="manage-row${extraClass ? " " + extraClass : ""}">
       ${iconHtml}
       <div class="info"><div class="name">${escapeHtml(name)}</div><div class="sub">${escapeHtml(sub)}</div></div>
       ${amt ? `<div class="amt">${amt}</div>` : ""}
@@ -127,7 +128,10 @@ export function deleteBudget(id) {
 }
 
 export function billRowHtml(b) {
-  return manageRowHtml(categoryIconAvatar(b.category), b.name, L().dueOn + b.day, fmtMoney(b.amount), `data-edit-bill="${b.id}"`, `data-delete-bill="${b.id}"`);
+  const daysUntil = daysUntilBillDue(b);
+  const overdue = daysUntil < 0;
+  const sub = overdue ? dueSoonLabel(daysUntil) : L().dueOn + b.day;
+  return manageRowHtml(categoryIconAvatar(b.category), b.name, sub, fmtMoney(b.amount), `data-edit-bill="${b.id}"`, `data-delete-bill="${b.id}"`, overdue ? "manage-row-overdue" : null);
 }
 export function billFormHtml() {
   const l = L();

@@ -1,11 +1,13 @@
 import { L } from "../i18n.js";
 import { state } from "../state.js";
-import { $, escapeHtml, monthLabel, refreshIcons } from "../utils.js";
+import { $, escapeHtml, fmtMoney, monthLabel, refreshIcons } from "../utils.js";
 import {
   availableYears, yearLabel, computeBudgets, computeBudgetsForYear,
+  unbudgetedSpend, unbudgetedSpendForYear,
   computeBreakdown, computeBreakdownForYear, pieChartSvg, computeTrend
 } from "../derived.js";
 import { periodPickerHtml, wirePeriodPicker } from "./period-picker.js";
+import { setTab } from "./router.js";
 
 function renderInsightsPeriodPicker() {
   $("insightsPeriodPickerRow").innerHTML = periodPickerHtml("insights", ["month", "year"], state.insightsPeriodMode, state.insightsMonthNum, state.insightsYear);
@@ -51,12 +53,27 @@ export function renderInsightsBody() {
   const targetMonthKey = state.insightsYear + "-" + state.insightsMonthNum;
   if (state.insightsTab === "budgets") {
     const rows = isYearMode ? computeBudgetsForYear(state.insightsYear) : computeBudgets(targetMonthKey);
+    const unbudgeted = isYearMode ? unbudgetedSpendForYear(state.insightsYear) : unbudgetedSpend(targetMonthKey);
     body.innerHTML = `<div class="insight-cards">${rows.map((b) => `
       <div class="insight-card">
         <div class="head"><span class="cat">${escapeHtml(b.category)}</span><span class="badge ${b.badgeClass}">${escapeHtml(b.statusLabel)}</span></div>
         <div class="bar-track"><div class="bar-fill" style="width:${b.pct}%;background:${b.barColor}"></div></div>
         <div class="foot"><span>${b.spentFmt} ${escapeHtml(l.spentSoFar)}</span><span>${escapeHtml(l.budgetOf)} ${b.limitFmt}</span></div>
-      </div>`).join("")}</div>`;
+      </div>`).join("")}${unbudgeted > 0 ? `
+      <div class="insight-card">
+        <div class="head"><span class="cat">${escapeHtml(l.unbudgetedSpending)}</span><span class="badge badge-warn">${fmtMoney(unbudgeted)}</span></div>
+        <div class="foot"><span>${escapeHtml(l.unbudgetedSpendingHint)}</span></div>
+        <button type="button" class="btn btn-ghost" id="addBudgetFromInsightsBtn" style="margin-top:6px;padding:0">${escapeHtml(l.addBudgetBtn)}</button>
+      </div>` : ""}</div>`;
+    const addFromInsights = $("addBudgetFromInsightsBtn");
+    if (addFromInsights) addFromInsights.addEventListener("click", () => {
+      // Jump straight to Settings' "add budget" inline form rather than
+      // just the Manage section -- same effect as expanding the Budgets
+      // group there and clicking "+ Add budget" by hand.
+      state.settingsGroupOpen.budgets = true;
+      state.budgetEditId = "new";
+      setTab("settings");
+    });
   } else if (state.insightsTab === "breakdown") {
     const rows = isYearMode ? computeBreakdownForYear(state.insightsYear) : computeBreakdown(targetMonthKey);
     const periodLbl = isYearMode ? String(yearLabel(state.insightsYear)) : monthLabel(targetMonthKey);

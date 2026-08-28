@@ -1,3 +1,40 @@
+  /* Self-hosted, not loaded from Google Fonts -- the service worker
+     (sw.js) explicitly skips cross-origin requests, so a CDN-hosted font
+     is never cached and never loads offline before its first successful
+     online fetch. Both are the exact variable-font files Google Fonts
+     itself already serves for these families (one file per script,
+     covering the whole 400-800 weight range this app actually uses --
+     see the h1-h4/badge/etc. font-weight rules below), just fetched once
+     and committed here instead of requested from fonts.gstatic.com.
+     Inter has NO Thai glyphs at all (verified against Google Fonts' own
+     served subsets -- only latin/latin-ext/cyrillic/cyrillic-ext/greek/
+     greek-ext/vietnamese exist for it, no "thai"), so Thai text was
+     always falling back to whatever font the OS happened to provide,
+     online or offline alike -- self-hosting Inter alone would not have
+     fixed that. Noto Sans Thai's "thai" subset is paired in as a second
+     family specifically to make Thai text (the app's primary language,
+     and the Baht sign "฿" used everywhere) render consistently from a
+     cached, self-hosted file too, not just Latin text. Combined weight:
+     ~47KB (Inter, latin subset) + ~26KB (Noto Sans Thai, thai subset) =
+     ~74KB for the full weight range in both scripts -- far lighter than
+     "the full Inter Thai set" implied, precisely because that set
+     doesn't exist. */
+  @font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 400 800;
+    font-display: swap;
+    src: url("./fonts/inter-latin.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: "Noto Sans Thai";
+    font-style: normal;
+    font-weight: 400 800;
+    font-display: swap;
+    src: url("./fonts/notosansthai-thai.woff2") format("woff2");
+    unicode-range: U+02D7, U+0303, U+0331, U+0E01-0E5B, U+200C-200D, U+25CC;
+  }
   :root {
     /* neutrals */
     --gray-0:#ffffff; --gray-50:#f6f6f8; --gray-100:#eeeef1; --gray-150:#e4e4e9; --gray-200:#d9dae0;
@@ -16,7 +53,12 @@
     --color-bg: #f6f6f8; --color-card: #ffffff; --color-surface: #eeeef1;
     --color-text: #15161a; --color-muted: #71747f; --color-tertiary: #9497a3; --color-divider: #e4e4e9; --color-border: #d9dae0;
     /* type + shape */
-    --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    /* "Noto Sans Thai" comes right after "Inter" so Thai-block characters
+       (which the self-hosted Inter file above has no glyphs for at all)
+       render from the self-hosted, cached Noto Sans Thai file instead of
+       skipping straight to whatever Thai font the OS happens to ship --
+       or none, on some platforms/older Android especially. */
+    --font-sans: "Inter", "Noto Sans Thai", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
     --radius-sm: 8px; --radius-md: 12px; --radius-lg: 18px; --radius-xl: 24px; --radius-pill: 999px;
     --shadow-xs: 0 1px 2px rgba(15,15,20,0.04);
     --shadow-sm: 0 2px 6px rgba(15,15,20,0.06);
@@ -24,6 +66,11 @@
     --shadow-lg: 0 16px 40px rgba(15,15,20,0.14);
     --ease-standard: cubic-bezier(0.4,0,0.2,1);
     --duration-fast: 120ms; --duration-normal: 200ms;
+    /* Referenced by .screen's bottom padding and .toast's bottom offset so
+       both stay correctly clear of the fixed tab bar -- see the tab bar
+       section below for why plain env(safe-area-inset-bottom) alone isn't
+       enough. Must match .tabbar's own height. */
+    --tabbar-h: 64px;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; min-height: 100%; }
@@ -38,7 +85,18 @@
 
   .app { display: flex; flex-direction: column; min-height: 100vh; }
 
-  .screen { flex: 1; max-width: 480px; margin: 0 auto; width: 100%; padding: 20px 20px 100px; box-sizing: border-box; }
+  /* Every screen (Home/Transactions/Add/Insights/Settings) renders into
+     this one shared element -- there's no per-screen scroll container, the
+     whole document scrolls, so a single fix here covers all of them. The
+     old flat 100px bottom padding happened to clear the 64px tab bar with
+     ~36px to spare, but didn't account for env(safe-area-inset-bottom) at
+     all -- on a notched/gesture-nav phone (and PWAs installed to the home
+     screen, where the safe area is largest) that inset can eat into or
+     exceed that slack, letting the last row render partly behind the tab
+     bar. Bottom padding is now the tab bar's real height plus the actual
+     safe-area inset plus a fixed breathing-room gap, so it's always
+     exactly enough regardless of device. */
+  .screen { flex: 1; max-width: 480px; margin: 0 auto; width: 100%; padding: 20px 20px calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 20px); box-sizing: border-box; }
   .screen-title { font-size: 22px; margin: 4px 0 16px; }
 
   /* — shared card base (list/insight/goal/stat/etc. cards all sit on this) — */
@@ -247,6 +305,10 @@
   .manage-row .name { font-size: 15px; font-weight: 500; }
   .manage-row .sub { font-size: 12px; color: var(--color-muted); margin-top: 2px; }
   .manage-row .amt { font-size: 14px; font-weight: 600; flex-shrink: 0; }
+  /* Overdue bill rows (Home's upcoming-bills list and Settings' bill rows) --
+     reuses the expense color rather than inventing a new one, distinct from
+     the plain --color-muted "due soon" text every other row uses. */
+  .manage-row-overdue .sub { color: var(--color-expense-700); font-weight: 600; }
   .row-actions { display: flex; gap: 4px; flex-shrink: 0; }
   .section-add-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
   .inline-form { display: flex; flex-direction: column; gap: 12px; padding: 16px; margin-bottom: 12px; }
@@ -263,8 +325,14 @@
   .footer-note { font-size: 11px; line-height: 1.6; color: var(--color-tertiary); margin: 4px 0 0; }
 
   /* — tab bar — */
-  .tabbar-wrap { position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; background: color-mix(in srgb, var(--color-bg) 82%, transparent); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-top: 1px solid var(--color-divider); z-index: 30; }
-  .tabbar { display: flex; width: 100%; max-width: 480px; height: 64px; }
+  /* padding-bottom (not just the fixed 64px .tabbar height below) is what
+     actually pushes the buttons up clear of a notched/gesture-nav
+     device's home indicator -- .screen's padding and .toast's bottom
+     offset both add this same env() value on top of --tabbar-h so every
+     fixed-position element anchored to "above the tab bar" agrees on the
+     tab bar's true rendered height. */
+  .tabbar-wrap { position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; background: color-mix(in srgb, var(--color-bg) 82%, transparent); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-top: 1px solid var(--color-divider); z-index: 30; padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .tabbar { display: flex; width: 100%; max-width: 480px; height: var(--tabbar-h); }
   .tabbar button {
     flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
     background: none; border: none; cursor: pointer; color: var(--color-tertiary);
@@ -274,7 +342,11 @@
   .tabbar button span { font-size: 11px; font-weight: 600; }
 
   .toast {
-    position: fixed; left: 50%; bottom: 82px; transform: translateX(-50%);
+    /* Same 18px gap above the tab bar as before (82px was 64px + 18px),
+       now tracking --tabbar-h and the real safe-area inset instead of a
+       flat number, so the toast can't end up rendering under a tab bar
+       that's grown taller for its own safe-area padding. */
+    position: fixed; left: 50%; bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 18px); transform: translateX(-50%);
     background: var(--gray-900); color: #fff; padding: 12px 18px; font-size: 13px; font-weight: 500;
     border-radius: var(--radius-pill); box-shadow: var(--shadow-lg);
     z-index: 40; max-width: 420px; width: calc(100% - 40px);
