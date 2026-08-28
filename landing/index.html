@@ -250,12 +250,20 @@
     border-radius: 16px;
     padding: 24px;
     background: var(--bg-raised);
+    transition: opacity 800ms var(--ease), transform 800ms var(--ease), filter 800ms var(--ease);
+  }
+  /* .pre-reveal is added by script only, right before observing -- so the
+     hidden state (and the reveal animation that undoes it) only exists
+     when JS actually runs. Cards are visible in plain CSS by default,
+     which is what keeps them readable with JS disabled, blocked, or
+     erroring after load, and in static renders (link previews, some
+     crawlers) that never scroll. */
+  .feature-card.pre-reveal {
     opacity: 0;
     transform: translateY(16px);
     filter: blur(4px);
-    transition: opacity 800ms var(--ease), transform 800ms var(--ease), filter 800ms var(--ease);
   }
-  .feature-card.in-view {
+  .feature-card.pre-reveal.in-view {
     opacity: 1;
     transform: translateY(0);
     filter: blur(0);
@@ -350,6 +358,18 @@
   @media (prefers-reduced-motion: reduce) {
     * { transition-duration: 1ms !important; animation-duration: 1ms !important; }
     html { scroll-behavior: auto; }
+  }
+  /* Belt-and-suspenders alongside the script's matchMedia check below: the
+     script is what actually decides not to add .pre-reveal at all under
+     reduced motion, so cards never enter a hidden state to transition out
+     of in the first place -- this rule just guarantees the same result
+     even if .pre-reveal somehow ended up on a card anyway. */
+  @media (prefers-reduced-motion: reduce) {
+    .feature-card.pre-reveal {
+      opacity: 1;
+      transform: none;
+      filter: none;
+    }
   }
 </style>
 </head>
@@ -491,7 +511,14 @@
         applyLang("en");
       }
 
-      if ("IntersectionObserver" in window) {
+      // Cards are visible by default in plain CSS (see .feature-card /
+      // .feature-card.pre-reveal above) -- .pre-reveal is only added here,
+      // right before observing, so the scroll-reveal animation exists
+      // solely as something JS opts *into*, never something JS is needed
+      // to undo. A user who asked for reduced motion skips the reveal
+      // entirely rather than just experiencing it faster.
+      var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if ("IntersectionObserver" in window && !reduceMotion) {
         var observer = new IntersectionObserver(
           function (entries) {
             entries.forEach(function (entry) {
@@ -504,11 +531,8 @@
           { threshold: 0.2 }
         );
         document.querySelectorAll(".feature-card").forEach(function (card) {
+          card.classList.add("pre-reveal");
           observer.observe(card);
-        });
-      } else {
-        document.querySelectorAll(".feature-card").forEach(function (card) {
-          card.classList.add("in-view");
         });
       }
     })();
