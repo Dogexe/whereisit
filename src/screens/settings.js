@@ -16,6 +16,7 @@ import { showToast } from "../toast.js";
 import { renderChrome, renderScreen } from "./router.js";
 import { deferredInstallPrompt, setDeferredInstallPrompt } from "../pwa-install.js";
 import { exportToGoogleSheets } from "../sheets-export.js";
+import { pushReminderState, enableBillReminders, disableBillReminders } from "../push.js";
 
 // Both are simple named lists edited inline in Settings; share one row/CRUD shape.
 // `iconHtml` is a pre-built iconAvatar() string -- category icon for
@@ -283,6 +284,27 @@ export function saveContribution() {
   pushRows("goals", [goalToRow(g, false)]).then(() => syncNow());
 }
 
+// The switch itself is disabled (not hidden) for "unsupported"/"denied" --
+// seeing a reminders row exist but be unavailable, with a reason given
+// right below it, is clearer than the row silently not being there.
+// "off"/"enabled" are the only two states the switch actually toggles
+// between; sign-in is checked at click time (enableBillReminders()
+// itself) rather than blocking the switch here, since currentUser can
+// change without a full Settings re-render in between.
+function pushReminderRowHtml() {
+  const l = L();
+  const pushState = pushReminderState();
+  const disabled = pushState === "unsupported" || pushState === "denied";
+  const hint = pushState === "denied" ? l.pushDeniedHint : (pushState === "unsupported" ? l.pushUnsupportedHint : null);
+  return `
+    <div class="toggle-row">
+      ${iconAvatar("bell", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+      <span class="label">${escapeHtml(l.billRemindersLabel)}</span>
+      <button type="button" class="switch ${pushState === "enabled" ? "on" : ""}" id="pushReminderSwitch" ${disabled ? "disabled" : ""}><span class="thumb"></span></button>
+    </div>
+    ${hint ? `<div class="empty-note" style="padding:4px 4px 10px;text-align:left">${escapeHtml(hint)}</div>` : ""}`;
+}
+
 export function renderSettings() {
   const l = L();
   const meta = currentUser ? (currentUser.user_metadata || {}) : {};
@@ -329,6 +351,7 @@ export function renderSettings() {
             <span id="syncStatus" class="label ${lastSyncStatus.ok === true ? "ok" : (lastSyncStatus.ok === false ? "err" : "")}"><span class="sync-dot"></span><span>${escapeHtml(currentUser ? lastSyncStatus.text : l.syncSignedOut)}</span></span>
             <button type="button" class="btn btn-secondary btn-sm" id="syncNowBtn" ${currentUser ? "" : "disabled"}>${escapeHtml(l.syncNowBtn)}</button>
           </div>
+          ${pushReminderRowHtml()}
           ${deferredInstallPrompt ? `
           <div style="padding:10px 4px">
             <button type="button" class="btn btn-primary btn-block" id="installAppBtn">
@@ -413,6 +436,11 @@ export function renderSettings() {
   document.querySelectorAll('input[name="lang-switch"]').forEach((r) => r.addEventListener("change", (e) => { state.lang = e.target.value; saveSettings(); renderChrome(); renderScreen(); }));
   $("darkSwitch").addEventListener("click", () => { state.dark = !state.dark; saveSettings(); applyTheme(); renderScreen(); });
   $("syncNowBtn").addEventListener("click", syncNow);
+  if ($("pushReminderSwitch")) $("pushReminderSwitch").addEventListener("click", async () => {
+    if (pushReminderState() === "enabled") await disableBillReminders();
+    else await enableBillReminders();
+    renderSettings();
+  });
   if ($("installAppBtn")) $("installAppBtn").addEventListener("click", function () {
     if (!deferredInstallPrompt) return;
     deferredInstallPrompt.prompt();

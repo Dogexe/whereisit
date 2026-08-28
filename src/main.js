@@ -1,5 +1,5 @@
 import { L } from "./i18n.js";
-import { state } from "./state.js";
+import { state, bills } from "./state.js";
 import { refreshIcons } from "./utils.js";
 import { loadFromStorage } from "./storage.js";
 import { loadPending } from "./pending.js";
@@ -27,6 +27,13 @@ registerRenderers({
   settings: renderSettings
 });
 
+// Captured before anything (including the auth listener below) has a
+// chance to strip the query string, so a bill reminder notification's
+// tap -- sw.js's notificationclick navigates to "./?bill=<id>" -- still
+// gets read even though the auth-state callback runs asynchronously and
+// would otherwise race it away.
+const billIdFromNotification = new URLSearchParams(window.location.search).get("bill");
+
 initErrorReporting();
 setSyncRerenderCallback(renderScreen);
 loadFromStorage();
@@ -35,6 +42,20 @@ loadWatermark();
 applyTheme();
 renderScreen();
 refreshIcons();
+
+// Deep-links a tapped bill reminder straight to that bill's edit form in
+// Settings when it's already synced locally; otherwise still lands on
+// Settings with the Bills group expanded (a device that hasn't synced yet
+// still gets *somewhere* useful, rather than nothing). Only ever reached
+// via a real notification tap, never on a plain page load without that
+// query param.
+if (billIdFromNotification) {
+  state.tab = "settings";
+  state.settingsGroupOpen.bills = true;
+  if (bills.some((b) => b.id === billIdFromNotification)) state.billEditId = billIdFromNotification;
+  renderScreen();
+  window.history.replaceState(null, "", window.location.pathname);
+}
 
 document.querySelectorAll("#tabbar button").forEach((btn) => btn.addEventListener("click", () => {
   if (btn.getAttribute("data-tab") === "add") resetForm();
