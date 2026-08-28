@@ -2,7 +2,13 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- viewport-fit=cover: required for env(safe-area-inset-bottom) in
+     styles.css to resolve to an actual value rather than 0 -- without it
+     the fixed tab bar's bottom padding and .screen/.toast's matching
+     offsets have nothing to react to on a notched/gesture-nav phone,
+     particularly once installed standalone (manifest.json's
+     display:"standalone"), which draws edge-to-edge under the safe area. -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>รายรับ-รายจ่าย</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon-192.png">

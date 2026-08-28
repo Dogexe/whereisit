@@ -24,6 +24,11 @@
     --shadow-lg: 0 16px 40px rgba(15,15,20,0.14);
     --ease-standard: cubic-bezier(0.4,0,0.2,1);
     --duration-fast: 120ms; --duration-normal: 200ms;
+    /* Referenced by .screen's bottom padding and .toast's bottom offset so
+       both stay correctly clear of the fixed tab bar -- see the tab bar
+       section below for why plain env(safe-area-inset-bottom) alone isn't
+       enough. Must match .tabbar's own height. */
+    --tabbar-h: 64px;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; min-height: 100%; }
@@ -38,7 +43,18 @@
 
   .app { display: flex; flex-direction: column; min-height: 100vh; }
 
-  .screen { flex: 1; max-width: 480px; margin: 0 auto; width: 100%; padding: 20px 20px 100px; box-sizing: border-box; }
+  /* Every screen (Home/Transactions/Add/Insights/Settings) renders into
+     this one shared element -- there's no per-screen scroll container, the
+     whole document scrolls, so a single fix here covers all of them. The
+     old flat 100px bottom padding happened to clear the 64px tab bar with
+     ~36px to spare, but didn't account for env(safe-area-inset-bottom) at
+     all -- on a notched/gesture-nav phone (and PWAs installed to the home
+     screen, where the safe area is largest) that inset can eat into or
+     exceed that slack, letting the last row render partly behind the tab
+     bar. Bottom padding is now the tab bar's real height plus the actual
+     safe-area inset plus a fixed breathing-room gap, so it's always
+     exactly enough regardless of device. */
+  .screen { flex: 1; max-width: 480px; margin: 0 auto; width: 100%; padding: 20px 20px calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 20px); box-sizing: border-box; }
   .screen-title { font-size: 22px; margin: 4px 0 16px; }
 
   /* — shared card base (list/insight/goal/stat/etc. cards all sit on this) — */
@@ -267,8 +283,14 @@
   .footer-note { font-size: 11px; line-height: 1.6; color: var(--color-tertiary); margin: 4px 0 0; }
 
   /* — tab bar — */
-  .tabbar-wrap { position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; background: color-mix(in srgb, var(--color-bg) 82%, transparent); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-top: 1px solid var(--color-divider); z-index: 30; }
-  .tabbar { display: flex; width: 100%; max-width: 480px; height: 64px; }
+  /* padding-bottom (not just the fixed 64px .tabbar height below) is what
+     actually pushes the buttons up clear of a notched/gesture-nav
+     device's home indicator -- .screen's padding and .toast's bottom
+     offset both add this same env() value on top of --tabbar-h so every
+     fixed-position element anchored to "above the tab bar" agrees on the
+     tab bar's true rendered height. */
+  .tabbar-wrap { position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; background: color-mix(in srgb, var(--color-bg) 82%, transparent); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-top: 1px solid var(--color-divider); z-index: 30; padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .tabbar { display: flex; width: 100%; max-width: 480px; height: var(--tabbar-h); }
   .tabbar button {
     flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
     background: none; border: none; cursor: pointer; color: var(--color-tertiary);
@@ -278,7 +300,11 @@
   .tabbar button span { font-size: 11px; font-weight: 600; }
 
   .toast {
-    position: fixed; left: 50%; bottom: 82px; transform: translateX(-50%);
+    /* Same 18px gap above the tab bar as before (82px was 64px + 18px),
+       now tracking --tabbar-h and the real safe-area inset instead of a
+       flat number, so the toast can't end up rendering under a tab bar
+       that's grown taller for its own safe-area padding. */
+    position: fixed; left: 50%; bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 18px); transform: translateX(-50%);
     background: var(--gray-900); color: #fff; padding: 12px 18px; font-size: 13px; font-weight: 500;
     border-radius: var(--radius-pill); box-shadow: var(--shadow-lg);
     z-index: 40; max-width: 420px; width: calc(100% - 40px);
