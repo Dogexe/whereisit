@@ -1,5 +1,5 @@
 import { state, transactions, budgets, bills } from "./state.js";
-import { monthKey, fmtMoney, monthLabel, dateLabel } from "./utils.js";
+import { monthKey, fmtMoney, monthLabel, dateLabel, displayYear } from "./utils.js";
 import { L } from "./i18n.js";
 
 export function computeBudgets(forMonth) {
@@ -197,7 +197,7 @@ export function pieChartSvg(entries) {
 }
 // Thai locale conventionally displays the Buddhist Era year (Gregorian + 543);
 // dates/keys stay Gregorian internally, this only affects what's shown.
-export function yearLabel(yyyy) { return state.lang === "en" ? yyyy : String(Number(yyyy) + 543); }
+export function yearLabel(yyyy) { return String(displayYear(yyyy)); }
 export function availableYears() {
   const years = new Set(transactions.map((t) => t.date.slice(0, 4)));
   years.add(String(new Date().getFullYear()));
