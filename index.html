@@ -10,9 +10,17 @@
 <meta name="theme-color" content="#6247ea" id="themeColorMeta">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://unpkg.com/lucide@latest"></script>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
+<!-- Pinned to exact versions with Subresource Integrity: an unpinned
+     @2 / @latest CDN URL means a breaking upstream release changes the
+     live app with no change on our side and no version to roll back to.
+     Bump the version, re-fetch the file, and recompute the sha384 hash
+     (e.g. `curl -s <url> | openssl dgst -sha384 -binary | openssl base64 -A`)
+     together whenever these are intentionally upgraded. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.min.js" integrity="sha384-yiVMs0R/Jyz7OhoXa/DsEMUSBLjEhr/QJta2ONO+zB6I8/GmNg/7AUFrZmAJV7KV" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/lucide@1.35.0/dist/umd/lucide.min.js" integrity="sha384-eZXpDHN86IMQuxntjYbYprDla50QW8NC+8P9nUywt9PSVNqZE2Ri3YZ2WWKoliDw" crossorigin="anonymous"></script>
+<!-- Google Identity Services is loaded on demand from src/sheets-export.js
+     (only the Google Sheets export flow needs it), not here -- it has no
+     versioned CDN URL to pin, so it stays off the critical path instead. -->
 <link rel="stylesheet" href="./styles.css">
 </head>
 <body>

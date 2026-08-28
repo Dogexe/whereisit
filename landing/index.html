@@ -8,39 +8,59 @@
 <meta property="og:title" content="รายรับ-รายจ่าย — Track every baht, even offline" />
 <meta property="og:description" content="A personal income and expense tracker that works without internet, syncs across your devices, and keeps your budgets and bills in one place." />
 <meta property="og:type" content="website" />
+<meta property="og:url" content="https://dogexe.github.io/whereisit/landing/" />
+<meta property="og:site_name" content="รายรับ-รายจ่าย" />
+<meta property="og:image" content="https://dogexe.github.io/whereisit/landing/og-image.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="รายรับ-รายจ่าย — Track every baht, even offline" />
+<meta name="twitter:description" content="A personal income and expense tracker that works without internet, syncs across your devices, and keeps your budgets and bills in one place." />
+<meta name="twitter:image" content="https://dogexe.github.io/whereisit/landing/og-image.png" />
+<link rel="canonical" href="https://dogexe.github.io/whereisit/landing/" />
+<meta name="theme-color" content="#6247ea" />
 <link rel="icon" href="../icons/icon-192.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 <style>
+  /* These tokens are deliberately duplicated from the app's own
+     ../styles.css :root block (--color-accent/-600/-700, --gray-*,
+     --color-bg/-card/-text/-muted/-border) rather than imported --
+     the landing page stays a single self-contained file and app CSS
+     carries app-shell layout this page doesn't need. If the app's
+     palette changes, update the matching values here by hand; they
+     are not otherwise kept in sync automatically. */
   :root {
-    --bg: #ffffff;
-    --bg-raised: #f6f6f4;
-    --text: #14140f;
-    --text-dim: #5c5c54;
-    --text-faint: #6b665c;
-    --border: #e7e7e1;
-    --accent: #ffb020;
-    --accent-text: #14140f;
+    --bg: #f6f6f8;
+    --bg-raised: #ffffff;
+    --text: #15161a;
+    --text-dim: #71747f;
+    --text-faint: #9497a3;
+    --border: #d9dae0;
+    --accent: #6247ea;
+    --accent-hover: #4f34d6;
+    --accent-deep: #3f28ab;
+    --accent-text: #ffffff;
     --heading-grad-from: #000000;
     --heading-grad-to: #666666;
-    --focus-ring: #a35d00;
+    --focus-ring: #6247ea;
     --ease: cubic-bezier(0.32, 0.72, 0, 1);
   }
 
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #131209;
-      --bg-raised: #1f1f1f;
-      --text: #f4f4ef;
-      --text-dim: #b7b7ac;
-      --text-faint: #82827a;
-      --border: #313131;
-      --accent: #ffb020;
-      --accent-text: #14140f;
+      /* Matches src/theme.js's dark palette (applyTheme) -- the app's
+         accent itself doesn't change between light/dark, only the
+         neutrals do, so --accent/-hover/-deep stay the same as above. */
+      --bg: #141519;
+      --bg-raised: #1e1f24;
+      --text: #f5f5f7;
+      --text-dim: rgba(245, 245, 247, 0.62);
+      --text-faint: rgba(245, 245, 247, 0.42);
+      --border: rgba(255, 255, 255, 0.16);
       --heading-grad-from: #ffffff;
       --heading-grad-to: #9b9b9b;
-      --focus-ring: #ffb020;
     }
   }
 
@@ -52,7 +72,7 @@
     margin: 0;
     background: var(--bg);
     color: var(--text);
-    font-family: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
     line-height: 1.5;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
@@ -191,7 +211,10 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    background: var(--accent);
+    /* Same gradient as the app's .hero-card (styles.css), reused here so
+       the CTA visually ties back to the balance card the click lands on. */
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
+    box-shadow: 0 12px 28px color-mix(in srgb, var(--accent) 30%, transparent);
     color: var(--accent-text);
     font-weight: 600;
     font-size: 16px;
@@ -199,10 +222,12 @@
     border-radius: 999px;
     text-decoration: none;
     border: 1px solid transparent;
-    transition: transform 300ms var(--ease), background 300ms var(--ease);
+    transition: transform 300ms var(--ease), box-shadow 300ms var(--ease), background 300ms var(--ease);
   }
   .btn-primary:hover {
     transform: translateY(-1px);
+    background: linear-gradient(135deg, var(--accent-hover) 0%, var(--accent-deep) 100%);
+    box-shadow: 0 16px 32px color-mix(in srgb, var(--accent) 40%, transparent);
   }
   .btn-primary:active {
     transform: scale(0.98);
@@ -250,12 +275,20 @@
     border-radius: 16px;
     padding: 24px;
     background: var(--bg-raised);
+    transition: opacity 800ms var(--ease), transform 800ms var(--ease), filter 800ms var(--ease);
+  }
+  /* .pre-reveal is added by script only, right before observing -- so the
+     hidden state (and the reveal animation that undoes it) only exists
+     when JS actually runs. Cards are visible in plain CSS by default,
+     which is what keeps them readable with JS disabled, blocked, or
+     erroring after load, and in static renders (link previews, some
+     crawlers) that never scroll. */
+  .feature-card.pre-reveal {
     opacity: 0;
     transform: translateY(16px);
     filter: blur(4px);
-    transition: opacity 800ms var(--ease), transform 800ms var(--ease), filter 800ms var(--ease);
   }
-  .feature-card.in-view {
+  .feature-card.pre-reveal.in-view {
     opacity: 1;
     transform: translateY(0);
     filter: blur(0);
@@ -350,6 +383,18 @@
   @media (prefers-reduced-motion: reduce) {
     * { transition-duration: 1ms !important; animation-duration: 1ms !important; }
     html { scroll-behavior: auto; }
+  }
+  /* Belt-and-suspenders alongside the script's matchMedia check below: the
+     script is what actually decides not to add .pre-reveal at all under
+     reduced motion, so cards never enter a hidden state to transition out
+     of in the first place -- this rule just guarantees the same result
+     even if .pre-reveal somehow ended up on a card anyway. */
+  @media (prefers-reduced-motion: reduce) {
+    .feature-card.pre-reveal {
+      opacity: 1;
+      transform: none;
+      filter: none;
+    }
   }
 </style>
 </head>
@@ -491,7 +536,14 @@
         applyLang("en");
       }
 
-      if ("IntersectionObserver" in window) {
+      // Cards are visible by default in plain CSS (see .feature-card /
+      // .feature-card.pre-reveal above) -- .pre-reveal is only added here,
+      // right before observing, so the scroll-reveal animation exists
+      // solely as something JS opts *into*, never something JS is needed
+      // to undo. A user who asked for reduced motion skips the reveal
+      // entirely rather than just experiencing it faster.
+      var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if ("IntersectionObserver" in window && !reduceMotion) {
         var observer = new IntersectionObserver(
           function (entries) {
             entries.forEach(function (entry) {
@@ -504,11 +556,8 @@
           { threshold: 0.2 }
         );
         document.querySelectorAll(".feature-card").forEach(function (card) {
+          card.classList.add("pre-reveal");
           observer.observe(card);
-        });
-      } else {
-        document.querySelectorAll(".feature-card").forEach(function (card) {
-          card.classList.add("in-view");
         });
       }
     })();
