@@ -1,8 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { state, setBills } from "../src/state.js";
+import { state, setBills, setTransactions } from "../src/state.js";
 import {
-  nextBillDueDate, daysUntilBillDue, billDueCycle, dueSoonLabel, upcomingBills, monthKeyOf
+  nextBillDueDate, daysUntilBillDue, billDueCycle, dueSoonLabel, upcomingBills, monthKeyOf,
+  pctDeltaLabel, monthHasTransactions
 } from "../src/derived.js";
 
 // derived.js's bill-due functions read the wall clock via `new Date()`
@@ -91,4 +92,32 @@ test("upcomingBills: an overdue bill is not excluded by the daysUntil<=7 filter"
     assert.ok(result.find((b) => b.id === "b1").daysUntil < 0);
     assert.ok(!ids.includes("b2"), "a bill correctly rolled forward to next month, weeks away, should not appear");
   });
+});
+
+test("monthHasTransactions: true only when a transaction of that type falls in that month", () => {
+  setTransactions([
+    { id: "1", type: "income", date: "2026-03-05", amount: 100 },
+    { id: "2", type: "expense", date: "2026-04-01", amount: 50 }
+  ]);
+  assert.equal(monthHasTransactions("2026-03", "income"), true);
+  assert.equal(monthHasTransactions("2026-03", "expense"), false, "wrong type in that month");
+  assert.equal(monthHasTransactions("2026-02", "income"), false, "no transactions that month at all");
+  assert.equal(monthHasTransactions("2026-04"), true, "no type filter matches any type");
+});
+
+test("pctDeltaLabel: no prior-period transactions at all -> no badge (null), not +100%", () => {
+  assert.equal(pctDeltaLabel(500, 0, false), null);
+  assert.equal(pctDeltaLabel(0, 0, false), null);
+});
+
+test("pctDeltaLabel: prior period had transactions but summed to exactly 0 -> still null (division by zero)", () => {
+  assert.equal(pctDeltaLabel(200, 0, true), null);
+});
+
+test("pctDeltaLabel: genuine increase against a real, nonzero prior period", () => {
+  assert.equal(pctDeltaLabel(150, 100, true), "+50%");
+});
+
+test("pctDeltaLabel: genuine decrease against a real, nonzero prior period", () => {
+  assert.equal(pctDeltaLabel(50, 100, true), "-50%");
 });

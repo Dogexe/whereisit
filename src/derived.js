@@ -225,8 +225,26 @@ export function computeTrend() {
 export function monthTotal(key, type) {
   return transactions.filter((t) => t.type === type && monthKey(t.date) === key).reduce((a, t) => a + t.amount, 0);
 }
-export function pctDeltaLabel(cur, prev) {
-  if (!prev) return cur > 0 ? "+100%" : "+0%";
+// Whether any transaction of `type` falls in month `key` -- pass no type
+// to check for any transaction at all that month. Used to tell "the prior
+// period genuinely had no activity" apart from "the prior totals happen
+// to sum to zero": income/expense sums are never negative, so a zero sum
+// there really does mean no transactions, but balance (income - expense)
+// very normally lands on exactly 0 in a month with real transactions on
+// both sides, and that's not the same situation.
+export function monthHasTransactions(key, type) {
+  return transactions.some((t) => (!type || t.type === type) && monthKey(t.date) === key);
+}
+// Returns null (render no comparison badge) rather than a percentage
+// whenever there's nothing meaningful to compare against: either the
+// prior period had no transactions at all (hasPriorData is false --
+// comparing against zero used to render as a flat "+100%" on a brand-new
+// user's very first month, which reads as "your spending is up 100%"
+// with nothing to actually compare to), or prev is exactly 0 even with
+// real prior-period activity (a genuine income-equals-expense tie),
+// where a percentage change is a division by zero either way.
+export function pctDeltaLabel(cur, prev, hasPriorData) {
+  if (!hasPriorData || !prev) return null;
   const p = Math.round(((cur - prev) / prev) * 100);
   return (p >= 0 ? "+" : "") + p + "%";
 }
