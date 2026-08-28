@@ -90,6 +90,41 @@ test("a row updated between page fetches (moving later in sort order) is not ski
   assert.deepEqual(new Set(data.map((r) => r.id)), new Set(["r0", "r1", "r2", "r3", "r4"]));
 });
 
+// Models the operational invariant PAGE_SIZE now depends on (see the doc
+// comment in src/paginate.js): a real Supabase project caps a single
+// select() response at its own `max-rows` setting, independent of the
+// `limit` this code requests. As long as that server-side cap is at or
+// above `pageSize`, a genuinely full page of underlying data always comes
+// back as a full `pageSize`-length response -- so "fewer rows than
+// pageSize" still reliably means "no more data," never "the server cut
+// this response short." This is the case that must keep working; the
+// opposite (max-rows below PAGE_SIZE) is the exact silent-truncation risk
+// this fix removes by keeping PAGE_SIZE comfortably below the default.
+function makeCappedSource(rows, serverCap) {
+  return async (cursor, limit) => {
+    const sorted = rows.slice().sort((a, b) =>
+      a.updated_at === b.updated_at ? (a.id < b.id ? -1 : 1) : (a.updated_at < b.updated_at ? -1 : 1));
+    const after = cursor
+      ? sorted.filter((r) => r.updated_at > cursor.updatedAt || (r.updated_at === cursor.updatedAt && r.id > cursor.id))
+      : sorted;
+    // A real server ignores the caller's requested `limit` once it exceeds
+    // the server's own cap -- min() here stands in for that behavior.
+    return { data: after.slice(0, Math.min(limit, serverCap)), error: null };
+  };
+}
+
+test("a server-side cap at or above pageSize still returns a full page, so the loop keeps fetching instead of stopping early", async () => {
+  // 11 rows, pageSize 5, server cap 5 (== pageSize, the safe boundary this
+  // fix relies on). Every page except the last is a genuinely full page
+  // and must not be mistaken for the end even though more data remains.
+  const rows = Array.from({ length: 11 }, (_, i) => row(`r${i}`, `t${String(i).padStart(4, "0")}`));
+  const fetchPage = makeCappedSource(rows, 5);
+  const { data, error } = await fetchAllPages(fetchPage, 5);
+  assert.equal(error, null);
+  assert.equal(data.length, 11);
+  assert.deepEqual(data.map((r) => r.id), rows.map((r) => r.id));
+});
+
 test("an error on page 2 stops fetching and returns null data, not a partial result", async () => {
   const calls = [];
   const fetchPage = async (cursor) => {

@@ -1,6 +1,7 @@
 import { state, transactions, budgets, bills, goals, setTransactions, setBudgets, setBills, setGoals } from "./state.js";
 import { showToast } from "./toast.js";
 import { L } from "./i18n.js";
+import { restoreArray } from "./restore.js";
 
 export const STORAGE_KEY = "expense_tracker_transactions_v1";
 export const SETTINGS_KEY = "expense_tracker_settings_v1";
@@ -30,9 +31,13 @@ export function loadFromStorage() {
       const s = JSON.parse(raw);
       if (s.lang === "th" || s.lang === "en") state.lang = s.lang;
       if (typeof s.dark === "boolean") state.dark = s.dark;
-      if (Array.isArray(s.budgets) && s.budgets.length) setBudgets(s.budgets);
-      if (Array.isArray(s.bills) && s.bills.length) setBills(s.bills);
-      if (Array.isArray(s.goals)) setGoals(s.goals);
+      // A saved *empty* array must win over the hardcoded defaults -- the
+      // user deleted their last budget/bill/goal on purpose. Only a
+      // missing key (no prior save) falls back to state.js's defaults; see
+      // restore.js for why Array.isArray alone is the right check here.
+      setBudgets(restoreArray(s.budgets, budgets));
+      setBills(restoreArray(s.bills, bills));
+      setGoals(restoreArray(s.goals, goals));
     }
   } catch (e) { /* ignore */ }
 }

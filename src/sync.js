@@ -199,12 +199,14 @@ function watermarkedQuery(table) {
   return q;
 }
 
-// Supabase caps a single select() at 1000 rows and returns no error when it
-// silently truncates (see paginate.js) -- fetchAllPages pages through until
-// a short page signals the end, so a table with more than 1000 matching
-// rows (most likely on a fresh device's very first pull) still gets
-// everything instead of an arbitrary subset that would then wrongly
-// advance the watermark past whatever didn't fit in that subset.
+// Supabase caps a single select() at its project's max-rows setting
+// (dashboard default: 1000) and returns no error when it silently
+// truncates (see paginate.js) -- fetchAllPages pages through PAGE_SIZE
+// rows at a time until a short page signals the end, so a table with more
+// than PAGE_SIZE matching rows (most likely on a fresh device's very
+// first pull) still gets everything instead of an arbitrary subset that
+// would then wrongly advance the watermark past whatever didn't fit in
+// that subset.
 //
 // Uses keyset (cursor) pagination, not .range(offset, ...): see
 // paginate.js's own doc comment for why offset pagination is unsafe here
