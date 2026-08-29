@@ -3,13 +3,41 @@ import { DEFAULT_CATEGORIES } from "./categories.js";
 export const state = {
   lang: "th", dark: false,
   tab: "home", insightsTab: "budgets",
-  insightsMonthNum: new Date().toISOString().slice(5, 7), insightsYear: String(new Date().getFullYear()), insightsPeriodMode: "month",
+  // Budgets and Breakdown ("Categories") tabs each get their own instance
+  // of the same pill component (period-picker.js's pillPickerHtml/
+  // wirePillPicker) -- independent state since the two tabs don't share
+  // one period-picker instance. Tapping the popover's year heading
+  // switches to a whole-year view instead of a dedicated "year" mode.
+  // Breakdown alone also tracks `insightsBreakdownIsToday`: its pill gets
+  // a one-tap "Today" shortcut inside the popover (opts.todayShortcut)
+  // that Budgets never needs, layered on top of month/year rather than
+  // being a third mode value -- stepping the pill or picking a month/year
+  // clears it back to normal browsing.
+  insightsBudgetsMode: "month", insightsBudgetsMonthNum: new Date().toISOString().slice(5, 7), insightsBudgetsYear: String(new Date().getFullYear()),
+  insightsBudgetsPopoverOpen: false,
+  insightsBreakdownMode: "month", insightsBreakdownMonthNum: new Date().toISOString().slice(5, 7), insightsBreakdownYear: String(new Date().getFullYear()),
+  insightsBreakdownPopoverOpen: false, insightsBreakdownIsToday: false,
   txFilterType: "all", txFilterMonthNum: "all", txFilterYear: "all", txFilterCategory: new Set(), txSearch: "", txPeriodMode: "all",
   txFilterAmountMin: null, txFilterAmountMax: null, txFilterDateFrom: "", txFilterDateTo: "", txFilterSheetOpen: false,
+  // txPillPopoverOpen: UI-only, not persisted -- same treatment as
+  // insightsBudgetsPopoverOpen/insightsBreakdownPopoverOpen. txCustomKind
+  // mirrors insightsCustomKind (which half of the Filters sheet's custom
+  // date section is shown); txFilterDateFrom/txFilterDateTo (above) are
+  // reused as the actual applied values for both single-day and range.
+  txPillPopoverOpen: false, txCustomKind: "range",
   insightsFilterCategory: new Set(), insightsFilterSheetOpen: false,
-  insightsFilterDateFrom: "", insightsFilterDateTo: "",
+  // Custom date filter, Breakdown-tab-only, lives in the Filters sheet
+  // (not a top-level period mode) -- "single" reuses the same from/to
+  // pair with from === to rather than a separate field, since every
+  // downstream consumer (computeBreakdownForRange) already takes a range.
+  insightsCustomKind: "range", insightsFilterDateFrom: "", insightsFilterDateTo: "",
   formType: "expense", formDate: new Date().toISOString().slice(0, 10),
   formCategoryId: (DEFAULT_CATEGORIES.find((c) => c.type === "expense") || {}).id || null, editingId: null, categoryManual: false,
+  // addSheetOpen: UI-only, not persisted -- same treatment as
+  // txFilterSheetOpen/insightsFilterSheetOpen. Mobile-only (docs/specs/
+  // add-transaction-bottom-sheet.md): below 1024px, Add/Edit opens as a
+  // bottom sheet instead of navigating state.tab to "add".
+  addSheetOpen: false,
   budgetEditId: null, billEditId: null, goalEditId: null, goalContributeId: null, categoryEditId: null,
   settingsGroupOpen: { budgets: false, bills: false, goals: false, categories: false },
   // Which section is shown in the right-hand panel of Settings' desktop

@@ -1,6 +1,6 @@
 import { L } from "../i18n.js";
 import { state, transactions, categories, setTransactions } from "../state.js";
-import { $, uid, escapeHtml, dateLabel, formatDateTyping, parseDateText, optionsHtml, refreshIcons, icon } from "../utils.js";
+import { $, uid, escapeHtml, dateLabel, formatDateTyping, parseDateText, optionsHtml, refreshIcons, icon, isDesktopShell } from "../utils.js";
 import { guessCategory, categoryDisplayName } from "../categories.js";
 import { checkBudgetAlert, resolveCategoryId, mostUsedCategoryIds } from "../derived.js";
 import { saveToStorage } from "../storage.js";
@@ -22,6 +22,10 @@ export function resetForm() {
   state.editingId = null;
   state.categoryManual = false;
 }
+// docs/specs/add-transaction-bottom-sheet.md: below the desktop
+// breakpoint, editing opens the bottom sheet in place rather than
+// navigating away to the old full-page screen; desktop keeps navigating
+// exactly as before.
 export function editTx(id) {
   const tx = transactions.find((t) => t.id === id);
   if (!tx) return;
@@ -30,7 +34,8 @@ export function editTx(id) {
   state.formDate = tx.date;
   state.formCategoryId = resolveCategoryId(tx, tx.type);
   state.categoryManual = true;
-  setTab("add");
+  if (isDesktopShell()) { setTab("add"); return; }
+  openAddSheet();
 }
 export function deleteTx(id) {
   if (state.editingId === id) resetForm();
@@ -89,11 +94,14 @@ export function renderCategoryChips() {
   });
   refreshIcons();
 }
-export function renderAdd() {
-  const l = L();
-  const isEditing = !!state.editingId;
-  $("screen").innerHTML = `
-    <h2 class="screen-title">${escapeHtml(isEditing ? l.editTitle : l.addTitle)}</h2>
+// Shared by the desktop full-page screen (renderAdd) and the mobile
+// bottom sheet (renderAddSheet, docs/specs/add-transaction-bottom-sheet.md)
+// so the ~100 lines of form markup/validation/category-guessing exist
+// once, not twice in slow drift. Only the surrounding chrome (a
+// screen-title vs. a sheet header+close button) and what happens after
+// save/cancel differ between the two callers.
+function addFormFieldsHtml(l, isEditing) {
+  return `
     <form class="add-form" id="addForm">
       <div class="field">
         <label>${escapeHtml(l.typeLabel)}</label>
@@ -129,6 +137,14 @@ export function renderAdd() {
       ${isEditing ? `<button type="button" class="btn btn-secondary btn-block" id="cancelEditBtn">${escapeHtml(l.cancelEditBtn)}</button>` : ""}
     </form>
   `;
+}
+// handlers: { onSaved(), onCancelled() } -- called after a successful
+// submit / the cancel-edit button, respectively. Neither handler is
+// responsible for resetForm() itself; each caller's own callback decides
+// when to reset (both current callers do it immediately). Call once
+// after addFormFieldsHtml()'s markup is in the DOM.
+function wireAddForm({ onSaved, onCancelled }) {
+  const isEditing = !!state.editingId;
   renderFormCategoryOptions($("txCategory"));
   renderCategoryChips();
   if (isEditing) {
@@ -163,7 +179,7 @@ export function renderAdd() {
     const guess = guessCategory(this.value, state.formType);
     if (guess) { state.formCategoryId = guess; $("txCategory").value = guess; renderCategoryChips(); }
   });
-  if (isEditing) $("cancelEditBtn").addEventListener("click", () => { resetForm(); setTab("transactions"); });
+  if (isEditing) $("cancelEditBtn").addEventListener("click", onCancelled);
   $("addForm").addEventListener("submit", function (e) {
     e.preventDefault();
     const date = state.formDate;
@@ -191,9 +207,70 @@ export function renderAdd() {
       showToast(checkBudgetAlert(savedTx) || L().toastAdded);
     }
     saveToStorage();
-    resetForm();
-    setTab("transactions");
+    onSaved();
     if (savedTx) pushTx(savedTx).then(() => syncNow());
   });
   refreshIcons();
 }
+// Desktop (>=1024px) full-page screen -- unchanged behavior from before
+// docs/specs/add-transaction-bottom-sheet.md, just built on the shared
+// functions above instead of its own inline copy.
+export function renderAdd() {
+  const l = L();
+  const isEditing = !!state.editingId;
+  $("screen").innerHTML = `
+    <h2 class="screen-title">${escapeHtml(isEditing ? l.editTitle : l.addTitle)}</h2>
+    ${addFormFieldsHtml(l, isEditing)}
+  `;
+  wireAddForm({
+    onSaved: () => { resetForm(); setTab("transactions"); },
+    onCancelled: () => { resetForm(); setTab("transactions"); }
+  });
+}
+// Mobile (<1024px) bottom sheet -- docs/specs/add-transaction-bottom-sheet.md.
+// Lives in index.html's standalone #addSheetContainer, not #screen, so it
+// can be opened from any screen without that screen owning its lifecycle
+// (mirrors transactions.js's Filters sheet pattern, but that one is
+// embedded in its one owning screen since Filters never needs to open
+// from anywhere else).
+function renderAddSheet() {
+  const l = L();
+  const isEditing = !!state.editingId;
+  const container = $("addSheetContainer");
+  container.innerHTML = `
+    <div class="filter-sheet-backdrop" id="addSheetBackdrop" ${state.addSheetOpen ? "" : "hidden"}>
+      <div class="filter-sheet" role="dialog" aria-label="${escapeHtml(isEditing ? l.editTitle : l.addTitle)}">
+        <div class="filter-sheet-header">
+          <h3>${escapeHtml(isEditing ? l.editTitle : l.addTitle)}</h3>
+          <button type="button" class="filter-sheet-close-btn" id="addSheetClose" aria-label="${escapeHtml(l.closeAria)}">&times;</button>
+        </div>
+        ${addFormFieldsHtml(l, isEditing)}
+      </div>
+    </div>
+  `;
+  // Backdrop tap, the close button, and Escape (below) all converge on
+  // this same silent-discard dismissal -- matching the Filters sheet,
+  // there's no "unsaved changes" confirmation.
+  const dismiss = () => { resetForm(); closeAddSheet(); };
+  $("addSheetClose").addEventListener("click", dismiss);
+  const backdrop = $("addSheetBackdrop");
+  backdrop.addEventListener("click", (e) => { if (e.target === backdrop) dismiss(); });
+  wireAddForm({
+    onSaved: () => { resetForm(); closeAddSheet(); renderScreen(); },
+    onCancelled: dismiss
+  });
+}
+export function openAddSheet() {
+  state.addSheetOpen = true;
+  renderAddSheet();
+}
+export function closeAddSheet() {
+  state.addSheetOpen = false;
+  const backdrop = $("addSheetBackdrop");
+  if (backdrop) backdrop.hidden = true;
+}
+// Registered once at module load, not per-render -- see transactions.js's
+// identical pattern/reasoning for its own Filters-sheet Escape listener.
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && state.addSheetOpen) { resetForm(); closeAddSheet(); }
+});

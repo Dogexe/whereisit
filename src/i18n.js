@@ -3,7 +3,7 @@ import { state } from "./state.js";
 // Each entry is [th, en]; LANGS.th / LANGS.en are derived below so every
 // other place in the app just reads L().someKey same as before.
 export const STRINGS = {
-  appTitle: ["รายรับ-รายจ่าย", "Income & Expenses"],
+  appTitle: ["whereisit", "whereisit"],
   darkModeBtn: ["โหมดมืด", "Dark mode"], overview: ["ภาพรวม", "Overview"], balanceLabel: ["คงเหลือ", "Balance"],
   incomeLabel: ["รายรับ", "Income"], expenseLabel: ["รายจ่าย", "Expense"],
   recentTx: ["รายการล่าสุด", "Recent activity"], addShort: ["+ เพิ่มรายการ", "+ Add transaction"],
@@ -13,6 +13,13 @@ export const STRINGS = {
   periodMonthLabel: ["เดือน", "Month"], periodYearLabel: ["ปี", "Year"], periodCustomLabel: ["ช่วงที่กำหนดเอง", "Custom range"],
   periodTodayLabel: ["วันนี้", "Today"],
   dateFromLabel: ["จากวันที่", "From"], dateToLabel: ["ถึงวันที่", "To"],
+  tapYearForWholeYear: ["แตะปี \"{year}\" เพื่อดูข้อมูลทั้งปี", "Tap \"{year}\" for the whole year"],
+  prevAria: ["ก่อนหน้า", "Previous"], nextAria: ["ถัดไป", "Next"],
+  customDateLabel: ["วันที่กำหนดเอง", "Custom date"],
+  singleDayLabel: ["วันเดียว", "Single day"], dateRangeLabel: ["ช่วงวันที่", "Date range"],
+  singleDayHint: ["ดูรายการของวันนั้นวันเดียว เช่น ย้อนดูค่าใช้จ่ายเมื่อวันเกิด", "See just that day's transactions — e.g. checking what you spent on a birthday."],
+  dateRangeHint: ["ดูรายการตั้งแต่วันที่เริ่มต้นถึงวันที่สิ้นสุด (รวมทั้งสองวัน)", "See transactions from the start date through the end date (inclusive)."],
+  clearBtn: ["ล้าง", "Clear"],
   searchPlaceholder: ["ค้นหารายละเอียด...", "Search notes..."], noResults: ["ไม่พบรายการ", "No transactions found"],
   clearFiltersBtn: ["ล้างตัวกรอง", "Clear filters"],
   filtersBtn: ["ตัวกรอง", "Filters"], closeAria: ["ปิด", "Close"],

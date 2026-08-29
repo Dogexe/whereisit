@@ -1,6 +1,6 @@
 import { L } from "../i18n.js";
 import { state, transactions, bills } from "../state.js";
-import { $, uid, escapeHtml, icon, iconAvatar, fmtMoney, refreshIcons } from "../utils.js";
+import { $, uid, escapeHtml, icon, iconAvatar, fmtMoney, refreshIcons, isDesktopShell } from "../utils.js";
 import { CATEGORIES } from "../categories.js";
 import {
   byRecency, computeBudgets, upcomingBills, monthTotal, monthHasTransactions, pctDeltaLabel, prevMonthKey,
@@ -10,9 +10,21 @@ import { saveToStorage, saveSettings } from "../storage.js";
 import { pushTx, pushRows, syncNow, billToRow } from "../sync.js";
 import { showToast } from "../toast.js";
 import { setTab, renderScreen } from "./router.js";
-import { resetForm } from "./add.js";
+import { resetForm, openAddSheet } from "./add.js";
 import { groupedTxRowsHtml, wireTxRowActions } from "./tx-row.js";
 
+// Shared by both of Home's own "add a transaction" shortcuts
+// (goAddBtn/emptyAddBtn) -- docs/specs/add-transaction-bottom-sheet.md
+// only updated the tab bar's own Add button and row Edit buttons at the
+// time; these two were a real gap found later auditing for
+// microinteractions, since they still navigated to the old full-page
+// screen on mobile instead of opening the sheet like every other Add
+// entry point now does.
+function goAdd() {
+  resetForm();
+  if (isDesktopShell()) { setTab("add"); return; }
+  openAddSheet();
+}
 // Only caller is renderHome's "mark paid" button -- kept here rather than
 // derived.js since unlike that module's pure computations this mutates
 // state, saves, renders, and syncs.
@@ -39,7 +51,7 @@ export function renderHome() {
   const income = transactions.filter((t) => t.type === "income").reduce((a, t) => a + t.amount, 0);
   const expense = transactions.filter((t) => t.type === "expense").reduce((a, t) => a + t.amount, 0);
   const recent = transactions.slice().sort(byRecency).slice(0, 5);
-  const budgetsPreview = computeBudgets().slice(0, 2);
+  const budgetsPreview = computeBudgets();
   const dueSoon = upcomingBills();
   const today = new Date().toLocaleDateString(state.lang === "en" ? "en-US" : "th-TH", { month: "long", year: "numeric" });
 
@@ -128,10 +140,10 @@ export function renderHome() {
       </div>
     </div>
   `;
-  $("goAddBtn").addEventListener("click", () => { resetForm(); setTab("add"); });
+  $("goAddBtn").addEventListener("click", goAdd);
   $("goBudgetsBtn").addEventListener("click", () => { state.insightsTab = "budgets"; setTab("insights"); });
   const emptyAddBtn = document.getElementById("emptyAddBtn");
-  if (emptyAddBtn) emptyAddBtn.addEventListener("click", () => { resetForm(); setTab("add"); });
+  if (emptyAddBtn) emptyAddBtn.addEventListener("click", goAdd);
   document.querySelectorAll("[data-mark-paid]").forEach((btn) => btn.addEventListener("click", () => markBillPaid(btn.getAttribute("data-mark-paid"))));
   wireTxRowActions();
   refreshIcons();

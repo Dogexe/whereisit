@@ -385,6 +385,11 @@ async function pullCategories(epoch) {
 // inline forms, or any focused field in the current screen).
 export function hasLiveInputRisk() {
   if (state.tab === "add") return true;
+  // Mobile's Add/Edit bottom sheet (docs/specs/add-transaction-bottom-sheet.md)
+  // doesn't change state.tab, so it needs its own check alongside the
+  // desktop full-page case above -- both can be live at once, just never
+  // on the same device/width.
+  if (state.addSheetOpen) return true;
   if (state.budgetEditId || state.billEditId || state.goalEditId || state.goalContributeId) return true;
   const active = document.activeElement;
   const screenEl = $("screen");

@@ -1,6 +1,6 @@
 {
-  "name": "รายรับ-รายจ่าย — Income & Expenses",
-  "short_name": "รายรับ-รายจ่าย",
+  "name": "whereisit",
+  "short_name": "whereisit",
   "description": "Personal income & expense tracker with Google sync",
   "start_url": "./index.html",
   "scope": "./",

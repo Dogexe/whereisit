@@ -2,6 +2,13 @@ import { state } from "./state.js";
 
 export const $ = (id) => document.getElementById(id);
 export const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+// The single source of truth for "is the desktop sidebar shell active"
+// (matching styles.css's own 1024px sidebar/tab-bar breakpoint) -- used
+// wherever behavior, not just layout, needs to branch on it (e.g.
+// docs/specs/add-transaction-bottom-sheet.md's Add button/editTx()),
+// so every call site checks the same way instead of each guessing at
+// the breakpoint value independently.
+export const isDesktopShell = () => window.matchMedia("(min-width: 1024px)").matches;
 export const monthKey = (iso) => iso.slice(0, 7);
 export function fmtMoney(n) { return "฿" + Number(n).toLocaleString(state.lang === "en" ? "en-US" : "th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 const BE_YEAR_OFFSET = 543;
@@ -38,6 +45,13 @@ export function parseDateText(text) {
   return iso;
 }
 export function monthLabel(key) { return new Date(key + "-01T00:00:00").toLocaleDateString(state.lang === "en" ? "en-US" : "th-TH", { month: "short", year: "2-digit" }); }
+// Locale month names with no year attached -- used by the Insights period
+// pickers' month-grid cells (monthNameShort) and pill/segment label
+// (monthNameFull), which show the year separately. Going through
+// toLocaleDateString (rather than a hardcoded name array) means these stay
+// correct automatically if another language is ever added.
+export function monthNameShort(monthNum1to12) { return new Date(2000, monthNum1to12 - 1, 1).toLocaleDateString(state.lang === "en" ? "en-US" : "th-TH", { month: "short" }); }
+export function monthNameFull(monthNum1to12) { return new Date(2000, monthNum1to12 - 1, 1).toLocaleDateString(state.lang === "en" ? "en-US" : "th-TH", { month: "long" }); }
 export function escapeHtml(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 // References the self-hosted icons/sprite.svg (a <symbol> per icon this
 // app actually uses -- see that file's own doc comment) rather than the

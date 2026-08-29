@@ -1,6 +1,6 @@
 import { L } from "./i18n.js";
 import { state, bills } from "./state.js";
-import { refreshIcons } from "./utils.js";
+import { refreshIcons, isDesktopShell } from "./utils.js";
 import { loadFromStorage } from "./storage.js";
 import { loadPending } from "./pending.js";
 import { loadWatermark, resetWatermark } from "./watermark.js";
@@ -15,7 +15,7 @@ import { initErrorReporting } from "./error-report.js";
 import { setTab, renderScreen, registerRenderers } from "./screens/router.js";
 import { renderHome } from "./screens/home.js";
 import { renderTransactions } from "./screens/transactions.js";
-import { renderAdd, resetForm } from "./screens/add.js";
+import { renderAdd, resetForm, openAddSheet } from "./screens/add.js";
 import { renderInsights } from "./screens/insights.js";
 import { renderSettings } from "./screens/settings.js";
 
@@ -64,10 +64,19 @@ if (billIdFromNotification) {
 }
 
 // .nav-btn covers both #tabbar's (mobile) and #sidebar's (desktop) buttons
-// -- wired identically since only one of the two is ever visible at a time.
+// -- wired identically since only one of the two is ever visible at a time,
+// except for "add": docs/specs/add-transaction-bottom-sheet.md makes Add a
+// bottom-sheet overlay below the desktop breakpoint instead of a real tab,
+// so state.tab never changes and whichever tab was already active stays
+// highlighted. Desktop keeps navigating to the full-page Add screen exactly
+// as before.
 document.querySelectorAll(".nav-btn").forEach((btn) => btn.addEventListener("click", () => {
-  if (btn.getAttribute("data-tab") === "add") resetForm();
-  setTab(btn.getAttribute("data-tab"));
+  const tab = btn.getAttribute("data-tab");
+  if (tab === "add") {
+    resetForm();
+    if (!isDesktopShell()) { openAddSheet(); return; }
+  }
+  setTab(tab);
 }));
 
 window.addEventListener("online", syncNow);

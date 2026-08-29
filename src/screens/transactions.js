@@ -4,37 +4,128 @@ import { $, escapeHtml, refreshIcons, icon, fmtMoney, monthLabel, dateLabel } fr
 import { categoryDisplayName } from "../categories.js";
 import { availableYears, yearLabel, filteredTxList } from "../derived.js";
 import { groupedTxRowsHtml, wireTxRowActions } from "./tx-row.js";
-import { periodPickerHtml, wirePeriodPicker } from "./period-picker.js";
+import { pillPickerHtml, wirePillPicker } from "./period-picker.js";
 
 function defaultMonthNum() { return new Date().toISOString().slice(5, 7); }
 function defaultYear() { return String(new Date().getFullYear()); }
 function todayIso() { return new Date().toISOString().slice(0, 10); }
-// Type and date (period-picker) now live inside the Filters sheet, not
-// permanently visible -- only Search + the Filters button sit in the
-// always-visible toolbar row. Both still update chips/badge/list via
-// refreshFilteredResults() exactly like every other in-sheet facet.
+// Type and date now live inside the Filters sheet, not permanently
+// visible -- only Search + the Filters button sit in the always-visible
+// toolbar row. Date itself is two independently-rerendered pieces, both
+// driven by the same txPeriodMode/txFilterMonthNum/txFilterYear/
+// txFilterDateFrom/txFilterDateTo state (docs/specs/
+// transactions-period-picker-unification.md): the pill (renderTxPeriodPicker,
+// reusing Insights' shared pillPickerHtml/wirePillPicker -- "All time" and
+// "Today" as its two popover shortcuts, since Transactions is the first
+// pill caller that needs more than Insights' single "Today") and the
+// custom single-day/range section (renderTxCustomDateField, styled
+// identically to Insights' own Filters-sheet custom-date section). Each
+// re-renders the other after any change, since a pill action can clear
+// an active custom date's relevance (well, the reverse: picking a real
+// month/year leaves txPeriodMode no longer "custom", so the custom
+// field's own "Clear" button should stop showing) and a custom-date
+// commit hides the pill entirely, mirroring Insights' "why the picker
+// disappears" rule -- two controls can't both claim to represent the
+// active period without one of them lying.
 function renderTxPeriodPicker() {
+  const row = $("txPeriodPickerRow");
+  if (!row) return;
+  if (state.txPeriodMode === "custom") { row.innerHTML = ""; return; }
+  const l = L();
   const monthNum = state.txFilterMonthNum === "all" ? defaultMonthNum() : state.txFilterMonthNum;
   const year = state.txFilterYear === "all" ? defaultYear() : state.txFilterYear;
-  $("txPeriodPickerRow").innerHTML = periodPickerHtml("tx", ["all", "today", "month", "year", "custom"], state.txPeriodMode, monthNum, year, state.txFilterDateFrom, state.txFilterDateTo);
-  wirePeriodPicker("tx", {
-    onMode: (m) => {
-      state.txPeriodMode = m;
-      if (m === "all" || m === "today") { state.txFilterMonthNum = "all"; state.txFilterYear = "all"; }
-      else if (m === "year") { state.txFilterMonthNum = "all"; if (state.txFilterYear === "all") state.txFilterYear = defaultYear(); }
-      else if (m === "month") { if (state.txFilterMonthNum === "all") state.txFilterMonthNum = defaultMonthNum(); if (state.txFilterYear === "all") state.txFilterYear = defaultYear(); }
-      else if (m === "custom") { if (!state.txFilterDateFrom) state.txFilterDateFrom = todayIso(); if (!state.txFilterDateTo) state.txFilterDateTo = todayIso(); }
-      renderTxPeriodPicker();
-      refreshFilteredResults();
-    },
-    onValue: (v) => {
-      if (state.txPeriodMode === "month") { const [y, m] = v.split("-"); state.txFilterYear = y; state.txFilterMonthNum = m; }
-      else { state.txFilterYear = v; }
-      renderTxPeriodPicker();
-      refreshFilteredResults();
-    },
-    onRange: (from, to) => { state.txFilterDateFrom = from; state.txFilterDateTo = to; refreshFilteredResults(); }
+  const pillMode = state.txPeriodMode === "year" ? "year" : "month";
+  const activeShortcut = state.txPeriodMode === "all" || state.txPeriodMode === "today" ? state.txPeriodMode : null;
+  row.innerHTML = pillPickerHtml("tx", pillMode, monthNum, year, state.txPillPopoverOpen, activeShortcut, {
+    shortcuts: [{ key: "all", label: l.filterAll }, { key: "today", label: l.periodTodayLabel }]
   });
+  wirePillPicker("tx", {
+    onStep: (dir) => {
+      const wasYear = state.txPeriodMode === "year";
+      let m = Number(monthNum), y = Number(year);
+      if (wasYear) { y += dir; } else { m += dir; if (m > 12) { m = 1; y++; } else if (m < 1) { m = 12; y--; } }
+      state.txFilterMonthNum = String(m).padStart(2, "0"); state.txFilterYear = String(y);
+      state.txPeriodMode = wasYear ? "year" : "month";
+      renderTxPeriodPicker(); refreshFilteredResults();
+    },
+    onToggleOpen: () => { state.txPillPopoverOpen = !state.txPillPopoverOpen; renderTxPeriodPicker(); },
+    onYearStep: (dir) => {
+      const wasYear = state.txPeriodMode === "year";
+      state.txFilterYear = String(Number(year) + dir); state.txFilterMonthNum = monthNum;
+      state.txPeriodMode = wasYear ? "year" : "month";
+      renderTxPeriodPicker();
+    },
+    onPickWholeYear: () => { state.txFilterYear = year; state.txPeriodMode = "year"; state.txPillPopoverOpen = false; renderTxPeriodPicker(); refreshFilteredResults(); },
+    onPickMonth: (mm) => { state.txFilterMonthNum = mm; state.txFilterYear = year; state.txPeriodMode = "month"; state.txPillPopoverOpen = false; renderTxPeriodPicker(); refreshFilteredResults(); },
+    onPickShortcut: (key) => {
+      state.txPeriodMode = key;
+      if (key === "all" || key === "today") { state.txFilterMonthNum = "all"; state.txFilterYear = "all"; }
+      state.txPillPopoverOpen = false;
+      renderTxPeriodPicker(); refreshFilteredResults();
+    },
+    onClose: () => { state.txPillPopoverOpen = false; renderTxPeriodPicker(); }
+  });
+  refreshIcons();
+}
+// Custom date: single day / date range toggle, identical shape and i18n
+// strings to Insights' own Filters-sheet section (no new strings needed).
+// Picking "single day" writes the same value to both txFilterDateFrom/To
+// (state.txFilterDateFrom === state.txFilterDateTo), the same trick
+// Insights uses so filteredTxList() needed no new code path. Committing
+// either kind sets txPeriodMode = "custom" explicitly -- unlike Insights
+// (which has no "custom" mode at all, just an independent
+// hasCustomRange() check), Transactions' period is one single enum this
+// was always a member of, so entering a custom date is a mode change
+// like any other.
+function renderTxCustomDateField() {
+  const field = $("txCustomDateField");
+  if (!field) return;
+  const l = L();
+  const kind = state.txCustomKind;
+  const isActive = state.txPeriodMode === "custom";
+  field.innerHTML = `
+    <div class="filter-field-label"><span>${escapeHtml(l.customDateLabel)}</span>${isActive ? `<button type="button" id="txClearCustomBtn">${escapeHtml(l.clearBtn)}</button>` : ""}</div>
+    <div class="kind-toggle">
+      <button type="button" class="${kind === "single" ? "active" : ""}" data-tx-custom-kind="single">${escapeHtml(l.singleDayLabel)}</button>
+      <button type="button" class="${kind === "range" ? "active" : ""}" data-tx-custom-kind="range">${escapeHtml(l.dateRangeLabel)}</button>
+    </div>
+    ${kind === "single" ? `
+      <div class="input-wrap">${icon("calendar", 'style="color:var(--color-accent)"')}<input type="date" id="txSingleDate" value="${isActive && state.txFilterDateFrom === state.txFilterDateTo ? escapeHtml(state.txFilterDateFrom) : ""}"></div>
+      <div class="field-hint">${escapeHtml(l.singleDayHint)}</div>
+    ` : `
+      <div class="amount-range-row">
+        <input type="date" class="input" aria-label="${escapeHtml(l.dateFromLabel)}" id="txRangeFrom" value="${isActive ? escapeHtml(state.txFilterDateFrom) : ""}">
+        <span>–</span>
+        <input type="date" class="input" aria-label="${escapeHtml(l.dateToLabel)}" id="txRangeTo" value="${isActive ? escapeHtml(state.txFilterDateTo) : ""}">
+      </div>
+      <div class="field-hint">${escapeHtml(l.dateRangeHint)}</div>
+    `}
+  `;
+  document.querySelectorAll("[data-tx-custom-kind]").forEach((b) => b.addEventListener("click", () => {
+    state.txCustomKind = b.getAttribute("data-tx-custom-kind");
+    renderTxCustomDateField();
+  }));
+  const clearBtn = document.getElementById("txClearCustomBtn");
+  if (clearBtn) clearBtn.addEventListener("click", () => { resetPeriod(); renderTxCustomDateField(); renderTxPeriodPicker(); refreshFilteredResults(); });
+  const singleInput = document.getElementById("txSingleDate");
+  if (singleInput) singleInput.addEventListener("change", () => {
+    if (!singleInput.value) return;
+    state.txFilterDateFrom = singleInput.value; state.txFilterDateTo = singleInput.value; state.txPeriodMode = "custom";
+    renderTxCustomDateField(); renderTxPeriodPicker(); refreshFilteredResults();
+  });
+  const fromInput = document.getElementById("txRangeFrom");
+  const toInput = document.getElementById("txRangeTo");
+  if (fromInput && toInput) {
+    const apply = () => {
+      let from = fromInput.value, to = toInput.value;
+      if (!from || !to) return;
+      if (from > to) { const t = from; from = to; to = t; }
+      state.txFilterDateFrom = from; state.txFilterDateTo = to; state.txPeriodMode = "custom";
+      renderTxCustomDateField(); renderTxPeriodPicker(); refreshFilteredResults();
+    };
+    fromInput.addEventListener("change", apply);
+    toInput.addEventListener("change", apply);
+  }
 }
 function resetPeriod() {
   state.txPeriodMode = "all"; state.txFilterMonthNum = "all"; state.txFilterYear = "all";
@@ -49,6 +140,9 @@ function periodChipLabel() {
   }
   if (state.txPeriodMode === "year") return String(yearLabel(state.txFilterYear === "all" ? defaultYear() : state.txFilterYear));
   if (state.txPeriodMode === "custom") {
+    if (state.txCustomKind === "single" || state.txFilterDateFrom === state.txFilterDateTo) {
+      return state.txFilterDateFrom ? dateLabel(state.txFilterDateFrom) : "";
+    }
     const from = state.txFilterDateFrom ? dateLabel(state.txFilterDateFrom) : "";
     const to = state.txFilterDateTo ? dateLabel(state.txFilterDateTo) : "";
     return `${from} – ${to}`;
@@ -145,6 +239,7 @@ function filterSheetHtml() {
           <label>${escapeHtml(l.dateLabel)}</label>
           <div class="filter-row" id="txPeriodPickerRow" style="margin-bottom:0"></div>
         </div>
+        <div class="field" id="txCustomDateField"></div>
         <div class="field">
           <label>${escapeHtml(l.categoryLabel)}</label>
           <div class="filter-checkbox-list">${checkboxRows}</div>
@@ -222,6 +317,7 @@ export function renderTransactions() {
   renderActiveFilterChips();
   updateFiltersBtnBadge();
   renderTxPeriodPicker();
+  renderTxCustomDateField();
   wireFilterSheet();
   $("txSearchInput").addEventListener("input", (e) => { state.txSearch = e.target.value; renderTxListOnly(); });
   refreshIcons();

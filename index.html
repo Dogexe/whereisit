@@ -9,7 +9,7 @@
      particularly once installed standalone (manifest.json's
      display:"standalone"), which draws edge-to-edge under the safe area. -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>รายรับ-รายจ่าย</title>
+<title>whereisit</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -51,7 +51,7 @@
       <span class="sidebar-title" data-l="appTitle"></span>
     </div>
     <button type="button" class="nav-btn" data-tab="home">
-      <svg class="icon" aria-hidden="true"><use href="./icons/sprite.svg#layout-grid"></use></svg>
+      <svg class="icon" aria-hidden="true"><use href="./icons/sprite.svg#home"></use></svg>
       <span data-l="tabHome"></span>
     </button>
     <button type="button" class="nav-btn" data-tab="transactions">
@@ -86,10 +86,17 @@
 
   <div class="toast" id="toast" hidden></div>
 
+  <!-- Mobile-only Add/Edit bottom sheet (docs/specs/
+       add-transaction-bottom-sheet.md). Not owned by any one screen --
+       populated by screens/add.js's renderAddSheet(), independent of
+       #screen's per-tab full-replace renders, so it can be opened from
+       Home/Transactions/Insights/Settings alike. Empty until opened. -->
+  <div id="addSheetContainer"></div>
+
   <div class="tabbar-wrap">
     <nav class="tabbar" id="tabbar">
       <button type="button" class="nav-btn" data-tab="home">
-        <svg class="icon" aria-hidden="true"><use href="./icons/sprite.svg#layout-grid"></use></svg>
+        <svg class="icon" aria-hidden="true"><use href="./icons/sprite.svg#home"></use></svg>
         <span data-l="tabHome"></span>
       </button>
       <button type="button" class="nav-btn" data-tab="transactions">
