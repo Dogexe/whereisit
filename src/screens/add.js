@@ -75,7 +75,7 @@ export function renderAdd() {
       </div>
       <div class="field">
         <label for="txAmount">${escapeHtml(l.amountLabel)}</label>
-        <div class="input-wrap"><span class="prefix">฿</span><input type="number" id="txAmount" min="0" step="0.01" placeholder="0.00" required></div>
+        <div class="input-wrap"><span class="prefix">฿</span><input type="number" id="txAmount" step="0.01" placeholder="0.00"></div>
       </div>
       <div class="field">
         <label for="txNote">${escapeHtml(l.noteLabel)}</label>
@@ -107,6 +107,10 @@ export function renderAdd() {
   $("txDateNative").addEventListener("change", function () {
     if (this.value) { state.formDate = this.value; $("txDateText").value = dateLabel(this.value); }
   });
+  $("txAmount").addEventListener("input", function () {
+    this.closest(".input-wrap").classList.remove("has-error");
+    this.removeAttribute("aria-invalid");
+  });
   $("txNote").addEventListener("input", function () {
     if (state.categoryManual) return;
     const guess = guessCategory(this.value, state.formType);
@@ -117,7 +121,12 @@ export function renderAdd() {
     e.preventDefault();
     const date = state.formDate;
     const amount = parseFloat($("txAmount").value);
-    if (!date || !amount || amount <= 0) { showToast(L().toastInvalidAmount); return; }
+    if (!date || !amount || amount <= 0) {
+      $("txAmount").closest(".input-wrap").classList.add("has-error");
+      $("txAmount").setAttribute("aria-invalid", "true");
+      showToast(L().toastInvalidAmount);
+      return;
+    }
     const note = $("txNote").value.trim();
     const category = $("txCategory").value;
     let savedTx = null;
