@@ -41,29 +41,70 @@
 <body>
 <div class="app">
 
+  <!-- Desktop-only (>=1024px, see styles.css) persistent left nav; hidden
+       below that breakpoint where .tabbar-wrap is used instead. Buttons
+       share the .nav-btn class with #tabbar's so router.js/main.js wire
+       both identically without duplicating click/active-state logic. -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <img src="./icons/icon-192.png" alt="" class="sidebar-logo">
+      <span class="sidebar-title" data-l="appTitle"></span>
+    </div>
+    <button type="button" class="nav-btn" data-tab="home">
+      <svg class="icon" aria-hidden="true"><use href="./icons/sprite.svg#layout-grid"></use></svg>
+      <span data-l="tabHome"></span>
+    </button>
+    <button type="button" class="nav-btn" data-tab="transactions">
+      <svg class="icon" aria-hidden="true"><use href="./icons/sprite.svg#list"></use></svg>
+      <span data-l="tabTx"></span>
+    </button>
+    <button type="button" class="nav-btn" data-tab="add">
+      <svg class="icon" aria-hidden="true"><use href="./icons/sprite.svg#plus-circle"></use></svg>
+      <span data-l="tabAdd"></span>
+    </button>
+    <button type="button" class="nav-btn" data-tab="insights">
+      <svg class="icon" aria-hidden="true"><use href="./icons/sprite.svg#pie-chart"></use></svg>
+      <span data-l="tabInsights"></span>
+    </button>
+    <button type="button" class="nav-btn" data-tab="settings">
+      <svg class="icon" aria-hidden="true"><use href="./icons/sprite.svg#settings"></use></svg>
+      <span data-l="tabSettings"></span>
+    </button>
+    <!-- Account status only (not a nav target -- Settings' own profile row
+         already owns sign-in/sign-out); text is filled in by
+         screens/router.js's renderChrome(), which already re-runs on every
+         auth-state change, language switch, and navigation. -->
+    <div class="sidebar-footer">
+      <span class="sidebar-account-avatar">
+        <svg class="icon" aria-hidden="true"><use href="./icons/sprite.svg#user"></use></svg>
+      </span>
+      <span class="sidebar-account-name" id="sidebarAccountName"></span>
+    </div>
+  </nav>
+
   <main class="screen" id="screen"></main>
 
   <div class="toast" id="toast" hidden></div>
 
   <div class="tabbar-wrap">
     <nav class="tabbar" id="tabbar">
-      <button type="button" data-tab="home">
+      <button type="button" class="nav-btn" data-tab="home">
         <svg class="icon" aria-hidden="true"><use href="./icons/sprite.svg#layout-grid"></use></svg>
         <span data-l="tabHome"></span>
       </button>
-      <button type="button" data-tab="transactions">
+      <button type="button" class="nav-btn" data-tab="transactions">
         <svg class="icon" aria-hidden="true"><use href="./icons/sprite.svg#list"></use></svg>
         <span data-l="tabTx"></span>
       </button>
-      <button type="button" data-tab="add">
+      <button type="button" class="nav-btn" data-tab="add">
         <svg class="icon" aria-hidden="true"><use href="./icons/sprite.svg#plus-circle"></use></svg>
         <span data-l="tabAdd"></span>
       </button>
-      <button type="button" data-tab="insights">
+      <button type="button" class="nav-btn" data-tab="insights">
         <svg class="icon" aria-hidden="true"><use href="./icons/sprite.svg#pie-chart"></use></svg>
         <span data-l="tabInsights"></span>
       </button>
-      <button type="button" data-tab="settings">
+      <button type="button" class="nav-btn" data-tab="settings">
         <svg class="icon" aria-hidden="true"><use href="./icons/sprite.svg#settings"></use></svg>
         <span data-l="tabSettings"></span>
       </button>

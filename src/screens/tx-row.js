@@ -1,5 +1,5 @@
 import { iconFor, rowTone, categoryDisplayName } from "../categories.js";
-import { iconAvatar, escapeHtml, fmtMoney, EDIT_ICON, DELETE_ICON } from "../utils.js";
+import { iconAvatar, escapeHtml, fmtMoney, dateLabel, EDIT_ICON, DELETE_ICON } from "../utils.js";
 import { groupByDate, resolveCategoryId } from "../derived.js";
 import { categories } from "../state.js";
 import { editTx, deleteTx } from "./add.js";
@@ -25,6 +25,7 @@ export function txRowHtml(t) {
   const iconName = cat ? cat.icon : iconFor(t.category);
   return `
     <div class="tx-row-wrap" data-id="${t.id}">
+      <div class="tx-date-cell">${escapeHtml(dateLabel(t.date))}</div>
       <div class="tx-row-inner">
         <div class="tx-lead">
           ${iconAvatar(iconName, tone.bg, tone.color)}

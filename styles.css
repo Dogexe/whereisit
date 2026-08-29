@@ -260,6 +260,14 @@
   .tx-trail-group.dragging { transition: none; }
   .tx-trail { display: flex; align-items: center; flex-shrink: 0; padding: 12px 0 12px 8px; cursor: grab; }
   .tx-row-actions { display: flex; align-items: center; flex-shrink: 0; gap: 4px; padding: 12px 12px; }
+  /* Per-row date column + table header row -- both exist in markup at
+     every width (tx-row.js always renders .tx-date-cell; transactions.js
+     always renders .tx-table-head) but stay hidden except in the
+     Transactions screen's own desktop table mode (.tx-list-card, see the
+     1024px breakpoint below) -- the mobile swipe-to-reveal row, and every
+     other consumer of txRowHtml (Home's recent-activity list), never sees
+     either at any width. */
+  .tx-date-cell, .tx-table-head { display: none; }
   .empty-note { padding: 36px 0; text-align: center; color: var(--color-muted); font-size: 13px; }
   /* Distinguishes "your search/filter found nothing" (this) from the
      app's other, plain .empty-note first-use states ("you haven't added
@@ -334,12 +342,24 @@
   .date-native-overlay { position: absolute; right: 0; top: 0; width: 40px; height: 100%; opacity: 0; cursor: pointer; border: none; padding: 0; margin: 0; }
 
   /* — insights — */
+  /* Wraps the tab-switch + period-picker so the two can become one compact
+     row at 880px+ (see that breakpoint below) without disturbing either
+     element's own markup/behavior -- on mobile this is just a plain block
+     wrapper; the tabs/picker keep the exact margin-bottom values they used
+     to set inline (14px, 18px) so mobile spacing is unchanged byte-for-byte. */
+  .insights-toolbar .tabs.block { margin-bottom: 14px; }
+  .insights-toolbar #insightsPeriodPickerRow { margin-bottom: 18px; }
   .insight-cards { display: flex; flex-direction: column; gap: 14px; padding-bottom: 16px; }
   .insight-card { padding: 16px; }
   .insight-card .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px; }
   .insight-card .head .cat { font-weight: 600; font-size: 14px; }
   .insight-card .foot { display: flex; justify-content: space-between; font-size: 12px; color: var(--color-muted); margin-top: 8px; }
 
+  /* Was an inline style; now a class so the desktop breakpoint below can
+     enlarge the chart itself (the svg has explicit width/height attributes
+     that CSS width/height override, scaling proportionally via its
+     viewBox) without touching derived.js's pieChartSvg(). */
+  .breakdown-chart { display: flex; justify-content: center; margin-bottom: 16px; }
   .breakdown-row { margin-bottom: 14px; }
   .breakdown-row:last-child { margin-bottom: 0; }
   .breakdown-row .row1 { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
@@ -358,6 +378,14 @@
 
   /* — settings — */
   .settings-block { display: flex; flex-direction: column; gap: 22px; padding-bottom: 24px; max-width: 480px; }
+  /* .settings-layout/.settings-nav/.settings-panels only matter at 1024px+
+     (see that breakpoint below, which turns them into a list-left/
+     detail-right pattern) -- below it .settings-nav stays hidden and
+     .settings-panels reproduces the exact 22px gap the Display/Sync/Manage
+     blocks used to get for free as direct children of .settings-block,
+     before this wrapper existed, so mobile spacing is unchanged. */
+  .settings-nav { display: none; }
+  .settings-panels { display: flex; flex-direction: column; gap: 22px; }
   .settings-section-label { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-tertiary); margin-bottom: 8px; }
   .profile-row { display: flex; align-items: center; gap: 14px; }
   .avatar { width: 52px; height: 52px; border-radius: 50%; background: var(--color-surface); display: flex; align-items: center; justify-content: center; font-weight: 700; font-family: var(--font-sans); font-size: 18px; color: var(--color-tertiary); flex-shrink: 0; object-fit: cover; }
@@ -473,6 +501,58 @@
     margin-top: -20px;
   }
 
+  /* — desktop sidebar (>=1024px, see the breakpoint below) —
+     Hidden by default; only shown once the 1024px breakpoint flips .app to
+     a row layout and hides .tabbar-wrap. Uses .nav-btn (shared with
+     .tabbar's buttons) for router.js/main.js to wire active-state/clicks
+     identically -- only one of the two navs is ever visible at a time.
+     height:100vh (not "however tall .screen's content happens to be", the
+     original approach) is what makes .sidebar-footer's margin-top:auto
+     actually pin it to the bottom of the *viewport* -- with a shorter,
+     content-sized sidebar, "the bottom" could be anywhere on a tall
+     Transactions/Insights page, defeating the point of an at-a-glance
+     footer. position:sticky;top:0 on a box already exactly viewport-tall
+     behaves like position:fixed for this single-instance case, but without
+     needing to take the element out of the row's normal flow. */
+  .sidebar {
+    display: none; flex-direction: column; gap: 2px;
+    width: 248px; flex-shrink: 0; height: 100vh;
+    position: sticky; top: 0;
+    background: var(--color-card); border-right: 1px solid var(--color-border);
+    padding: 20px 12px; box-sizing: border-box;
+  }
+  .sidebar-header { display: flex; align-items: center; gap: 10px; padding: 4px 10px 18px; }
+  .sidebar-logo { width: 28px; height: 28px; border-radius: var(--radius-sm); flex-shrink: 0; }
+  .sidebar-title { font-weight: 800; font-size: 15px; letter-spacing: -0.01em; color: var(--color-text); }
+  .sidebar .nav-btn {
+    display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 12px;
+    width: 100%; padding: 10px 12px; border-radius: var(--radius-md);
+    background: none; border: none; cursor: pointer; color: var(--color-tabbar-inactive);
+    font-family: var(--font-sans); text-align: left;
+    transition: color var(--duration-fast) var(--ease-standard), background var(--duration-fast) var(--ease-standard);
+  }
+  .sidebar .nav-btn .icon { width: 20px; height: 20px; }
+  .sidebar .nav-btn span { font-size: 14px; font-weight: 600; }
+  .sidebar .nav-btn:hover { background: var(--color-surface); }
+  .sidebar .nav-btn.active { color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 12%, transparent); }
+  .sidebar .nav-btn.active span { font-weight: 700; }
+  /* Pushed to the bottom of the sidebar's own flex column via margin-top:
+     auto -- status only, not a nav target (Settings' own profile row
+     already owns sign-in/out), so it's a plain div, not a .nav-btn. */
+  .sidebar-footer {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: auto; padding: 12px 12px 4px; border-top: 1px solid var(--color-divider);
+  }
+  .sidebar-account-avatar {
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    width: 28px; height: 28px; border-radius: 50%; background: var(--color-surface); color: var(--color-tertiary);
+  }
+  .sidebar-account-avatar .icon { width: 15px; height: 15px; }
+  .sidebar-account-name {
+    font-size: 13px; font-weight: 600; color: var(--color-muted);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+  }
+
   .toast {
     /* Same 18px gap above the tab bar as before (82px was 64px + 18px),
        now tracking --tabbar-h and the real safe-area inset instead of a
@@ -506,19 +586,144 @@
      of shrinking to fit, a classic CSS Grid "blowout". minmax(0, Nfr)
      caps each track's minimum at 0 so the fr distribution actually holds. */
   @media (min-width: 880px) {
-    /* Home/Insights actually use the extra width via their own internal
-       grids (.home-columns/.insight-cards/.breakdown-columns below); every
-       other screen (Add/Transactions/Settings) stays a comfortable
-       centered column instead of stretching into a narrow strip against a
-       big gray field -- the previous unconditional 1120px cap here did
-       exactly that. .screen-wide is toggled by router.js's renderChrome()
-       based on state.tab, alongside the calmer surrounding background
-       already established by the 560px breakpoint above (.app surface /
-       .screen card), which keeps applying since it's untouched here. */
+    /* Home/Insights/Transactions actually use the extra width via their own
+       internal grids (.home-columns/.insight-cards/.breakdown-columns below,
+       plus Transactions' desktop table at 1024px further down); Add and
+       Settings stay a comfortable centered column instead of stretching
+       into a narrow strip against a big gray field -- the previous
+       unconditional 1120px cap here did exactly that. .screen-wide is
+       toggled by router.js's renderChrome() based on state.tab, alongside
+       the calmer surrounding background already established by the 560px
+       breakpoint above (.app surface / .screen card), which keeps applying
+       since it's untouched here. */
     .screen { max-width: 640px; }
     .screen.screen-wide { max-width: 1120px; }
     .home-columns { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 32px; align-items: start; }
     .home-columns .hero-card { margin-top: 0; }
+    /* Insights: tab-switch + period-picker become one compact row instead
+       of two stacked full-width ones -- reuses this screen's own existing
+       880px breakpoint (rather than the newer 1024px sidebar one) since
+       it's the same moment .insight-cards/.breakdown-columns below already
+       go multi-column; keeping the toolbar stacked past that point while
+       the cards below it go wide would look inconsistent. */
+    .insights-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+    .insights-toolbar .tabs.block { width: auto; margin-bottom: 0; }
+    .insights-toolbar #insightsPeriodPickerRow { margin-bottom: 0; }
     .breakdown-columns { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 32px; align-items: start; }
     .insight-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  }
+
+  /* — desktop shell: persistent left sidebar replaces the bottom tab bar —
+     Everything below 1024px stays exactly as above (tabbar-wrap fixed to
+     the bottom, .app column layout) -- this block only adds overrides, it
+     never touches an already-set property outside this query. .screen's
+     own flex:1 + max-width + margin:0 auto combo (set above) already
+     centers it within whatever space it's given -- that didn't need to
+     change: flex-basis:0 (from flex:1) governs the *main* axis, which
+     becomes horizontal once .app switches to row below, so .screen fills
+     the remaining width beside the sidebar and its max-width/auto-margins
+     center it in that space exactly the way they already centered it in
+     the full viewport width before. */
+  @media (min-width: 1024px) {
+    .tabbar-wrap { display: none; }
+    .sidebar { display: flex; }
+    .app { flex-direction: row; }
+    /* No fixed bottom bar in this mode -- the --tabbar-h + safe-area
+       contribution to .screen's bottom padding and .toast's bottom offset
+       (set above, for the mobile fixed tab bar) is now dead space with
+       nothing to clear. */
+    .screen { padding-bottom: 20px; }
+    .toast { bottom: 24px; }
+
+    /* — Insights: take further advantage of the space beside the sidebar,
+       building on (not replacing) the 880px rules above -- 3 budget cards
+       per row instead of 2, and a bigger pie chart since the breakdown
+       list next to it has room to spare at this width. */
+    .insight-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .breakdown-chart svg { width: 180px; height: 180px; }
+
+    /* — Transactions: dense table-like rows instead of the mobile stacked
+       swipe-reveal card — scoped to .tx-list-card (transactions.js's own
+       wrapper) so Home's recent-activity list, which reuses the exact same
+       txRowHtml/.tx-row-wrap markup, is completely unaffected at any width.
+       Each row is its own single-row grid rather than one big table grid,
+       matching the header's grid-template-columns exactly so columns line
+       up -- .tx-row-inner and .tx-trail-group (both otherwise-meaningful
+       wrappers for the mobile flex/width-animation layout) are collapsed
+       with display:contents so their children (.tx-lead, .tx-trail,
+       .tx-row-actions) become direct grid items alongside .tx-date-cell,
+       with no DOM or JS changes needed. */
+    .tx-list-card .tx-table-head {
+      display: grid; grid-template-columns: 100px 1fr 110px 84px; column-gap: 12px;
+      padding: 10px 4px 8px; font-size: 12px; font-weight: 700; color: var(--color-muted);
+      text-transform: uppercase; letter-spacing: 0.02em; border-bottom: 1px solid var(--color-divider);
+    }
+    .tx-list-card .tx-table-head span:nth-child(3) { text-align: right; }
+    .tx-list-card .tx-date-group { display: none; }
+    .tx-list-card .tx-date-cell { display: block; align-self: center; padding: 12px 4px; font-size: 13px; color: var(--color-muted); }
+    .tx-list-card .tx-row-wrap {
+      display: grid; grid-template-columns: 100px 1fr 110px 84px; column-gap: 12px;
+      overflow: visible;
+    }
+    .tx-list-card .tx-row-inner, .tx-list-card .tx-trail-group { display: contents; }
+    /* Actions are always visible as their own column here, not gated
+       behind the mobile hover/swipe reveal -- .tx-trail-group's inline
+       width (set by tx-row.js's wireTxRowActions/openRowTo/closeRow) has
+       no effect once it's display:contents (it no longer has a box for a
+       width to apply to), so that JS keeps running harmlessly rather than
+       needing a desktop-specific branch. */
+    .tx-list-card .tx-trail { justify-content: flex-end; padding: 12px 0; cursor: default; }
+    .tx-list-card .tx-row-actions { justify-content: center; padding: 12px 8px; }
+
+    /* — Settings: list-left/detail-right instead of one long stacked page —
+       .settings-block's own 480px cap (meant for a single narrow mobile
+       column) is lifted so the nav + panel combination has room; router.js
+       gives Settings .screen-wide at this width for the same reason
+       Transactions did (see that comment). Only one of the three
+       [data-settings-panel] blocks is shown at a time, selected by
+       .settings-layout's own data-active attribute (kept in sync with
+       state.settingsActiveSection -- see settings.js) rather than a full
+       re-render, so switching sections never disturbs an open inline form
+       elsewhere on the page. */
+    .settings-block { max-width: 100%; }
+    .settings-layout { display: flex; align-items: flex-start; gap: 32px; }
+    .settings-nav { display: flex; flex-direction: column; gap: 2px; width: 220px; flex-shrink: 0; }
+    .settings-nav-item {
+      display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; border-radius: var(--radius-md);
+      background: none; border: none; cursor: pointer; color: var(--color-text); font-family: var(--font-sans); text-align: left;
+    }
+    .settings-nav-item span { font-size: 14px; font-weight: 500; }
+    .settings-nav-item:hover { background: var(--color-surface); }
+    .settings-nav-item:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+    .settings-nav-item.active { background: color-mix(in srgb, var(--color-accent) 12%, transparent); }
+    .settings-nav-item.active span { color: var(--color-accent); font-weight: 700; }
+    .settings-panels { flex: 1; min-width: 0; }
+    .settings-panels [data-settings-panel] { display: none; }
+    .settings-layout[data-active="display"] [data-settings-panel="display"] { display: block; }
+    .settings-layout[data-active="sync"] [data-settings-panel="sync"] { display: block; }
+    .settings-layout[data-active="budgets"] [data-settings-panel="manage"],
+    .settings-layout[data-active="bills"] [data-settings-panel="manage"],
+    .settings-layout[data-active="goals"] [data-settings-panel="manage"],
+    .settings-layout[data-active="categories"] [data-settings-panel="manage"] { display: block; }
+    /* Within the shared Manage panel, only the .settings-group matching the
+       active section shows -- its own label is redundant with the nav
+       item's, so it's hidden here rather than kept in sync on every click. */
+    [data-settings-panel="manage"] > .settings-section-label { display: none; }
+    [data-settings-panel="manage"] .settings-group { display: none; }
+    .settings-layout[data-active="budgets"] .settings-group[data-group="budgets"],
+    .settings-layout[data-active="bills"] .settings-group[data-group="bills"],
+    .settings-layout[data-active="goals"] .settings-group[data-group="goals"],
+    .settings-layout[data-active="categories"] .settings-group[data-group="categories"] { display: block; }
+    /* The left nav now owns section selection, so the <details> disclosure
+       interaction (built for the mobile accordion) is neutralized here --
+       its summary becomes a static in-panel header (icon+name+count)
+       rather than a click target. The body's own visibility is NOT forced
+       via CSS here (a closed <details> doesn't render non-summary content
+       at all, regardless of a display override -- that's part of how the
+       browser implements the element, not something author CSS can
+       override) -- settings.js's nav click handler sets that group's real
+       .open property to true instead, which is what actually makes it
+       render. */
+    [data-settings-panel="manage"] .settings-group summary { cursor: default; pointer-events: none; }
+    [data-settings-panel="manage"] .settings-group summary > .icon:last-child { display: none; }
   }

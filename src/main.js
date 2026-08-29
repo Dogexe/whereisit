@@ -57,12 +57,15 @@ refreshIcons();
 if (billIdFromNotification) {
   state.tab = "settings";
   state.settingsGroupOpen.bills = true;
+  state.settingsActiveSection = "bills";
   if (bills.some((b) => b.id === billIdFromNotification)) state.billEditId = billIdFromNotification;
   renderScreen();
   window.history.replaceState(null, "", window.location.pathname);
 }
 
-document.querySelectorAll("#tabbar button").forEach((btn) => btn.addEventListener("click", () => {
+// .nav-btn covers both #tabbar's (mobile) and #sidebar's (desktop) buttons
+// -- wired identically since only one of the two is ever visible at a time.
+document.querySelectorAll(".nav-btn").forEach((btn) => btn.addEventListener("click", () => {
   if (btn.getAttribute("data-tab") === "add") resetForm();
   setTab(btn.getAttribute("data-tab"));
 }));

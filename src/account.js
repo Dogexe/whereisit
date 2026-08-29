@@ -31,3 +31,15 @@ export function setStoredUserId(id) {
   } catch (e) { /* best-effort: worst case the next sign-in's mismatch
     check is skipped once, not data loss */ }
 }
+
+// Shared by Settings' profile row and the sidebar footer (screens/router.js)
+// so both render the exact same name for the exact same signed-in user,
+// rather than each re-deriving Supabase's user_metadata shape independently.
+// Pure and parameterized (no import of sync.js's currentUser) for the same
+// testability reason the rest of this module stays a plain leaf -- callers
+// pass their own currentUser/label in.
+export function accountDisplayName(currentUser, notSignedInLabel) {
+  if (!currentUser) return notSignedInLabel;
+  const meta = currentUser.user_metadata || {};
+  return meta.full_name || meta.name || currentUser.email || "";
+}

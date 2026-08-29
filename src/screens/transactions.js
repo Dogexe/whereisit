@@ -207,7 +207,15 @@ export function renderTransactions() {
       </button>
     </div>
     <div class="active-filter-chips" id="txActiveChips"></div>
-    <div class="list-card" id="txListContainer"></div>
+    <div class="list-card tx-list-card">
+      <div class="tx-table-head" aria-hidden="true">
+        <span>${escapeHtml(l.dateLabel)}</span>
+        <span>${escapeHtml(l.categoryLabel)}</span>
+        <span>${escapeHtml(l.amountLabel)}</span>
+        <span></span>
+      </div>
+      <div id="txListContainer"></div>
+    </div>
     ${filterSheetHtml()}
   `;
   renderTxListOnly();

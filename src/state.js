@@ -11,7 +11,13 @@ export const state = {
   formType: "expense", formDate: new Date().toISOString().slice(0, 10),
   formCategoryId: (DEFAULT_CATEGORIES.find((c) => c.type === "expense") || {}).id || null, editingId: null, categoryManual: false,
   budgetEditId: null, billEditId: null, goalEditId: null, goalContributeId: null, categoryEditId: null,
-  settingsGroupOpen: { budgets: false, bills: false, goals: false, categories: false }
+  settingsGroupOpen: { budgets: false, bills: false, goals: false, categories: false },
+  // Which section is shown in the right-hand panel of Settings' desktop
+  // (1024px+) list-left/detail-right layout -- see styles.css's 1024px
+  // block. Purely a UI-state field, same as settingsGroupOpen (not
+  // persisted to localStorage); has no effect below 1024px, where every
+  // section still just stacks on one page as before.
+  settingsActiveSection: "display"
 };
 export let transactions = [];
 export let budgets = [

@@ -5,6 +5,7 @@ import {
   EDIT_ICON, DELETE_ICON, PLUS_ICON
 } from "../utils.js";
 import { CATEGORY_ICON_CHOICES, GOAL_TONES, GOAL_ICONS, iconFor, rowTone, categoryDisplayName } from "../categories.js";
+import { accountDisplayName } from "../account.js";
 import { daysUntilBillDue, dueSoonLabel, resolveCategoryId } from "../derived.js";
 import { saveSettings } from "../storage.js";
 import { applyTheme } from "../theme.js";
@@ -421,7 +422,7 @@ export function renderSettings() {
   const l = L();
   const meta = currentUser ? (currentUser.user_metadata || {}) : {};
   const avatarUrl = meta.avatar_url || meta.picture || "";
-  const name = currentUser ? (meta.full_name || meta.name || currentUser.email || "") : l.notSignedIn;
+  const name = accountDisplayName(currentUser, l.notSignedIn);
 
   $("screen").innerHTML = `
     <h2 class="screen-title" style="margin-bottom:22px">${escapeHtml(l.settingsTitle)}</h2>
@@ -436,7 +437,18 @@ export function renderSettings() {
         <button type="button" class="btn btn-secondary btn-sm" id="authBtn">${escapeHtml(currentUser ? l.signOutBtn : l.signInGoogle)}</button>
       </div>
 
-      <div>
+      <div class="settings-layout" data-active="${state.settingsActiveSection}">
+        <nav class="settings-nav" aria-label="${escapeHtml(l.settingsTitle)}">
+          <button type="button" class="settings-nav-item${state.settingsActiveSection === "display" ? " active" : ""}" data-settings-section="display">${iconAvatar("languages", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}<span>${escapeHtml(l.displaySection)}</span></button>
+          <button type="button" class="settings-nav-item${state.settingsActiveSection === "sync" ? " active" : ""}" data-settings-section="sync">${iconAvatar("cloud", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}<span>${escapeHtml(l.syncSection)}</span></button>
+          <button type="button" class="settings-nav-item${state.settingsActiveSection === "budgets" ? " active" : ""}" data-settings-section="budgets">${iconAvatar("wallet", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}<span>${escapeHtml(l.budgetsSection)}</span></button>
+          <button type="button" class="settings-nav-item${state.settingsActiveSection === "bills" ? " active" : ""}" data-settings-section="bills">${iconAvatar("receipt", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}<span>${escapeHtml(l.billsSection)}</span></button>
+          <button type="button" class="settings-nav-item${state.settingsActiveSection === "goals" ? " active" : ""}" data-settings-section="goals">${iconAvatar("target", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}<span>${escapeHtml(l.goalsSection)}</span></button>
+          <button type="button" class="settings-nav-item${state.settingsActiveSection === "categories" ? " active" : ""}" data-settings-section="categories">${iconAvatar("layout-grid", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}<span>${escapeHtml(l.categoriesSection)}</span></button>
+        </nav>
+        <div class="settings-panels">
+
+      <div data-settings-panel="display">
         <div class="settings-section-label">${escapeHtml(l.displaySection)}</div>
         <div class="list-card">
           <div class="toggle-row">
@@ -455,7 +467,7 @@ export function renderSettings() {
         </div>
       </div>
 
-      <div>
+      <div data-settings-panel="sync">
         <div class="settings-section-label">${escapeHtml(l.syncSection)}</div>
         <div class="list-card">
           <div class="toggle-row">
@@ -486,7 +498,7 @@ export function renderSettings() {
         </div>
       </div>
 
-      <div>
+      <div data-settings-panel="manage">
         <div class="settings-section-label">${escapeHtml(l.manageSection)}</div>
         <div class="list-card">
           <details class="settings-group" data-group="budgets" ${state.settingsGroupOpen.budgets ? "open" : ""}>
@@ -554,11 +566,35 @@ export function renderSettings() {
         </div>
       </div>
 
+        </div>
+      </div>
+
       <p class="footer-note">${escapeHtml(l.footerNote)}</p>
       <p class="footer-note"><a href="./privacy.html" target="_blank" rel="noopener">${escapeHtml(l.privacyPolicyLink)}</a></p>
     </div>
   `;
 
+  // Desktop-only list-left/detail-right nav (styles.css's 1024px block) --
+  // no effect below that breakpoint, where .settings-nav stays hidden and
+  // every panel just stacks as before. Pure DOM/class toggling rather than
+  // a full re-render, so switching sections never disturbs an open
+  // inline form elsewhere on the page.
+  const settingsLayout = document.querySelector(".settings-layout");
+  document.querySelectorAll(".settings-nav-item").forEach((btn) => btn.addEventListener("click", () => {
+    const section = btn.getAttribute("data-settings-section");
+    state.settingsActiveSection = section;
+    settingsLayout.setAttribute("data-active", section);
+    document.querySelectorAll(".settings-nav-item").forEach((b) => b.classList.toggle("active", b === btn));
+    // A closed <details> doesn't render its non-summary content at all --
+    // not something a CSS display override can undo, it's part of how the
+    // browser implements the element -- so the manage sub-sections need to
+    // be genuinely open to show anything here. This only ever sets .open
+    // to true (never false), and only via the live DOM property, so it
+    // can't disturb state.settingsGroupOpen (the mobile accordion's own
+    // persisted state) or the template's own `open` attribute output.
+    const group = document.querySelector(`.settings-group[data-group="${section}"]`);
+    if (group) group.open = true;
+  }));
   $("authBtn").addEventListener("click", () => { currentUser ? signOutUser() : signInWithGoogle(); });
   document.querySelectorAll('input[name="lang-switch"]').forEach((r) => r.addEventListener("change", (e) => { state.lang = e.target.value; saveSettings(); renderChrome(); renderScreen(); }));
   $("darkSwitch").addEventListener("click", () => { state.dark = !state.dark; saveSettings(); applyTheme(); renderScreen(); });

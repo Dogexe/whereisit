@@ -57,12 +57,14 @@ export function renderInsights() {
   if (!years.includes(state.insightsYear)) state.insightsYear = String(new Date().getFullYear());
   $("screen").innerHTML = `
     <h2 class="screen-title" style="margin-bottom:12px">${escapeHtml(l.financialOverview)}</h2>
-    <div class="tabs block" role="radiogroup" style="margin-bottom:14px">
-      <label class="tab-opt"><input type="radio" name="insights-tab" value="budgets" ${state.insightsTab === "budgets" ? "checked" : ""}>${escapeHtml(l.budgetsTab)}</label>
-      <label class="tab-opt"><input type="radio" name="insights-tab" value="breakdown" ${state.insightsTab === "breakdown" ? "checked" : ""}>${escapeHtml(l.categoryTab)}</label>
-      <label class="tab-opt"><input type="radio" name="insights-tab" value="trend" ${state.insightsTab === "trend" ? "checked" : ""}>${escapeHtml(l.trendTab)}</label>
+    <div class="insights-toolbar">
+      <div class="tabs block" role="radiogroup">
+        <label class="tab-opt"><input type="radio" name="insights-tab" value="budgets" ${state.insightsTab === "budgets" ? "checked" : ""}>${escapeHtml(l.budgetsTab)}</label>
+        <label class="tab-opt"><input type="radio" name="insights-tab" value="breakdown" ${state.insightsTab === "breakdown" ? "checked" : ""}>${escapeHtml(l.categoryTab)}</label>
+        <label class="tab-opt"><input type="radio" name="insights-tab" value="trend" ${state.insightsTab === "trend" ? "checked" : ""}>${escapeHtml(l.trendTab)}</label>
+      </div>
+      <div class="filter-row" id="insightsPeriodPickerRow" style="${state.insightsTab === "trend" ? "display:none" : ""}"></div>
     </div>
-    <div class="filter-row" id="insightsPeriodPickerRow" style="${state.insightsTab === "trend" ? "display:none" : ""};margin-bottom:18px"></div>
     <div id="insightsBody"></div>
   `;
   renderInsightsPeriodPicker();
@@ -160,6 +162,7 @@ export function renderInsightsBody() {
       // just the Manage section -- same effect as expanding the Budgets
       // group there and clicking "+ Add budget" by hand.
       state.settingsGroupOpen.budgets = true;
+      state.settingsActiveSection = "budgets";
       state.budgetEditId = "new";
       setTab("settings");
     });
@@ -181,7 +184,7 @@ export function renderInsightsBody() {
       <div style="font-size:12px;color:var(--color-muted);margin-bottom:14px">${escapeHtml(l.expenseByCategory)} — ${escapeHtml(periodLbl)}</div>
       ${rows.length ? `
       <div class="breakdown-columns">
-        <div style="display:flex;justify-content:center;margin-bottom:16px">${pieChartSvg(rows)}</div>
+        <div class="breakdown-chart">${pieChartSvg(rows)}</div>
         <div class="card" style="padding:16px">${listHtml}</div>
       </div>` : listHtml}
       ${insightsFilterSheetHtml()}
