@@ -1,6 +1,6 @@
 import { L } from "../i18n.js";
 import { state, transactions } from "../state.js";
-import { $, escapeHtml, optionsHtml, refreshIcons } from "../utils.js";
+import { $, escapeHtml, optionsHtml, refreshIcons, icon } from "../utils.js";
 import { CATEGORIES } from "../categories.js";
 import { byRecency, availableYears } from "../derived.js";
 import { groupedTxRowsHtml, wireTxRowActions } from "./tx-row.js";
@@ -40,14 +40,26 @@ export function filteredTxList() {
   if (q) rows = rows.filter((t) => (t.note || "").toLowerCase().includes(q) || t.category.toLowerCase().includes(q));
   return rows.sort(byRecency);
 }
+// Resets every active filter/search field back to "all"/"" -- mirrors the
+// same reset this screen already does itself when a picked year no longer
+// has data (see renderTransactions below) -- then does a full re-render so
+// the filter bar's own radio/select/search-input DOM reflects the reset
+// state, not just the list.
+function clearTxFilters() {
+  state.txFilterType = "all"; state.txFilterMonthNum = "all"; state.txFilterYear = "all";
+  state.txFilterCategory = "all"; state.txPeriodMode = "all"; state.txSearch = "";
+  renderTransactions();
+}
 export function renderTxListOnly() {
   const l = L();
   const rows = filteredTxList();
   const html = rows.length
     ? groupedTxRowsHtml(rows)
-    : `<div class="empty-note">${escapeHtml(l.noResults)}</div>`;
+    : `<div class="empty-note empty-note-search">${icon("search")}<div>${escapeHtml(l.noResults)}</div><button type="button" class="btn btn-ghost" id="clearTxFiltersBtn">${escapeHtml(l.clearFiltersBtn)}</button></div>`;
   $("txListContainer").innerHTML = html;
   wireTxRowActions();
+  const clearBtn = document.getElementById("clearTxFiltersBtn");
+  if (clearBtn) clearBtn.addEventListener("click", clearTxFilters);
   refreshIcons();
 }
 export function renderTransactions() {

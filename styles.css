@@ -200,7 +200,7 @@
   .tx-row-wrap .info { min-width: 0; flex: 1; }
   .tx-row-wrap .cat { font-size: 15px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tx-row-wrap .meta { font-size: 12px; color: var(--color-muted); margin-top: 2px; }
-  .tx-row-wrap .amt { font-size: 14px; font-weight: 700; flex-shrink: 0; }
+  .tx-row-wrap .amt { font-size: 16px; font-weight: 700; flex-shrink: 0; }
   .tx-row-inner { display: flex; align-items: stretch; touch-action: pan-y; user-select: none; }
   .tx-lead { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; padding: 12px 4px 12px 4px; }
   /* .tx-trail-group (amount + Edit/Delete) reveals by expanding its own
@@ -224,6 +224,12 @@
   .tx-trail { display: flex; align-items: center; flex-shrink: 0; padding: 12px 0 12px 8px; cursor: grab; }
   .tx-row-actions { display: flex; align-items: center; flex-shrink: 0; gap: 4px; padding: 12px 12px; }
   .empty-note { padding: 36px 0; text-align: center; color: var(--color-muted); font-size: 13px; }
+  /* Distinguishes "your search/filter found nothing" (this) from the
+     app's other, plain .empty-note first-use states ("you haven't added
+     any budgets yet", etc.) -- those stay untouched, generic, and
+     intentionally minimal per this repo's earlier onboarding pass. */
+  .empty-note-search { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .empty-note-search .icon { width: 28px; height: 28px; color: var(--color-tertiary); }
 
   .budget-item .row1 { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
   .budget-item .row1 .right { color: var(--color-muted); }
@@ -340,6 +346,20 @@
   }
   .tabbar button.active { color: var(--color-accent); }
   .tabbar button span { font-size: 11px; font-weight: 600; }
+  /* The "add" tab is the app's primary action, so it's broken out of the
+     bar visually (raised circle, accent gradient) rather than sitting as
+     a 5th equal-weight icon -- same gradient .hero-card already uses, for
+     consistency. Padding shrinks the icon's own rendered content within
+     the circle (SVG content box = width/height minus padding under the
+     app's global box-sizing:border-box), independent of .icon's own
+     18px default, which this selector out-specifies. */
+  .tabbar button[data-tab="add"] .icon {
+    width: 52px; height: 52px; padding: 14px; flex-shrink: 0;
+    border-radius: 50%; color: #fff;
+    background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-700) 100%);
+    box-shadow: var(--shadow-accent);
+    margin-top: -20px;
+  }
 
   .toast {
     /* Same 18px gap above the tab bar as before (82px was 64px + 18px),
