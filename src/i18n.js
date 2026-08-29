@@ -99,6 +99,12 @@ export const STRINGS = {
   billDayLabel: ["วันที่ต้องจ่าย (1-31)", "Due day (1-31)"], saveBillBtn: ["บันทึกรายการ", "Save bill"],
   noBills: ["ยังไม่มีรายการที่ต้องจ่ายประจำ", "No recurring bills yet"], toastBillSaved: ["บันทึกรายการแล้ว", "Bill saved"],
   toastBillDeleted: ["ลบรายการแล้ว", "Bill deleted"],
+  categoriesSection: ["หมวดหมู่", "Categories"], addCategoryBtn: ["+ เพิ่มหมวดหมู่", "+ Add category"],
+  categoryNameLabel: ["ชื่อหมวดหมู่", "Category name"], iconLabel: ["ไอคอน", "Icon"],
+  saveCategoryBtn: ["บันทึกหมวดหมู่", "Save category"], noCategories: ["ยังไม่มีหมวดหมู่", "No categories yet"],
+  toastCategorySaved: ["บันทึกหมวดหมู่แล้ว", "Category saved"], toastCategoryDeleted: ["ลบหมวดหมู่แล้ว", "Category deleted"],
+  toastInvalidCategoryName: ["กรุณาระบุชื่อหมวดหมู่", "Please enter a category name"],
+  toastCategoryInUse: ["ลบไม่ได้ มี {n} รายการที่ยังใช้หมวดหมู่นี้อยู่", "Can't delete — {n} item(s) still use this category"],
   vsLastMonth: ["จากเดือนที่แล้ว", "vs last month"], ofLabel: ["จาก", "of"], spentToday: ["ใช้จ่ายวันนี้", "Spent today"],
   csvDate: ["วันที่", "Date"], csvType: ["ประเภท", "Type"], csvCategory: ["หมวดหมู่", "Category"],
   csvNote: ["รายละเอียด", "Note"], csvAmount: ["จำนวนเงิน", "Amount"]

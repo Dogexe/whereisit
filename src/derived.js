@@ -13,7 +13,11 @@ import { L } from "./i18n.js";
 // needing to know or care which. Budgets/bills have no `.type` field of
 // their own (always expense-side -- see settings.js's own comment on
 // this), so callers pass "expense" explicitly for those.
-function resolveCategoryId(row, type) {
+// Exported so settings.js's category delete guard (stage 3) can check
+// "is this category still referenced by any transaction/budget/bill"
+// using the exact same matching logic as every read path here, rather
+// than a second copy that could drift out of sync with it.
+export function resolveCategoryId(row, type) {
   return row.categoryId || findCategoryId(categories, row.category, type);
 }
 function displayName(id, fallback) {

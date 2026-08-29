@@ -7,8 +7,8 @@ export const state = {
   txFilterType: "all", txFilterMonthNum: "all", txFilterYear: "all", txFilterCategory: "all", txSearch: "", txPeriodMode: "all",
   formType: "expense", formDate: new Date().toISOString().slice(0, 10),
   formCategory: CATEGORIES.expense[0], editingId: null, categoryManual: false,
-  budgetEditId: null, billEditId: null, goalEditId: null, goalContributeId: null,
-  settingsGroupOpen: { budgets: false, bills: false, goals: false }
+  budgetEditId: null, billEditId: null, goalEditId: null, goalContributeId: null, categoryEditId: null,
+  settingsGroupOpen: { budgets: false, bills: false, goals: false, categories: false }
 };
 export let transactions = [];
 export let budgets = [

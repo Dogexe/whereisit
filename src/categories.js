@@ -54,6 +54,15 @@ export const DEFAULT_CATEGORIES = ["income", "expense"].flatMap((type) =>
     id: `default-${type}-${DEFAULT_SLUGS[type][i]}`, type, name, icon: CATEGORY_ICON[name], sortOrder: i
   }))
 );
+// Icon choices offered when adding/editing a category (Settings, stage 3
+// of docs/specs/custom-categories.md) -- per that spec's interview, this
+// is deliberately the ~16 icons already used by a built-in category, not
+// the app's full icon sprite, so every offered icon is already visually
+// established as "a category icon" rather than pulling in chrome icons
+// (pencil, search, settings...) that would look out of place here.
+// Deduped defensively even though today's 16 defaults happen to use 16
+// distinct icons.
+export const CATEGORY_ICON_CHOICES = Array.from(new Set(DEFAULT_CATEGORIES.map((c) => c.icon)));
 export function rowTone(type) { return type === "income" ? { bg: "var(--color-income-tint)", color: "var(--color-income)" } : { bg: "var(--color-accent-tint)", color: "var(--color-accent)" }; }
 
 // Stage 2 of docs/specs/custom-categories.md: transactions/budgets/bills

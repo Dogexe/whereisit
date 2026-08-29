@@ -1,16 +1,16 @@
 import { L } from "../i18n.js";
-import { state, transactions, budgets, bills, goals, setBudgets, setBills, setGoals } from "../state.js";
+import { state, transactions, budgets, bills, goals, categories, setBudgets, setBills, setGoals, setCategories } from "../state.js";
 import {
   $, uid, icon, iconAvatar, escapeHtml, fmtMoney, optionsHtml, refreshIcons,
   EDIT_ICON, DELETE_ICON, PLUS_ICON
 } from "../utils.js";
-import { CATEGORIES, GOAL_TONES, GOAL_ICONS, iconFor, rowTone } from "../categories.js";
-import { daysUntilBillDue, dueSoonLabel } from "../derived.js";
+import { CATEGORY_ICON_CHOICES, GOAL_TONES, GOAL_ICONS, iconFor, rowTone, categoryDisplayName } from "../categories.js";
+import { daysUntilBillDue, dueSoonLabel, resolveCategoryId } from "../derived.js";
 import { saveSettings } from "../storage.js";
 import { applyTheme } from "../theme.js";
 import {
   currentUser, lastSyncStatus, signInWithGoogle, signOutUser, syncNow,
-  budgetToRow, billToRow, goalToRow, pushRows
+  budgetToRow, billToRow, goalToRow, categoryToRow, pushRows
 } from "../sync.js";
 import { showToast } from "../toast.js";
 import { renderChrome, renderScreen } from "./router.js";
@@ -38,10 +38,16 @@ export function manageRowHtml(iconHtml, name, sub, amt, editAttr, deleteAttr, ex
 // Budgets and bills are always expense-side, so rowTone("expense")
 // resolves to the same accent purple already used for every other icon
 // in this Settings card -- only the glyph varies, exactly like
-// transaction rows vary their glyph by category on a fixed tone.
-function categoryIconAvatar(category) {
+// transaction rows vary their glyph by category on a fixed tone. Resolves
+// the icon through the live category record first (so an icon edit made
+// in the new Categories section, stage 3, shows up immediately here too),
+// falling back to the old string-keyed CATEGORY_ICON map via iconFor()
+// for any row that predates categoryId entirely.
+function categoryIconAvatar(categoryId, fallbackCategoryName) {
   const tone = rowTone("expense");
-  return iconAvatar(iconFor(category), tone.bg, tone.color, "sm", 'width="15" height="15"');
+  const cat = categories.find((c) => c.id === categoryId);
+  const iconName = cat ? cat.icon : iconFor(fallbackCategoryName);
+  return iconAvatar(iconName, tone.bg, tone.color, "sm", 'width="15" height="15"');
 }
 // Wraps a set of field inputs with the standard Save/Cancel action row used
 // by every inline add/edit form (budgets, bills, goals, goal contributions).
@@ -66,7 +72,9 @@ export function wireInlineCrud(prefix, stateKey, deleteFn, saveFn, onOpen) {
 }
 
 export function budgetRowHtml(b) {
-  return manageRowHtml(categoryIconAvatar(b.category), b.category, L().budgetOf + " " + fmtMoney(b.limit), null, `data-edit-budget="${b.id}"`, `data-delete-budget="${b.id}"`);
+  const bid = resolveCategoryId(b, "expense");
+  const name = categoryDisplayName(categories, bid, b.category);
+  return manageRowHtml(categoryIconAvatar(bid, b.category), name, L().budgetOf + " " + fmtMoney(b.limit), null, `data-edit-budget="${b.id}"`, `data-delete-budget="${b.id}"`);
 }
 export function budgetFormHtml() {
   const l = L();
@@ -74,14 +82,16 @@ export function budgetFormHtml() {
   const isNew = state.budgetEditId === "new";
   const editing = !isNew ? budgets.find((b) => b.id === state.budgetEditId) : null;
   if (!isNew && !editing) return "";
-  const usedCats = new Set(budgets.filter((b) => b.id !== state.budgetEditId).map((b) => b.category));
-  const availableCats = CATEGORIES.expense.filter((c) => !usedCats.has(c));
+  const expenseCats = categories.filter((c) => c.type === "expense");
+  const usedCatIds = new Set(budgets.filter((b) => b.id !== state.budgetEditId).map((b) => resolveCategoryId(b, "expense")));
+  const availableCats = expenseCats.filter((c) => !usedCatIds.has(c.id));
   if (isNew && !availableCats.length) {
     return `<div class="inline-form"><div class="empty-note" style="padding:8px 0">${escapeHtml(l.allBudgeted)}</div><button type="button" class="btn btn-secondary" id="cancelBudgetFormBtn">${escapeHtml(l.cancelBtn)}</button></div>`;
   }
+  const editingName = !isNew ? categoryDisplayName(categories, resolveCategoryId(editing, "expense"), editing.category) : "";
   const fields = (isNew
-    ? `<div class="field"><label>${escapeHtml(l.categoryLabel)}</label><select class="input" id="budgetCategorySelect">${optionsHtml(availableCats, null)}</select></div>`
-    : `<div style="font-size:14px;font-weight:600">${escapeHtml(editing.category)}</div>`)
+    ? `<div class="field"><label>${escapeHtml(l.categoryLabel)}</label><select class="input" id="budgetCategorySelect">${optionsHtml(availableCats.map((c) => c.id), null, (id) => categoryDisplayName(categories, id, id))}</select></div>`
+    : `<div style="font-size:14px;font-weight:600">${escapeHtml(editingName)}</div>`)
     + `<div class="field"><label>${escapeHtml(l.limitLabel)}</label><input class="input" type="number" id="budgetLimitInput" min="0" step="1" value="${isNew ? "" : editing.limit}"></div>`;
   return inlineForm(fields, "saveBudgetFormBtn", l.saveBudgetBtn, "cancelBudgetFormBtn");
 }
@@ -93,9 +103,10 @@ export function saveBudgetForm() {
   let saved;
   if (isNew) {
     const sel = $("budgetCategorySelect");
-    const category = sel ? sel.value : "";
-    if (!category) return;
-    saved = { id: uid(), category, limit, updatedAt: Date.now() };
+    const categoryId = sel ? sel.value : "";
+    if (!categoryId) return;
+    const cat = categories.find((c) => c.id === categoryId);
+    saved = { id: uid(), category: cat ? cat.name : "", categoryId, limit, updatedAt: Date.now() };
     budgets.push(saved);
   } else {
     const b = budgets.find((x) => x.id === state.budgetEditId);
@@ -131,7 +142,7 @@ export function billRowHtml(b) {
   const daysUntil = daysUntilBillDue(b);
   const overdue = daysUntil < 0;
   const sub = overdue ? dueSoonLabel(daysUntil) : L().dueOn + b.day;
-  return manageRowHtml(categoryIconAvatar(b.category), b.name, sub, fmtMoney(b.amount), `data-edit-bill="${b.id}"`, `data-delete-bill="${b.id}"`, overdue ? "manage-row-overdue" : null);
+  return manageRowHtml(categoryIconAvatar(resolveCategoryId(b, "expense"), b.category), b.name, sub, fmtMoney(b.amount), `data-edit-bill="${b.id}"`, `data-delete-bill="${b.id}"`, overdue ? "manage-row-overdue" : null);
 }
 export function billFormHtml() {
   const l = L();
@@ -139,10 +150,11 @@ export function billFormHtml() {
   const isNew = state.billEditId === "new";
   const editing = !isNew ? bills.find((b) => b.id === state.billEditId) : null;
   if (!isNew && !editing) return "";
-  const curCategory = isNew ? CATEGORIES.expense[0] : editing.category;
+  const expenseCats = categories.filter((c) => c.type === "expense");
+  const curCategoryId = isNew ? (expenseCats[0] || {}).id : resolveCategoryId(editing, "expense");
   const fields = `
     <div class="field"><label>${escapeHtml(l.billNameLabel)}</label><input class="input" type="text" id="billNameInput" value="${isNew ? "" : escapeHtml(editing.name)}"></div>
-    <div class="field"><label>${escapeHtml(l.categoryLabel)}</label><select class="input" id="billCategorySelect">${optionsHtml(CATEGORIES.expense, curCategory)}</select></div>
+    <div class="field"><label>${escapeHtml(l.categoryLabel)}</label><select class="input" id="billCategorySelect">${optionsHtml(expenseCats.map((c) => c.id), curCategoryId, (id) => categoryDisplayName(categories, id, id))}</select></div>
     <div class="field"><label>${escapeHtml(l.amountLabel)}</label><input class="input" type="number" id="billAmountInput" min="0" step="0.01" value="${isNew ? "" : editing.amount}"></div>
     <div class="field"><label>${escapeHtml(l.billDayLabel)}</label><input class="input" type="number" id="billDayInput" min="1" max="31" step="1" value="${isNew ? "" : editing.day}"></div>
   `;
@@ -151,18 +163,20 @@ export function billFormHtml() {
 export function saveBillForm() {
   const isNew = state.billEditId === "new";
   const name = ($("billNameInput") || {}).value ? $("billNameInput").value.trim() : "";
-  const category = ($("billCategorySelect") || {}).value || CATEGORIES.expense[0];
+  const categoryId = ($("billCategorySelect") || {}).value || (categories.find((c) => c.type === "expense") || {}).id;
+  const cat = categories.find((c) => c.id === categoryId);
+  const category = cat ? cat.name : "";
   const amount = parseFloat(($("billAmountInput") || {}).value);
   const day = parseInt(($("billDayInput") || {}).value, 10);
   if (!name || !amount || amount <= 0 || !day || day < 1 || day > 31) { showToast(L().toastInvalidAmount); return; }
   let saved;
   if (isNew) {
-    saved = { id: uid(), name, category, amount, day, updatedAt: Date.now() };
+    saved = { id: uid(), name, category, categoryId, amount, day, updatedAt: Date.now() };
     bills.push(saved);
   } else {
     const b = bills.find((x) => x.id === state.billEditId);
     if (!b) return;
-    b.name = name; b.category = category; b.amount = amount; b.day = day; b.updatedAt = Date.now();
+    b.name = name; b.category = category; b.categoryId = categoryId; b.amount = amount; b.day = day; b.updatedAt = Date.now();
     saved = b;
   }
   saveSettings();
@@ -186,6 +200,104 @@ export function deleteBill(id) {
     saveSettings();
     renderSettings();
     pushRows("bills", [billToRow(restored, false)]).then(() => syncNow());
+  });
+}
+
+// Stage 3 of docs/specs/custom-categories.md: full add/edit/delete over
+// categories, including today's built-ins -- not just custom additions on
+// top of a protected list, per that spec's confirmed requirement.
+export function categoryRowHtml(c) {
+  const tone = rowTone(c.type);
+  const iconHtml = iconAvatar(c.icon, tone.bg, tone.color, "sm", 'width="15" height="15"');
+  const sub = c.type === "income" ? L().incomeLabel : L().expenseLabel;
+  return manageRowHtml(iconHtml, c.name, sub, null, `data-edit-category="${c.id}"`, `data-delete-category="${c.id}"`);
+}
+// Type is only choosable when creating a new category, never when editing
+// an existing one -- changing a category's type out from under
+// transactions/budgets/bills that already reference it (budgets/bills are
+// always expense-side, so an expense category flipping to income would
+// orphan any of those referencing it) is a data-integrity question this
+// spec deliberately doesn't take on; renaming and re-iconing don't have
+// that problem, so those stay editable.
+//
+// The icon picker and (when creating) the type radio are read directly
+// from the DOM at save time (see saveCategoryForm) rather than mirrored
+// into `state`, matching how every other field in this form already
+// works -- simpler than adding transient state fields for a value that's
+// only ever needed once, at save.
+export function categoryFormHtml() {
+  const l = L();
+  if (!state.categoryEditId) return "";
+  const isNew = state.categoryEditId === "new";
+  const editing = !isNew ? categories.find((c) => c.id === state.categoryEditId) : null;
+  if (!isNew && !editing) return "";
+  const curType = isNew ? "expense" : editing.type;
+  const curIcon = isNew ? CATEGORY_ICON_CHOICES[0] : editing.icon;
+  const typeField = isNew
+    ? `<div class="field"><label>${escapeHtml(l.typeLabel)}</label><div class="tabs block" role="radiogroup"><label class="tab-opt"><input type="radio" name="category-type" value="expense" checked>${escapeHtml(l.expenseLabel)}</label><label class="tab-opt"><input type="radio" name="category-type" value="income">${escapeHtml(l.incomeLabel)}</label></div></div>`
+    : `<div class="field"><label>${escapeHtml(l.typeLabel)}</label><div style="font-size:14px;font-weight:600">${escapeHtml(curType === "income" ? l.incomeLabel : l.expenseLabel)}</div></div>`;
+  const iconPicker = `<div class="field"><label>${escapeHtml(l.iconLabel)}</label><div class="icon-picker">${CATEGORY_ICON_CHOICES.map((name) => `<button type="button" class="icon-picker-option${name === curIcon ? " selected" : ""}" data-icon="${name}" aria-label="${escapeHtml(name)}">${icon(name)}</button>`).join("")}</div></div>`;
+  const fields = typeField
+    + `<div class="field"><label>${escapeHtml(l.categoryNameLabel)}</label><input class="input" type="text" id="categoryNameInput" value="${isNew ? "" : escapeHtml(editing.name)}"></div>`
+    + iconPicker;
+  return inlineForm(fields, "saveCategoryFormBtn", l.saveCategoryBtn, "cancelCategoryFormBtn");
+}
+export function saveCategoryForm() {
+  const isNew = state.categoryEditId === "new";
+  const name = ($("categoryNameInput") || {}).value ? $("categoryNameInput").value.trim() : "";
+  if (!name) { showToast(L().toastInvalidCategoryName); return; }
+  const selectedIconBtn = document.querySelector(".icon-picker-option.selected");
+  const iconName = selectedIconBtn ? selectedIconBtn.getAttribute("data-icon") : CATEGORY_ICON_CHOICES[0];
+  let saved;
+  if (isNew) {
+    const typeInput = document.querySelector('input[name="category-type"]:checked');
+    const type = typeInput ? typeInput.value : "expense";
+    saved = { id: uid(), type, name, icon: iconName, sortOrder: categories.length, updatedAt: Date.now() };
+    categories.push(saved);
+  } else {
+    const c = categories.find((x) => x.id === state.categoryEditId);
+    if (!c) return;
+    c.name = name; c.icon = iconName; c.updatedAt = Date.now();
+    saved = c;
+  }
+  saveSettings();
+  state.categoryEditId = null;
+  showToast(L().toastCategorySaved);
+  renderSettings();
+  pushRows("categories", [categoryToRow(saved, false)]).then(() => syncNow());
+}
+// The app's first delete flow that has to check other tables before
+// allowing the delete at all -- deleteBudget/deleteBill/deleteGoal above
+// have no such guard, since nothing else references a budget/bill/goal by
+// id the way transactions/budgets/bills reference a category. Uses the
+// same resolveCategoryId matching every read path already goes through
+// (derived.js), not a stricter "only rows with categoryId already set"
+// check, so a category that's only ever been referenced by its name
+// (pre-backfill, or a row created before stage 4 moves the Add screen to
+// writing categoryId directly) is still correctly counted as in use.
+function categoryUsageCount(categoryId) {
+  const txCount = transactions.filter((t) => resolveCategoryId(t, t.type) === categoryId).length;
+  const budgetCount = budgets.filter((b) => resolveCategoryId(b, "expense") === categoryId).length;
+  const billCount = bills.filter((b) => resolveCategoryId(b, "expense") === categoryId).length;
+  return txCount + budgetCount + billCount;
+}
+export function deleteCategory(id) {
+  const c = categories.find((x) => x.id === id);
+  if (!c) return;
+  const usage = categoryUsageCount(id);
+  if (usage > 0) { showToast(L().toastCategoryInUse.replace("{n}", usage)); return; }
+  setCategories(categories.filter((x) => x.id !== id));
+  saveSettings();
+  if (state.categoryEditId === id) state.categoryEditId = null;
+  renderSettings();
+  c.updatedAt = Date.now();
+  pushRows("categories", [categoryToRow(c, true)]).then(() => syncNow());
+  showToast(L().toastCategoryDeleted, () => {
+    const restored = Object.assign({}, c, { updatedAt: Date.now() });
+    categories.push(restored);
+    saveSettings();
+    renderSettings();
+    pushRows("categories", [categoryToRow(restored, false)]).then(() => syncNow());
   });
 }
 
@@ -424,6 +536,21 @@ export function renderSettings() {
               </div>
             </div>
           </details>
+          <details class="settings-group" data-group="categories" ${state.settingsGroupOpen.categories ? "open" : ""}>
+            <summary>
+              ${iconAvatar("layout-grid", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+              <span class="label">${escapeHtml(l.categoriesSection)}</span>
+              <span class="settings-badge-count">${categories.length}</span>
+              ${icon("chevron-right")}
+            </summary>
+            <div class="settings-group-body">
+              <div style="text-align:right;margin-bottom:10px">
+                <button type="button" class="btn btn-ghost" id="addCategoryBtn">${escapeHtml(l.addCategoryBtn)}</button>
+              </div>
+              <div id="categoryFormSlot">${categoryFormHtml()}</div>
+              ${categories.map(categoryRowHtml).join("") || `<div class="empty-note">${escapeHtml(l.noCategories)}</div>`}
+            </div>
+          </details>
         </div>
       </div>
 
@@ -476,5 +603,13 @@ export function renderSettings() {
   document.querySelectorAll("[data-contribute-goal]").forEach((btn) => btn.addEventListener("click", () => { state.goalContributeId = btn.getAttribute("data-contribute-goal"); state.goalEditId = null; renderSettings(); }));
   if ($("saveContributeBtn")) $("saveContributeBtn").addEventListener("click", saveContribution);
   if ($("cancelContributeBtn")) $("cancelContributeBtn").addEventListener("click", () => { state.goalContributeId = null; renderSettings(); });
+  wireInlineCrud("Category", "categoryEditId", deleteCategory, saveCategoryForm);
+  // Pure DOM toggling, not a re-render -- the picker's selection is only
+  // ever read (via the .selected class) at save time in saveCategoryForm,
+  // same as every other field in this form reading straight from the DOM.
+  document.querySelectorAll(".icon-picker-option").forEach((btn) => btn.addEventListener("click", () => {
+    btn.parentElement.querySelectorAll(".icon-picker-option").forEach((b) => b.classList.remove("selected"));
+    btn.classList.add("selected");
+  }));
   refreshIcons();
 }

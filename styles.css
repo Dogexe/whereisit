@@ -313,6 +313,19 @@
   .manage-row .name { font-size: 15px; font-weight: 500; }
   .manage-row .sub { font-size: 12px; color: var(--color-muted); margin-top: 2px; }
   .manage-row .amt { font-size: 14px; font-weight: 600; flex-shrink: 0; }
+  /* Category add/edit form's icon picker (docs/specs/custom-categories.md
+     stage 3) -- selection is tracked purely by the .selected class
+     (settings.js reads it straight from the DOM at save time), so this is
+     the only place that class needs a visual treatment. */
+  .icon-picker { display: flex; flex-wrap: wrap; gap: 8px; }
+  .icon-picker-option {
+    width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+    border: 2px solid transparent; background: var(--color-surface); color: var(--color-tertiary);
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .icon-picker-option:hover { background: var(--color-border); }
+  .icon-picker-option.selected { border-color: var(--color-accent); background: var(--color-accent-tint); color: var(--color-accent); }
+  .icon-picker-option:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
   /* Overdue bill rows (Home's upcoming-bills list and Settings' bill rows) --
      reuses the expense color rather than inventing a new one, distinct from
      the plain --color-muted "due soon" text every other row uses. */
