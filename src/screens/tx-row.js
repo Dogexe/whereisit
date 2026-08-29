@@ -1,22 +1,34 @@
-import { iconFor, rowTone } from "../categories.js";
+import { iconFor, rowTone, categoryDisplayName } from "../categories.js";
 import { iconAvatar, escapeHtml, fmtMoney, EDIT_ICON, DELETE_ICON } from "../utils.js";
-import { groupByDate } from "../derived.js";
+import { groupByDate, resolveCategoryId } from "../derived.js";
+import { categories } from "../state.js";
 import { editTx, deleteTx } from "./add.js";
 import { L } from "../i18n.js";
 
 const REVEAL = 88; // exactly the actions group's width: 12+30+4+30+12
 
+// Stage 5 of docs/specs/custom-categories.md: the last two display
+// touchpoints still reading the old string-keyed model, alongside
+// transactions.js's filter dropdown. Both name and icon now resolve
+// through the live category record (falling back to the row's own
+// stored .category string / the old iconFor() map for anything that
+// still can't be matched), so a rename or icon edit shows up here too --
+// this row previously kept showing a stale name/icon after either.
 export function txRowHtml(t) {
   const tone = rowTone(t.type);
   const amountColor = t.type === "income" ? "var(--color-income)" : "var(--color-text)";
   const sign = t.type === "income" ? "+" : "−";
+  const catId = resolveCategoryId(t, t.type);
+  const cat = categories.find((c) => c.id === catId);
+  const catName = categoryDisplayName(categories, catId, t.category);
+  const iconName = cat ? cat.icon : iconFor(t.category);
   return `
     <div class="tx-row-wrap" data-id="${t.id}">
       <div class="tx-row-inner">
         <div class="tx-lead">
-          ${iconAvatar(iconFor(t.category), tone.bg, tone.color)}
+          ${iconAvatar(iconName, tone.bg, tone.color)}
           <div class="info">
-            <div class="cat">${escapeHtml(t.category)}</div>
+            <div class="cat">${escapeHtml(catName)}</div>
             ${t.note ? `<div class="meta">${escapeHtml(t.note)}</div>` : ""}
           </div>
         </div>

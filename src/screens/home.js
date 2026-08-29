@@ -21,7 +21,7 @@ export function markBillPaid(id) {
   if (!bill) return;
   const savedTx = {
     id: uid(), type: "expense", date: new Date().toISOString().slice(0, 10),
-    category: bill.category || CATEGORIES.expense[CATEGORIES.expense.length - 1],
+    category: bill.category || CATEGORIES.expense[CATEGORIES.expense.length - 1], categoryId: bill.categoryId || null,
     amount: bill.amount, note: bill.name, updatedAt: Date.now()
   };
   transactions.push(savedTx);

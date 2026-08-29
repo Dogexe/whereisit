@@ -1,8 +1,8 @@
 import { L } from "../i18n.js";
-import { state, transactions } from "../state.js";
+import { state, transactions, categories } from "../state.js";
 import { $, escapeHtml, optionsHtml, refreshIcons, icon } from "../utils.js";
-import { CATEGORIES } from "../categories.js";
-import { byRecency, availableYears } from "../derived.js";
+import { categoryDisplayName } from "../categories.js";
+import { byRecency, availableYears, resolveCategoryId } from "../derived.js";
 import { groupedTxRowsHtml, wireTxRowActions } from "./tx-row.js";
 import { periodPickerHtml, wirePeriodPicker } from "./period-picker.js";
 
@@ -35,9 +35,13 @@ export function filteredTxList() {
   if (state.txFilterType !== "all") rows = rows.filter((t) => t.type === state.txFilterType);
   if (state.txFilterMonthNum !== "all") rows = rows.filter((t) => t.date.slice(5, 7) === state.txFilterMonthNum);
   if (state.txFilterYear !== "all") rows = rows.filter((t) => t.date.slice(0, 4) === state.txFilterYear);
-  if (state.txFilterCategory !== "all") rows = rows.filter((t) => t.category === state.txFilterCategory);
+  // txFilterCategory now holds a category id (matching the dropdown's
+  // options below), not a name string -- resolveCategoryId means this
+  // still matches a transaction whose own .category text has since gone
+  // stale (renamed or predates the backfill).
+  if (state.txFilterCategory !== "all") rows = rows.filter((t) => resolveCategoryId(t, t.type) === state.txFilterCategory);
   const q = state.txSearch.trim().toLowerCase();
-  if (q) rows = rows.filter((t) => (t.note || "").toLowerCase().includes(q) || t.category.toLowerCase().includes(q));
+  if (q) rows = rows.filter((t) => (t.note || "").toLowerCase().includes(q) || categoryDisplayName(categories, resolveCategoryId(t, t.type), t.category).toLowerCase().includes(q));
   return rows.sort(byRecency);
 }
 // Resets every active filter/search field back to "all"/"" -- mirrors the
@@ -71,7 +75,6 @@ export function renderTransactions() {
   if (state.txFilterYear !== "all" && !years.includes(state.txFilterYear)) {
     state.txFilterYear = "all"; state.txFilterMonthNum = "all"; state.txPeriodMode = "all";
   }
-  const allCats = CATEGORIES.income.concat(CATEGORIES.expense);
   $("screen").innerHTML = `
     <h2 class="screen-title">${escapeHtml(l.allTransactions)}</h2>
     <div class="tabs block" role="radiogroup" style="margin-bottom:12px">
@@ -83,7 +86,7 @@ export function renderTransactions() {
     <div class="filter-row">
       <select class="input" id="txFilterCategory">
         <option value="all">${escapeHtml(l.allCategories)}</option>
-        ${optionsHtml(allCats, state.txFilterCategory)}
+        ${optionsHtml(categories.map((c) => c.id), state.txFilterCategory, (id) => categoryDisplayName(categories, id, id))}
       </select>
     </div>
     <input class="input" style="margin-bottom:12px" id="txSearchInput" placeholder="${escapeHtml(l.searchPlaceholder)}" value="${escapeHtml(state.txSearch)}">
