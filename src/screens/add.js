@@ -1,8 +1,8 @@
 import { L } from "../i18n.js";
 import { state, transactions, categories, setTransactions } from "../state.js";
-import { $, uid, escapeHtml, dateLabel, formatDateTyping, parseDateText, optionsHtml, refreshIcons } from "../utils.js";
+import { $, uid, escapeHtml, dateLabel, formatDateTyping, parseDateText, optionsHtml, refreshIcons, icon } from "../utils.js";
 import { guessCategory, categoryDisplayName } from "../categories.js";
-import { checkBudgetAlert, resolveCategoryId } from "../derived.js";
+import { checkBudgetAlert, resolveCategoryId, mostUsedCategoryIds } from "../derived.js";
 import { saveToStorage } from "../storage.js";
 import { pushTx, pushDeleteTx, syncNow } from "../sync.js";
 import { showToast } from "../toast.js";
@@ -53,6 +53,42 @@ export function renderFormCategoryOptions(select) {
   const opts = categories.filter((c) => c.type === state.formType);
   select.innerHTML = optionsHtml(opts.map((c) => c.id), state.formCategoryId, (id) => categoryDisplayName(categories, id, id));
 }
+// docs/specs/category-icon-chips.md: standalone (not folded into
+// renderAdd) so a chip click / note-guess / select change can refresh
+// just the chip row + <select> visibility, not the whole form -- a full
+// renderAdd() would blow away the amount/note fields' values and focus.
+const CHIP_COUNT = 5;
+export function renderCategoryChips() {
+  const l = L();
+  const opts = categories.filter((c) => c.type === state.formType && !c.deleted);
+  const topIds = mostUsedCategoryIds(state.formType, CHIP_COUNT);
+  const selectedId = state.formCategoryId;
+  const selectedInChips = topIds.includes(selectedId);
+  const chipsHtml = topIds.map((id) => {
+    const c = opts.find((x) => x.id === id);
+    if (!c) return "";
+    return `<button type="button" class="category-chip${id === selectedId ? " active" : ""}" data-chip="${id}">${icon(c.icon)}<span>${escapeHtml(c.name)}</span></button>`;
+  }).join("");
+  const moreActive = !selectedInChips;
+  const moreLabel = moreActive ? categoryDisplayName(categories, selectedId, l.moreCategoriesBtn) : l.moreCategoriesBtn;
+  $("categoryChipRow").innerHTML = chipsHtml +
+    `<button type="button" class="category-chip category-chip-more${moreActive ? " active" : ""}" id="categoryMoreChip">${icon("more-horizontal")}<span>${escapeHtml(moreLabel)}</span></button>`;
+  $("txCategory").classList.toggle("category-select-collapsed", !moreActive);
+  document.querySelectorAll("[data-chip]").forEach((btn) => btn.addEventListener("click", () => {
+    const id = btn.getAttribute("data-chip");
+    state.formCategoryId = id;
+    state.categoryManual = true;
+    $("txCategory").value = id;
+    renderCategoryChips();
+  }));
+  $("categoryMoreChip").addEventListener("click", () => {
+    const select = $("txCategory");
+    select.classList.remove("category-select-collapsed");
+    if (typeof select.showPicker === "function") { try { select.showPicker(); } catch (e) { select.focus(); } }
+    else select.focus();
+  });
+  refreshIcons();
+}
 export function renderAdd() {
   const l = L();
   const isEditing = !!state.editingId;
@@ -77,7 +113,8 @@ export function renderAdd() {
         </div>
       </div>
       <div class="field">
-        <label for="txCategory">${escapeHtml(l.categoryLabel)}</label>
+        <label>${escapeHtml(l.categoryLabel)}</label>
+        <div class="category-chip-row" id="categoryChipRow"></div>
         <select class="input" id="txCategory" required></select>
       </div>
       <div class="field">
@@ -93,6 +130,7 @@ export function renderAdd() {
     </form>
   `;
   renderFormCategoryOptions($("txCategory"));
+  renderCategoryChips();
   if (isEditing) {
     const tx = transactions.find((t) => t.id === state.editingId);
     if (tx) { $("txAmount").value = tx.amount; $("txNote").value = tx.note || ""; }
@@ -104,8 +142,9 @@ export function renderAdd() {
     const guessValid = guess && opts.some((c) => c.id === guess);
     state.formCategoryId = guessValid ? guess : (opts[0] || {}).id || null;
     renderFormCategoryOptions($("txCategory"));
+    renderCategoryChips();
   }));
-  $("txCategory").addEventListener("change", (e) => { state.formCategoryId = e.target.value; state.categoryManual = true; });
+  $("txCategory").addEventListener("change", (e) => { state.formCategoryId = e.target.value; state.categoryManual = true; renderCategoryChips(); });
   $("txDateText").addEventListener("input", function () { this.value = formatDateTyping(this.value); });
   $("txDateText").addEventListener("change", function () {
     const iso = parseDateText(this.value);
@@ -122,7 +161,7 @@ export function renderAdd() {
   $("txNote").addEventListener("input", function () {
     if (state.categoryManual) return;
     const guess = guessCategory(this.value, state.formType);
-    if (guess) { state.formCategoryId = guess; $("txCategory").value = guess; }
+    if (guess) { state.formCategoryId = guess; $("txCategory").value = guess; renderCategoryChips(); }
   });
   if (isEditing) $("cancelEditBtn").addEventListener("click", () => { resetForm(); setTab("transactions"); });
   $("addForm").addEventListener("submit", function (e) {

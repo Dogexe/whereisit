@@ -3,8 +3,9 @@ import assert from "node:assert/strict";
 import { state, setBills, setTransactions, setBudgets, setCategories } from "../src/state.js";
 import {
   nextBillDueDate, daysUntilBillDue, billDueCycle, dueSoonLabel, upcomingBills, monthKeyOf,
-  pctDeltaLabel, monthHasTransactions, unbudgetedSpend, unbudgetedSpendForYear,
-  computeBudgets, checkBudgetAlert, computeBreakdown
+  pctDeltaLabel, monthHasTransactions, unbudgetedSpend, unbudgetedSpendForYear, unbudgetedSpendForRange,
+  computeBudgets, computeBudgetsForRange, checkBudgetAlert, computeBreakdown, computeBreakdownForRange,
+  mostUsedCategoryIds, filteredTxList
 } from "../src/derived.js";
 
 // derived.js's bill-due functions read the wall clock via `new Date()`
@@ -197,4 +198,162 @@ test("computeBreakdown: groups two transactions with different .category text bu
   assert.equal(entries.length, 1);
   assert.equal(entries[0].category, "Food");
   assert.equal(entries[0].total, 150);
+});
+
+test("mostUsedCategoryIds: ranks by usage count, most-used first", () => {
+  setCategories([
+    { id: "c-food", type: "expense", name: "Food", sortOrder: 0 },
+    { id: "c-transport", type: "expense", name: "Transport", sortOrder: 1 },
+    { id: "c-shopping", type: "expense", name: "Shopping", sortOrder: 2 }
+  ]);
+  setTransactions([
+    { id: "t1", type: "expense", date: "2026-03-01", categoryId: "c-shopping", amount: 10 },
+    { id: "t2", type: "expense", date: "2026-03-02", categoryId: "c-food", amount: 10 },
+    { id: "t3", type: "expense", date: "2026-03-03", categoryId: "c-food", amount: 10 },
+    { id: "t4", type: "expense", date: "2026-03-04", categoryId: "c-food", amount: 10 }
+  ]);
+  assert.deepEqual(mostUsedCategoryIds("expense", 3), ["c-food", "c-shopping", "c-transport"]);
+});
+
+test("mostUsedCategoryIds: zero history falls back to categories' own sortOrder", () => {
+  setCategories([
+    { id: "c-b", type: "expense", name: "B", sortOrder: 1 },
+    { id: "c-a", type: "expense", name: "A", sortOrder: 0 },
+    { id: "c-c", type: "expense", name: "C", sortOrder: 2 }
+  ]);
+  setTransactions([]);
+  assert.deepEqual(mostUsedCategoryIds("expense", 3), ["c-a", "c-b", "c-c"]);
+});
+
+test("mostUsedCategoryIds: ranked usage is padded with sortOrder fallback up to n, no duplicates", () => {
+  setCategories([
+    { id: "c-food", type: "expense", name: "Food", sortOrder: 0 },
+    { id: "c-transport", type: "expense", name: "Transport", sortOrder: 1 },
+    { id: "c-shopping", type: "expense", name: "Shopping", sortOrder: 2 }
+  ]);
+  setTransactions([{ id: "t1", type: "expense", date: "2026-03-01", categoryId: "c-shopping", amount: 10 }]);
+  assert.deepEqual(mostUsedCategoryIds("expense", 3), ["c-shopping", "c-food", "c-transport"]);
+});
+
+test("mostUsedCategoryIds: excludes deleted categories and other types", () => {
+  setCategories([
+    { id: "c-food", type: "expense", name: "Food", sortOrder: 0 },
+    { id: "c-gone", type: "expense", name: "Gone", sortOrder: 1, deleted: true },
+    { id: "c-salary", type: "income", name: "Salary", sortOrder: 0 }
+  ]);
+  setTransactions([
+    { id: "t1", type: "expense", date: "2026-03-01", categoryId: "c-gone", amount: 100 },
+    { id: "t2", type: "income", date: "2026-03-01", categoryId: "c-salary", amount: 100 }
+  ]);
+  assert.deepEqual(mostUsedCategoryIds("expense", 5), ["c-food"]);
+});
+
+// docs/specs/transactions-filters-rework.md
+function resetTxFilters() {
+  state.txFilterType = "all"; state.txFilterMonthNum = "all"; state.txFilterYear = "all";
+  state.txFilterCategory = new Set(); state.txPeriodMode = "all"; state.txSearch = "";
+  state.txFilterAmountMin = null; state.txFilterAmountMax = null;
+  state.txFilterDateFrom = ""; state.txFilterDateTo = "";
+}
+test("filteredTxList: multi-select category filter returns the union of every selected category", () => {
+  resetTxFilters();
+  setTransactions([
+    { id: "t1", type: "expense", date: "2026-03-01", categoryId: "c-food", amount: 100 },
+    { id: "t2", type: "expense", date: "2026-03-02", categoryId: "c-transport", amount: 50 },
+    { id: "t3", type: "expense", date: "2026-03-03", categoryId: "c-shopping", amount: 20 }
+  ]);
+  state.txFilterCategory = new Set(["c-food", "c-transport"]);
+  assert.deepEqual(filteredTxList().map((t) => t.id).sort(), ["t1", "t2"]);
+  resetTxFilters();
+});
+test("filteredTxList: amount range is inclusive at exact boundary values", () => {
+  resetTxFilters();
+  setTransactions([
+    { id: "t1", type: "expense", date: "2026-03-01", amount: 100 },
+    { id: "t2", type: "expense", date: "2026-03-02", amount: 500 },
+    { id: "t3", type: "expense", date: "2026-03-03", amount: 99 },
+    { id: "t4", type: "expense", date: "2026-03-04", amount: 501 }
+  ]);
+  state.txFilterAmountMin = 100; state.txFilterAmountMax = 500;
+  assert.deepEqual(filteredTxList().map((t) => t.id).sort(), ["t1", "t2"]);
+  resetTxFilters();
+});
+test("filteredTxList: custom period mode filters by date range instead of month/year", () => {
+  resetTxFilters();
+  setTransactions([
+    { id: "t1", type: "expense", date: "2026-03-05", amount: 10 },
+    { id: "t2", type: "expense", date: "2026-03-15", amount: 10 },
+    { id: "t3", type: "expense", date: "2026-03-25", amount: 10 }
+  ]);
+  state.txPeriodMode = "custom"; state.txFilterDateFrom = "2026-03-10"; state.txFilterDateTo = "2026-03-20";
+  assert.deepEqual(filteredTxList().map((t) => t.id), ["t2"]);
+  resetTxFilters();
+});
+test("computeBreakdown: an explicit categoryIds filter runs before the top-6 cap, so a selected low-spend category still appears", () => {
+  setCategories([
+    { id: "c1", type: "expense", name: "One" }, { id: "c2", type: "expense", name: "Two" },
+    { id: "c3", type: "expense", name: "Three" }, { id: "c4", type: "expense", name: "Four" },
+    { id: "c5", type: "expense", name: "Five" }, { id: "c6", type: "expense", name: "Six" },
+    { id: "c7", type: "expense", name: "Seven (low spend)" }
+  ]);
+  setTransactions([
+    { id: "t1", type: "expense", date: "2026-03-01", categoryId: "c1", amount: 700 },
+    { id: "t2", type: "expense", date: "2026-03-01", categoryId: "c2", amount: 600 },
+    { id: "t3", type: "expense", date: "2026-03-01", categoryId: "c3", amount: 500 },
+    { id: "t4", type: "expense", date: "2026-03-01", categoryId: "c4", amount: 400 },
+    { id: "t5", type: "expense", date: "2026-03-01", categoryId: "c5", amount: 300 },
+    { id: "t6", type: "expense", date: "2026-03-01", categoryId: "c6", amount: 200 },
+    { id: "t7", type: "expense", date: "2026-03-01", categoryId: "c7", amount: 1 }
+  ]);
+  const unfiltered = computeBreakdown("2026-03");
+  assert.ok(!unfiltered.some((r) => r.categoryId === "c7"));
+  const filtered = computeBreakdown("2026-03", new Set(["c7"]));
+  assert.equal(filtered.length, 1);
+  assert.equal(filtered[0].categoryId, "c7");
+});
+
+test("filteredTxList: \"today\" period mode filters to just today's date", (t) => {
+  withFakeNow(t, "2026-03-15T12:00:00", () => {
+    resetTxFilters();
+    setTransactions([
+      { id: "t1", type: "expense", date: "2026-03-14", amount: 10 },
+      { id: "t2", type: "expense", date: "2026-03-15", amount: 10 },
+      { id: "t3", type: "expense", date: "2026-03-16", amount: 10 }
+    ]);
+    state.txPeriodMode = "today";
+    assert.deepEqual(filteredTxList().map((row) => row.id), ["t2"]);
+    resetTxFilters();
+  });
+});
+test("computeBudgetsForRange: sums spend within the date range and compares against the plain (unscaled) monthly limit", () => {
+  setCategories([{ id: "cat-food", type: "expense", name: "Food" }]);
+  setBudgets([{ id: "b1", category: "Food", categoryId: "cat-food", limit: 1000 }]);
+  setTransactions([
+    { id: "t1", type: "expense", date: "2026-03-05", categoryId: "cat-food", amount: 300 },
+    { id: "t2", type: "expense", date: "2026-03-10", categoryId: "cat-food", amount: 400 },
+    { id: "t3", type: "expense", date: "2026-03-20", categoryId: "cat-food", amount: 999 } // outside the range
+  ]);
+  const [result] = computeBudgetsForRange("2026-03-01", "2026-03-15");
+  assert.equal(result.spentFmt, "฿700.00");
+  assert.equal(result.limitFmt, "฿1,000.00", "unlike computeBudgetsForYear, the limit is not scaled for an arbitrary range");
+});
+test("unbudgetedSpendForRange: totals expense transactions with no matching budget, within the date range only", () => {
+  setCategories([{ id: "cat-food", type: "expense", name: "Food" }, { id: "cat-health", type: "expense", name: "Health" }]);
+  setBudgets([{ id: "b1", category: "Food", categoryId: "cat-food", limit: 1000 }]);
+  setTransactions([
+    { id: "t1", type: "expense", date: "2026-03-05", categoryId: "cat-food", amount: 300 }, // budgeted, excluded
+    { id: "t2", type: "expense", date: "2026-03-10", categoryId: "cat-health", amount: 150 }, // unbudgeted, in range
+    { id: "t3", type: "expense", date: "2026-03-20", categoryId: "cat-health", amount: 500 } // unbudgeted, outside range
+  ]);
+  assert.equal(unbudgetedSpendForRange("2026-03-01", "2026-03-15"), 150);
+});
+test("computeBreakdownForRange: sums only transactions within the date range, same shape as computeBreakdown", () => {
+  setCategories([{ id: "cat-food", type: "expense", name: "Food" }]);
+  setTransactions([
+    { id: "t1", type: "expense", date: "2026-03-05", categoryId: "cat-food", amount: 100 },
+    { id: "t2", type: "expense", date: "2026-03-10", categoryId: "cat-food", amount: 50 },
+    { id: "t3", type: "expense", date: "2026-03-20", categoryId: "cat-food", amount: 999 } // outside the range
+  ]);
+  const [result] = computeBreakdownForRange("2026-03-01", "2026-03-15");
+  assert.equal(result.total, 150);
 });

@@ -35,4 +35,9 @@ export function renderChrome() {
   document.documentElement.lang = state.lang;
   document.querySelectorAll("#tabbar span[data-l]").forEach((el) => { el.textContent = L()[el.getAttribute("data-l")]; });
   document.querySelectorAll("#tabbar button").forEach((btn) => btn.classList.toggle("active", btn.getAttribute("data-tab") === state.tab));
+  // Only Home/Insights actually use the wider 880px+ layout (their own
+  // internal grids) -- see styles.css's 880px block for why every other
+  // screen deliberately stays capped at a narrower centered width.
+  const screenEl = document.getElementById("screen");
+  if (screenEl) screenEl.classList.toggle("screen-wide", state.tab === "home" || state.tab === "insights");
 }

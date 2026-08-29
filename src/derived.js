@@ -24,72 +24,99 @@ function displayName(id, fallback) {
   return categoryDisplayName(categories, id, fallback);
 }
 
-export function computeBudgets(forMonth) {
-  const targetMonth = forMonth || new Date().toISOString().slice(0, 7);
+// docs/specs/category-icon-chips.md: ranks a type's categories by how
+// often they're actually used (via resolveCategoryId, so it works on
+// pre-backfill rows too), then pads any remaining slots up to n from
+// categories' own sortOrder -- this is what makes a brand-new account
+// (zero transactions to rank from) still show a sensible, stable default
+// row instead of an empty or randomly-ordered one.
+export function mostUsedCategoryIds(type, n) {
+  const counts = new Map();
+  transactions.forEach((t) => {
+    if (t.type !== type) return;
+    const id = resolveCategoryId(t, type);
+    if (id) counts.set(id, (counts.get(id) || 0) + 1);
+  });
+  const live = categories.filter((c) => c.type === type && !c.deleted);
+  const liveIds = new Set(live.map((c) => c.id));
+  const ranked = Array.from(counts.entries())
+    .filter(([id]) => liveIds.has(id))
+    .sort((a, b) => b[1] - a[1])
+    .map(([id]) => id);
+  const rest = live.slice().sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((c) => c.id).filter((id) => !ranked.includes(id));
+  return ranked.concat(rest).slice(0, n);
+}
+
+// Shared by computeBudgets/computeBudgetsForYear/computeBudgetsForRange --
+// each just supplies its own transaction predicate and a limit multiplier
+// (yearly = monthly limit x12, since there's no separate yearly limit
+// field; today/custom range compare against the plain monthly limit --
+// see computeBudgetsForRange's own comment for why that's x1, not scaled).
+function budgetRowsFor(txPredicate, limitMultiplier) {
   const spentByCategoryId = {};
-  transactions.filter((t) => t.type === "expense" && monthKey(t.date) === targetMonth).forEach((t) => {
+  transactions.filter((t) => t.type === "expense" && txPredicate(t)).forEach((t) => {
     const cid = resolveCategoryId(t, "expense");
     spentByCategoryId[cid] = (spentByCategoryId[cid] || 0) + t.amount;
   });
   return budgets.map((b) => {
     const bid = resolveCategoryId(b, "expense");
     const spent = spentByCategoryId[bid] || 0;
-    const pct = Math.min(100, Math.round((spent / b.limit) * 100));
-    const over = spent > b.limit;
-    const near = !over && spent / b.limit >= 0.8;
+    const limit = b.limit * limitMultiplier;
+    const pct = Math.min(100, Math.round((spent / limit) * 100));
+    const over = spent > limit;
+    const near = !over && spent / limit >= 0.8;
     return {
-      category: displayName(bid, b.category), categoryId: bid, spentFmt: fmtMoney(spent), limitFmt: fmtMoney(b.limit), pct,
+      category: displayName(bid, b.category), categoryId: bid, spentFmt: fmtMoney(spent), limitFmt: fmtMoney(limit), pct,
       barColor: over ? "var(--color-expense)" : (near ? "var(--color-warning)" : "var(--color-accent)"),
       badgeClass: over ? "badge-expense" : (near ? "badge-warn" : "badge-brand"),
       statusLabel: over ? L().overBudget : pct + "%"
     };
   });
+}
+export function computeBudgets(forMonth) {
+  const targetMonth = forMonth || new Date().toISOString().slice(0, 7);
+  return budgetRowsFor((t) => monthKey(t.date) === targetMonth, 1);
 }
 // Same shape as computeBudgets, but sums a whole year's spend per category
 // and compares it against the monthly limit x12 (there's no separate yearly
 // limit field -- budgets are defined as one monthly figure per category).
 export function computeBudgetsForYear(forYear) {
   const targetYear = forYear || String(new Date().getFullYear());
-  const spentByCategoryId = {};
-  transactions.filter((t) => t.type === "expense" && t.date.slice(0, 4) === targetYear).forEach((t) => {
-    const cid = resolveCategoryId(t, "expense");
-    spentByCategoryId[cid] = (spentByCategoryId[cid] || 0) + t.amount;
-  });
-  return budgets.map((b) => {
-    const bid = resolveCategoryId(b, "expense");
-    const spent = spentByCategoryId[bid] || 0;
-    const yearLimit = b.limit * 12;
-    const pct = Math.min(100, Math.round((spent / yearLimit) * 100));
-    const over = spent > yearLimit;
-    const near = !over && spent / yearLimit >= 0.8;
-    return {
-      category: displayName(bid, b.category), categoryId: bid, spentFmt: fmtMoney(spent), limitFmt: fmtMoney(yearLimit), pct,
-      barColor: over ? "var(--color-expense)" : (near ? "var(--color-warning)" : "var(--color-accent)"),
-      badgeClass: over ? "badge-expense" : (near ? "badge-warn" : "badge-brand"),
-      statusLabel: over ? L().overBudget : pct + "%"
-    };
-  });
+  return budgetRowsFor((t) => t.date.slice(0, 4) === targetYear, 12);
 }
-// computeBudgets()/computeBudgetsForYear() only iterate existing budgets,
-// so spending in an expense category nobody ever set a limit for never
-// appeared anywhere on the screen users read as "where my money went" --
-// with seeded data, health (no budget) and utilities (no budget) totaled
-// more than a third of all spending and showed up nowhere. These total
-// exactly what those omit: expense transactions whose category has no
-// matching budget entry.
-export function unbudgetedSpend(forMonth) {
-  const targetMonth = forMonth || new Date().toISOString().slice(0, 7);
+// Same shape again, for the Insights "today"/"custom range" period modes
+// (docs/specs/transactions-filters-rework.md's Insights follow-up). Unlike
+// the yearly variant, there's no clean scaling factor for an arbitrary
+// day range, so this deliberately compares against the plain monthly limit
+// (x1) -- "how much of this month's budget did you use in this window,"
+// which is the useful framing for both a single "today" and a custom span.
+export function computeBudgetsForRange(fromDate, toDate) {
+  return budgetRowsFor((t) => t.date >= fromDate && t.date <= toDate, 1);
+}
+// Shared by unbudgetedSpend/unbudgetedSpendForYear/unbudgetedSpendForRange.
+// computeBudgets*() only iterate existing budgets, so spending in an
+// expense category nobody ever set a limit for never appeared anywhere on
+// the screen users read as "where my money went" -- with seeded data,
+// health (no budget) and utilities (no budget) totaled more than a third
+// of all spending and showed up nowhere. These total exactly what those
+// omit: expense transactions whose category has no matching budget entry.
+function unbudgetedSpendFor(txPredicate) {
   const budgetedIds = new Set(budgets.map((b) => resolveCategoryId(b, "expense")));
   return transactions
-    .filter((t) => t.type === "expense" && monthKey(t.date) === targetMonth && !budgetedIds.has(resolveCategoryId(t, "expense")))
+    .filter((t) => t.type === "expense" && !budgetedIds.has(resolveCategoryId(t, "expense")) && txPredicate(t))
     .reduce((a, t) => a + t.amount, 0);
+}
+export function unbudgetedSpend(forMonth) {
+  const targetMonth = forMonth || new Date().toISOString().slice(0, 7);
+  return unbudgetedSpendFor((t) => monthKey(t.date) === targetMonth);
 }
 export function unbudgetedSpendForYear(forYear) {
   const targetYear = forYear || String(new Date().getFullYear());
-  const budgetedIds = new Set(budgets.map((b) => resolveCategoryId(b, "expense")));
-  return transactions
-    .filter((t) => t.type === "expense" && t.date.slice(0, 4) === targetYear && !budgetedIds.has(resolveCategoryId(t, "expense")))
-    .reduce((a, t) => a + t.amount, 0);
+  return unbudgetedSpendFor((t) => t.date.slice(0, 4) === targetYear);
+}
+export function unbudgetedSpendForRange(fromDate, toDate) {
+  return unbudgetedSpendFor((t) => t.date >= fromDate && t.date <= toDate);
 }
 // Returns an alert message if adding/editing `tx` pushed its budget category
 // to 80%+ of its monthly limit, or null if no budget applies / still under.
@@ -152,6 +179,37 @@ export function byRecency(a, b) {
   if (byDate !== 0) return byDate;
   return (b.updatedAt || 0) - (a.updatedAt || 0);
 }
+// docs/specs/transactions-filters-rework.md: lives here rather than in
+// screens/transactions.js because it's pure (reads state/transactions,
+// no DOM/render/toast/save/sync side effects) -- same rule every other
+// function in this file follows, and it's what keeps this testable via
+// setTransactions()/setCategories() the same way the rest of derived.js
+// already is (screens/transactions.js itself has a module-level
+// document.addEventListener now, which makes it unsafe to import from a
+// Node test -- this function needed to not live there for that reason too).
+export function filteredTxList() {
+  let rows = transactions.slice();
+  if (state.txFilterType !== "all") rows = rows.filter((t) => t.type === state.txFilterType);
+  if (state.txPeriodMode === "today") {
+    const today = new Date().toISOString().slice(0, 10);
+    rows = rows.filter((t) => t.date === today);
+  } else if (state.txPeriodMode === "custom") {
+    if (state.txFilterDateFrom) rows = rows.filter((t) => t.date >= state.txFilterDateFrom);
+    if (state.txFilterDateTo) rows = rows.filter((t) => t.date <= state.txFilterDateTo);
+  } else {
+    if (state.txFilterMonthNum !== "all") rows = rows.filter((t) => t.date.slice(5, 7) === state.txFilterMonthNum);
+    if (state.txFilterYear !== "all") rows = rows.filter((t) => t.date.slice(0, 4) === state.txFilterYear);
+  }
+  // txFilterCategory is a Set of ids (multi-select) -- resolveCategoryId
+  // means this still matches a transaction whose own .category text has
+  // since gone stale (renamed or predates the backfill).
+  if (state.txFilterCategory.size > 0) rows = rows.filter((t) => state.txFilterCategory.has(resolveCategoryId(t, t.type)));
+  if (state.txFilterAmountMin != null) rows = rows.filter((t) => t.amount >= state.txFilterAmountMin);
+  if (state.txFilterAmountMax != null) rows = rows.filter((t) => t.amount <= state.txFilterAmountMax);
+  const q = state.txSearch.trim().toLowerCase();
+  if (q) rows = rows.filter((t) => (t.note || "").toLowerCase().includes(q) || categoryDisplayName(categories, resolveCategoryId(t, t.type), t.category).toLowerCase().includes(q));
+  return rows.sort(byRecency);
+}
 // Splits an already-sorted (byRecency) transaction list into consecutive
 // same-date runs, each labeled "Today"/"Yesterday" or the plain date. Does
 // not itself sort or filter -- callers pass in whatever order they want
@@ -202,9 +260,16 @@ export const CHART_COLORS = ["var(--color-accent)", "var(--color-income)", "var(
 // category can't be matched to anything current still falls back to its
 // own stored .category text -- the same "never worse than before"
 // fallback resolveCategoryId/displayName give every other function here.
-function breakdownEntries(txs) {
+// categoryIds (optional Set) filters *before* aggregation, not after --
+// see docs/specs/transactions-filters-rework.md: entries are already
+// capped to the top 6 by spend below, so a post-filter could silently hide
+// a selected category that isn't in the unfiltered top 6.
+function breakdownEntries(txs, categoryIds) {
+  const filtered = categoryIds && categoryIds.size
+    ? txs.filter((t) => categoryIds.has(resolveCategoryId(t, "expense") || t.category))
+    : txs;
   const totals = {}, names = {};
-  txs.forEach((t) => {
+  filtered.forEach((t) => {
     const cid = resolveCategoryId(t, "expense") || t.category;
     totals[cid] = (totals[cid] || 0) + t.amount;
     names[cid] = t.category;
@@ -219,14 +284,18 @@ function breakdownEntries(txs) {
     color: CHART_COLORS[i % CHART_COLORS.length]
   }));
 }
-export function computeBreakdown(forMonth) {
+export function computeBreakdown(forMonth, categoryIds) {
   const targetMonth = forMonth || new Date().toISOString().slice(0, 7);
-  return breakdownEntries(transactions.filter((t) => t.type === "expense" && monthKey(t.date) === targetMonth));
+  return breakdownEntries(transactions.filter((t) => t.type === "expense" && monthKey(t.date) === targetMonth), categoryIds);
 }
 // Same shape as computeBreakdown, but sums a whole year's spend per category.
-export function computeBreakdownForYear(forYear) {
+export function computeBreakdownForYear(forYear, categoryIds) {
   const targetYear = forYear || String(new Date().getFullYear());
-  return breakdownEntries(transactions.filter((t) => t.type === "expense" && t.date.slice(0, 4) === targetYear));
+  return breakdownEntries(transactions.filter((t) => t.type === "expense" && t.date.slice(0, 4) === targetYear), categoryIds);
+}
+// Same shape again, for Insights' "today"/"custom range" period modes.
+export function computeBreakdownForRange(fromDate, toDate, categoryIds) {
+  return breakdownEntries(transactions.filter((t) => t.type === "expense" && t.date >= fromDate && t.date <= toDate), categoryIds);
 }
 export function pieChartSvg(entries) {
   const total = entries.reduce((a, e) => a + e.total, 0) || 1;

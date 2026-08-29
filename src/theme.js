@@ -12,6 +12,7 @@ export function applyTheme() {
   const dark = { bg: "#141519", card: "#1e1f24", surface: "#26272d", divider: "rgba(255,255,255,0.10)", border: "rgba(255,255,255,0.16)", muted: "rgba(245,245,247,0.62)", tertiary: "rgba(245,245,247,0.42)", tabbarInactive: "rgba(245,245,247,0.42)", text: "#f5f5f7" };
   const t = state.dark ? dark : light;
   const root = document.documentElement.style;
+  document.documentElement.style.colorScheme = state.dark ? "dark" : "light";
   root.setProperty("--color-bg", t.bg);
   root.setProperty("--color-card", t.card);
   root.setProperty("--color-surface", t.surface);

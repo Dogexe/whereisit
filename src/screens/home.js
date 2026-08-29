@@ -59,7 +59,7 @@ export function renderHome() {
     <h2 class="screen-title" style="margin:2px 0 0">${escapeHtml(l.overview)}</h2>
     <div class="home-columns">
       <div class="home-col-main">
-        <div class="hero-card">
+        <div class="hero-card${income - expense < 0 ? " hero-card-negative" : ""}">
           <div class="kicker">${escapeHtml(l.balanceLabel)}</div>
           <div class="amount">${fmtMoney(income - expense)}</div>
           <div class="foot-row">
@@ -91,7 +91,7 @@ export function renderHome() {
           <button type="button" class="btn btn-ghost" id="goAddBtn">${escapeHtml(l.addShort)}</button>
         </div>
         <div class="list-card">
-          ${recent.length ? groupedTxRowsHtml(recent) : `<div class="empty-note">${escapeHtml(l.noTransactionsYet)}</div>`}
+          ${recent.length ? groupedTxRowsHtml(recent) : `<div class="empty-note empty-note-search">${icon("receipt")}<div>${escapeHtml(l.noTransactionsYet)}</div><button type="button" class="btn btn-primary btn-sm" id="emptyAddBtn">${escapeHtml(l.addShort)}</button></div>`}
         </div>
       </div>
       <div class="home-col-side">
@@ -110,7 +110,7 @@ export function renderHome() {
                 <div class="sub">${escapeHtml(dueSoonLabel(b.daysUntil))}</div>
               </div>
               <div class="amt">${fmtMoney(b.amount)}</div>
-              <button type="button" class="btn btn-secondary btn-sm" data-mark-paid="${b.id}">${escapeHtml(l.markPaidBtn)}</button>
+              <button type="button" class="btn btn-sm ${overdue ? "btn-danger" : "btn-secondary"}" data-mark-paid="${b.id}">${escapeHtml(l.markPaidBtn)}</button>
             </div>`;
           }).join("")}
         </div>` : ""}
@@ -130,6 +130,8 @@ export function renderHome() {
   `;
   $("goAddBtn").addEventListener("click", () => { resetForm(); setTab("add"); });
   $("goBudgetsBtn").addEventListener("click", () => { state.insightsTab = "budgets"; setTab("insights"); });
+  const emptyAddBtn = document.getElementById("emptyAddBtn");
+  if (emptyAddBtn) emptyAddBtn.addEventListener("click", () => { resetForm(); setTab("add"); });
   document.querySelectorAll("[data-mark-paid]").forEach((btn) => btn.addEventListener("click", () => markBillPaid(btn.getAttribute("data-mark-paid"))));
   wireTxRowActions();
   refreshIcons();

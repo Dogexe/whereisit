@@ -6,6 +6,7 @@ import { editTx, deleteTx } from "./add.js";
 import { L } from "../i18n.js";
 
 const REVEAL = 88; // exactly the actions group's width: 12+30+4+30+12
+const PEEK_KEY = "expense_tracker_swipe_peek_shown_v1";
 
 // Stage 5 of docs/specs/custom-categories.md: the last two display
 // touchpoints still reading the old string-keyed model, alongside
@@ -128,4 +129,20 @@ export function wireTxRowActions() {
   });
   document.querySelectorAll("[data-edit]").forEach((btn) => btn.addEventListener("click", () => editTx(btn.getAttribute("data-edit"))));
   document.querySelectorAll("[data-delete]").forEach((btn) => btn.addEventListener("click", () => deleteTx(btn.getAttribute("data-delete"))));
+  maybeShowSwipePeek();
+}
+
+// Runs once ever (gated on a localStorage flag, not per-render) so a
+// first-time user discovers the swipe gesture without documentation --
+// opens the first row to REVEAL width, holds briefly, then closes it.
+function maybeShowSwipePeek() {
+  if (localStorage.getItem(PEEK_KEY)) return;
+  const firstRow = document.querySelector(".tx-row-wrap");
+  if (!firstRow) return;
+  localStorage.setItem(PEEK_KEY, "1");
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  requestAnimationFrame(() => {
+    openRowTo(firstRow);
+    setTimeout(() => closeRow(firstRow), 400);
+  });
 }
