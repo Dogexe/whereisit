@@ -52,6 +52,14 @@
     /* surfaces (swapped by applyTheme for dark mode) */
     --color-bg: #f6f6f8; --color-card: #ffffff; --color-surface: #eeeef1;
     --color-text: #15161a; --color-muted: #71747f; --color-tertiary: #9497a3; --color-divider: #e4e4e9; --color-border: #d9dae0;
+    /* Own token rather than reusing --color-tertiary: that token is shared
+       by 11+ other (mostly static-text) spots, but the tab bar is an
+       interactive UI component subject to WCAG's stricter 3:1 minimum --
+       #9497a3 on this bg only computes to ~2.7:1 (verified via a real
+       relative-luminance calc, not eyeballed). #7d808c clears 3:1 with
+       margin (~3.65:1); dark mode's tertiary already passes (~3.86:1) so
+       it's reused as-is below. */
+    --color-tabbar-inactive: #7d808c;
     /* type + shape */
     /* "Noto Sans Thai" comes right after "Inter" so Thai-block characters
        (which the self-hosted Inter file above has no glyphs for at all)
@@ -98,6 +106,12 @@
      exactly enough regardless of device. */
   .screen { flex: 1; max-width: 480px; margin: 0 auto; width: 100%; padding: 20px 20px calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 20px); box-sizing: border-box; }
   .screen-title { font-size: 22px; margin: 4px 0 16px; }
+  /* Fires only on a genuine tab switch (screens/router.js's setTab, which
+     re-adds this class after a forced reflow) -- NOT on every renderScreen()
+     call, since that also runs on sync pulls and local saves where a fade
+     would feel like a glitch rather than polish. */
+  @keyframes screen-fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .screen.screen-enter { animation: screen-fade-in var(--duration-normal) var(--ease-standard); }
 
   /* — shared card base (list/insight/goal/stat/etc. cards all sit on this) — */
   .card, .list-card, .insight-card, .trend-chart-card, .goal-card,
@@ -356,11 +370,25 @@
   .tabbar { display: flex; width: 100%; max-width: 480px; height: var(--tabbar-h); }
   .tabbar button {
     flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-    background: none; border: none; cursor: pointer; color: var(--color-tertiary);
+    background: none; border: none; cursor: pointer; color: var(--color-tabbar-inactive);
     font-family: var(--font-sans);
+    transition: color var(--duration-fast) var(--ease-standard);
   }
   .tabbar button.active { color: var(--color-accent); }
+  /* Active state needed a second visual cue beyond color alone (icon
+     outline->filled isn't possible without a second icon set -- these are
+     monoline sprite icons -- so a bolder label is the cheap second signal). */
+  .tabbar button.active span { font-weight: 700; }
   .tabbar button span { font-size: 11px; font-weight: 600; }
+  /* 18px (.icon's base size) read small for a primary nav row; 22px keeps
+     the icon comfortably inside the 64px bar alongside the label+gap. The
+     add tab's own [data-tab="add"] rule below is already more specific and
+     is untouched by this. */
+  .tabbar button:not([data-tab="add"]) .icon {
+    width: 22px; height: 22px;
+    transition: transform var(--duration-fast) var(--ease-standard);
+  }
+  .tabbar button:active .icon { transform: scale(0.88); }
   /* The "add" tab is the app's primary action, so it's broken out of the
      bar visually (raised circle, accent gradient) rather than sitting as
      a 5th equal-weight icon -- same gradient .hero-card already uses, for

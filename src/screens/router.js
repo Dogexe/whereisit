@@ -10,6 +10,16 @@ export function registerRenderers(r) { renderers = r; }
 export function setTab(tab) {
   state.tab = tab;
   renderScreen();
+  // Fade-in only on a genuine tab switch, not every renderScreen() call
+  // (sync pulls, local saves, etc. call it too, and a fade on every one of
+  // those would read as a glitch rather than polish). Force a reflow
+  // between remove/re-add so the CSS animation actually restarts.
+  const screenEl = document.getElementById("screen");
+  if (screenEl) {
+    screenEl.classList.remove("screen-enter");
+    void screenEl.offsetWidth;
+    screenEl.classList.add("screen-enter");
+  }
 }
 export function renderScreen() {
   if (state.tab === "home") renderers.home();
