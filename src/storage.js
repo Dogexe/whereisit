@@ -1,4 +1,4 @@
-import { state, transactions, budgets, bills, goals, setTransactions, setBudgets, setBills, setGoals } from "./state.js";
+import { state, transactions, budgets, bills, goals, categories, setTransactions, setBudgets, setBills, setGoals, setCategories } from "./state.js";
 import { showToast } from "./toast.js";
 import { L } from "./i18n.js";
 import { restoreArray } from "./restore.js";
@@ -38,6 +38,7 @@ export function loadFromStorage() {
       setBudgets(restoreArray(s.budgets, budgets));
       setBills(restoreArray(s.bills, bills));
       setGoals(restoreArray(s.goals, goals));
+      setCategories(restoreArray(s.categories, categories));
     }
   } catch (e) { /* ignore */ }
 }
@@ -63,6 +64,6 @@ export function saveToStorage() {
 }
 export function saveSettings() {
   if (!storageAvailable) { warnUnavailable(); return; }
-  try { window.localStorage.setItem(SETTINGS_KEY, JSON.stringify({ lang: state.lang, dark: state.dark, budgets, bills, goals })); }
+  try { window.localStorage.setItem(SETTINGS_KEY, JSON.stringify({ lang: state.lang, dark: state.dark, budgets, bills, goals, categories })); }
   catch (e) { queueMicrotask(() => showToast(L().toastSaveFailed)); }
 }

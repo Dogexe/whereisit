@@ -1,4 +1,4 @@
-import { CATEGORIES } from "./categories.js";
+import { CATEGORIES, DEFAULT_CATEGORIES } from "./categories.js";
 
 export const state = {
   lang: "th", dark: false,
@@ -24,6 +24,11 @@ export let bills = [
   { id: "bl3", name: "Netflix", amount: 349, day: 20, category: "บันเทิง" }
 ];
 export let goals = [];
+// Additive-only for now (see docs/specs/custom-categories.md stage 1) --
+// nothing reads this yet, existing screens still use the hardcoded
+// CATEGORIES strings directly. Sliced so mutating this array can never
+// mutate categories.js's own DEFAULT_CATEGORIES export.
+export let categories = DEFAULT_CATEGORIES.slice();
 
 // Reassigning an imported `let` binding from another module isn't allowed in
 // ES modules (only mutation is) -- these setters are how storage.js/sync code
@@ -32,3 +37,4 @@ export function setTransactions(arr) { transactions = arr; }
 export function setBudgets(arr) { budgets = arr; }
 export function setBills(arr) { bills = arr; }
 export function setGoals(arr) { goals = arr; }
+export function setCategories(arr) { categories = arr; }

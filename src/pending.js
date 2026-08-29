@@ -23,9 +23,9 @@
 // data loss.
 
 const PENDING_KEY = "expense_tracker_pending_v1";
-const TABLES = ["transactions", "budgets", "bills", "goals"];
+const TABLES = ["transactions", "budgets", "bills", "goals", "categories"];
 
-const pending = { transactions: new Map(), budgets: new Map(), bills: new Map(), goals: new Map() };
+const pending = { transactions: new Map(), budgets: new Map(), bills: new Map(), goals: new Map(), categories: new Map() };
 
 function persist() {
   try {

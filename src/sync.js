@@ -1,6 +1,6 @@
-import { CATEGORIES } from "./categories.js";
+import { CATEGORIES, DEFAULT_CATEGORIES } from "./categories.js";
 import { $, escapeHtml } from "./utils.js";
-import { state, transactions, budgets, bills, goals, setTransactions, setBudgets, setBills, setGoals } from "./state.js";
+import { state, transactions, budgets, bills, goals, categories, setTransactions, setBudgets, setBills, setGoals, setCategories } from "./state.js";
 import { saveToStorage, saveSettings } from "./storage.js";
 import { L } from "./i18n.js";
 import { showToast } from "./toast.js";
@@ -70,6 +70,13 @@ export function goalToRow(g, deleted) {
     deleted: !!deleted, updated_at: new Date(g.updatedAt || Date.now()).toISOString()
   };
 }
+function rowToCategory(r) { return { id: r.id, type: r.type, name: r.name, icon: r.icon, sortOrder: r.sort_order, updatedAt: new Date(r.updated_at).getTime() }; }
+export function categoryToRow(c, deleted) {
+  return {
+    id: c.id, user_id: currentUser ? currentUser.id : null, type: c.type, name: c.name, icon: c.icon, sort_order: c.sortOrder || 0,
+    deleted: !!deleted, updated_at: new Date(c.updatedAt || Date.now()).toISOString()
+  };
+}
 
 // Marks every row pending the moment a push is attempted -- before the
 // !sb/!currentUser checks below, so an edit made while signed out or before
@@ -117,6 +124,7 @@ export function markAllPending() {
   markPending("budgets", budgets.map((b) => budgetToRow(b, false)));
   markPending("bills", bills.map((b) => billToRow(b, false)));
   markPending("goals", goals.map((g) => goalToRow(g, false)));
+  markPending("categories", categories.map((c) => categoryToRow(c, false)));
 }
 
 // Clears everything scoped to the signed-in account -- transactions,
@@ -136,11 +144,21 @@ export function markAllPending() {
 // saveSettings() persists lang/dark unchanged alongside the now-empty
 // arrays in the same write, rather than needing a separate
 // settings-preserving code path.
+// Categories are the one exception to "wipe to empty": unlike
+// transactions/budgets/bills/goals, they're closer to app vocabulary the
+// Add screen needs to function at all (its category dropdown reads from
+// this list -- see docs/specs/custom-categories.md) than personal data
+// belonging to one account. Re-seeding with the same fixed DEFAULT_CATEGORIES
+// every device already seeds fresh with means the next signed-out (or
+// newly signed-in, pre-first-sync) session isn't left with an empty
+// dropdown, and doesn't leak anything account-specific either, since
+// these are just the built-in defaults everyone starts with.
 export function wipeLocalAccountData() {
   setTransactions([]);
   setBudgets([]);
   setBills([]);
   setGoals([]);
+  setCategories(DEFAULT_CATEGORIES.slice());
   saveToStorage();
   saveSettings();
   clearAllPending();
@@ -301,6 +319,18 @@ async function pullGoals(epoch) {
     return true;
   } catch (e) { return false; }
 }
+async function pullCategories(epoch) {
+  if (!sb || !currentUser) return false;
+  try {
+    const { data, error } = await pullAllPages("categories");
+    if (error) throw error;
+    if (epoch !== syncEpoch) return false;
+    setCategories(mergeRowsById(categories, data, rowToCategory));
+    saveSettings();
+    advanceWatermark("categories", data);
+    return true;
+  } catch (e) { return false; }
+}
 
 // True while the user has an uncontrolled form open/focused that a full
 // screen re-render would silently reset mid-edit (Add screen, budget/bill
@@ -344,18 +374,21 @@ export async function syncNow() {
   dropPendingForRemovedIds("bills", bills);
   const pullGoalOk = await pullGoals(epoch);
   dropPendingForRemovedIds("goals", goals);
+  const pullCategoryOk = await pullCategories(epoch);
+  dropPendingForRemovedIds("categories", categories);
   // Every individual create/edit/delete already pushed its own single row
   // immediately (see pushTx/pushRows calls throughout the screens/ modules)
   // -- this is a retry pass for whatever's still pending because that push
   // never happened or failed (offline, not signed in yet, a transient
   // error), not a resend of the entire table. In the normal case each of
-  // these four arrays is empty and pushRows's own `if (!rows.length) return
+  // these five arrays is empty and pushRows's own `if (!rows.length) return
   // true` guard means this makes zero network calls.
   const pushTxOk = await pushRows("transactions", getPendingRows("transactions"));
   const pushBudgetOk = await pushRows("budgets", getPendingRows("budgets"));
   const pushBillOk = await pushRows("bills", getPendingRows("bills"));
   const pushGoalOk = await pushRows("goals", getPendingRows("goals"));
-  if (pushTxOk && pushBudgetOk && pushBillOk && pushGoalOk && pullTxOk && pullBudgetOk && pullBillOk && pullGoalOk) {
+  const pushCategoryOk = await pushRows("categories", getPendingRows("categories"));
+  if (pushTxOk && pushBudgetOk && pushBillOk && pushGoalOk && pushCategoryOk && pullTxOk && pullBudgetOk && pullBillOk && pullGoalOk && pullCategoryOk) {
     setSyncStatus(L().syncLatest + new Date().toLocaleTimeString(state.lang === "en" ? "en-US" : "th-TH"), true);
     lastSyncFailed = false;
     if (!hasLiveInputRisk()) onSyncRerender();

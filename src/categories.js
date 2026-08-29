@@ -36,6 +36,24 @@ export const CATEGORY_ICON = {
   "บันเทิง": "tv", "สุขภาพ": "heart-pulse", "การศึกษา": "book-open", "ผ่อนชำระ/หนี้สิน": "credit-card", "ออมเงิน/ลงทุน": "piggy-bank", "อื่นๆ (รายจ่าย)": "more-horizontal"
 };
 export function iconFor(cat) { return CATEGORY_ICON[cat] || "circle"; }
+
+// Fixed slugs for today's 16 built-in categories, assigned once here so
+// they stay stable across a rename (see docs/specs/custom-categories.md
+// stage 1) -- guessCategory's keyword matching and any other lookup that
+// needs "the built-in food category specifically" keys off these ids,
+// never the display name, which is the whole point: renaming a built-in
+// must not break anything keyed to it. Built by mapping over CATEGORIES/
+// CATEGORY_ICON directly (not retyped by hand) so this can never drift
+// out of sync with them or introduce a Thai-text transcription error.
+const DEFAULT_SLUGS = {
+  income: ["salary", "bonus", "business", "interest", "other"],
+  expense: ["food", "transport", "housing", "utilities", "shopping", "entertainment", "health", "education", "debt", "savings", "other"]
+};
+export const DEFAULT_CATEGORIES = ["income", "expense"].flatMap((type) =>
+  CATEGORIES[type].map((name, i) => ({
+    id: `default-${type}-${DEFAULT_SLUGS[type][i]}`, type, name, icon: CATEGORY_ICON[name], sortOrder: i
+  }))
+);
 export function rowTone(type) { return type === "income" ? { bg: "var(--color-income-tint)", color: "var(--color-income)" } : { bg: "var(--color-accent-tint)", color: "var(--color-accent)" }; }
 export const GOAL_ICONS = ["flag", "piggy-bank", "plane", "shield", "gift", "target"];
 export const GOAL_TONES = [
