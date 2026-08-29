@@ -55,6 +55,25 @@ export const DEFAULT_CATEGORIES = ["income", "expense"].flatMap((type) =>
   }))
 );
 export function rowTone(type) { return type === "income" ? { bg: "var(--color-income-tint)", color: "var(--color-income)" } : { bg: "var(--color-accent-tint)", color: "var(--color-accent)" }; }
+
+// Stage 2 of docs/specs/custom-categories.md: transactions/budgets/bills
+// are moving from storing a category by name to referencing it by a
+// stable categoryId, but not every row has one yet (pre-migration rows
+// until the one-time backfill runs, or -- until a later stage moves the
+// Add screen itself to writing categoryId directly -- any row created in
+// the gap between this stage and that one). Pure and dependency-free
+// (takes the categories list as a parameter rather than importing
+// state.js) so both derived.js's read path and sync.js's backfill can
+// share the exact same matching logic instead of two copies drifting
+// apart.
+export function findCategoryId(categoriesList, name, type) {
+  const match = categoriesList.find((c) => c.name === name && c.type === type && !c.deleted);
+  return match ? match.id : null;
+}
+export function categoryDisplayName(categoriesList, id, fallback) {
+  const c = categoriesList.find((x) => x.id === id);
+  return c ? c.name : fallback;
+}
 export const GOAL_ICONS = ["flag", "piggy-bank", "plane", "shield", "gift", "target"];
 export const GOAL_TONES = [
   { bg: "var(--color-accent-tint)", color: "var(--color-accent)" },

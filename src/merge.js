@@ -18,23 +18,15 @@ export function mergeRowsById(local, incomingRows, rowToObj) {
   return Array.from(byId.values());
 }
 
-// Budgets merge differently from the other three tables -- a known quirk in
-// the original implementation, preserved here exactly rather than fixed:
-// - Keyed by `category` name, not `id`.
-// - No `updatedAt` comparison: an incoming non-deleted row always overwrites
-//   the local row for that category, even if the local edit is newer.
-// - A `deleted:true` incoming row is a no-op, not a removal -- a budget
-//   deleted on another device is never removed locally by a pull.
-// - An empty `incomingRows` array short-circuits to "nothing to merge" and
-//   returns `local` unchanged, rather than emptying the local list (which
-//   `mergeRowsById` would do, since an empty incoming array has no tombstones
-//   to remove anything either way -- but this bails out even before trying).
-export function mergeBudgetsByCategory(local, incomingRows, rowToObj) {
-  if (!incomingRows || !incomingRows.length) return local;
-  const byCat = new Map(local.map((b) => [b.category, b]));
-  incomingRows.forEach((r) => {
-    if (r.deleted) return;
-    byCat.set(r.category, rowToObj(r));
-  });
-  return Array.from(byCat.values());
-}
+// Budgets used to need a separate mergeBudgetsByCategory here, keyed by
+// category name instead of id (an incoming row always overwriting
+// regardless of updatedAt, tombstones never removing anything) -- not a
+// design choice, just a workaround for budgets having no better shared
+// key to merge by at the time. Once budgets gained a real categoryId
+// (docs/specs/custom-categories.md stage 2), sync.js's pullBudgets moved
+// to a plain mergeRowsById call like everything else, since budgets
+// already carried their own row id end-to-end (state.js's seed data,
+// Settings' edit/delete-by-id) -- category-name-keying was never actually
+// necessary, just what an earlier version reached for. Removed here along
+// with its dedicated tests (see tests/merge.test.js's history) rather
+// than left as unused dead code.

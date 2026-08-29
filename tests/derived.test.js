@@ -1,9 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { state, setBills, setTransactions, setBudgets } from "../src/state.js";
+import { state, setBills, setTransactions, setBudgets, setCategories } from "../src/state.js";
 import {
   nextBillDueDate, daysUntilBillDue, billDueCycle, dueSoonLabel, upcomingBills, monthKeyOf,
-  pctDeltaLabel, monthHasTransactions, unbudgetedSpend, unbudgetedSpendForYear
+  pctDeltaLabel, monthHasTransactions, unbudgetedSpend, unbudgetedSpendForYear,
+  computeBudgets, checkBudgetAlert, computeBreakdown
 } from "../src/derived.js";
 
 // derived.js's bill-due functions read the wall clock via `new Date()`
@@ -148,4 +149,52 @@ test("unbudgetedSpendForYear: same idea, summed across the whole year", () => {
     { id: "t3", type: "expense", date: "2025-12-31", category: "สุขภาพ", amount: 999 } // wrong year, excluded
   ]);
   assert.equal(unbudgetedSpendForYear("2026"), 300);
+});
+
+// --- categoryId-aware matching (docs/specs/custom-categories.md stage 2) ---
+// computeBudgets/checkBudgetAlert/computeBreakdown had no prior test
+// coverage at all before this stage's refactor, so these specifically
+// exercise the new categoryId-based matching -- including a row that only
+// has categoryId set (no .category match needed) and a rename scenario
+// (the category's current display name no longer matches what an old
+// transaction's .category string says), confirming the whole point of
+// this migration: matching survives a rename, and display always reflects
+// the *current* name, not a stale stored string.
+
+test("computeBudgets: matches a budget and transaction by categoryId even when their .category strings differ (post-rename)", () => {
+  setCategories([{ id: "cat-food", type: "expense", name: "Groceries (renamed)", icon: "utensils" }]);
+  setBudgets([{ id: "b1", category: "อาหารและเครื่องดื่ม", categoryId: "cat-food", limit: 1000 }]);
+  setTransactions([{ id: "t1", type: "expense", date: "2026-03-05", category: "อาหารและเครื่องดื่ม", categoryId: "cat-food", amount: 400 }]);
+  const [result] = computeBudgets("2026-03");
+  assert.equal(result.category, "Groceries (renamed)", "display name resolves via categoryId, not the stale .category string");
+  assert.equal(result.spentFmt, "฿400.00");
+});
+
+test("computeBudgets: falls back to name+type matching when categoryId is missing entirely (pre-backfill row)", () => {
+  setCategories([{ id: "default-expense-food", type: "expense", name: "อาหารและเครื่องดื่ม", icon: "utensils" }]);
+  setBudgets([{ id: "b1", category: "อาหารและเครื่องดื่ม", limit: 1000 }]); // no categoryId
+  setTransactions([{ id: "t1", type: "expense", date: "2026-03-05", category: "อาหารและเครื่องดื่ม", amount: 250 }]); // no categoryId
+  const [result] = computeBudgets("2026-03");
+  assert.equal(result.spentFmt, "฿250.00", "still matches by name+type when neither row has categoryId yet");
+});
+
+test("checkBudgetAlert: fires using the category's current display name, not a stale .category string", () => {
+  setCategories([{ id: "cat-food", type: "expense", name: "Groceries (renamed)", icon: "utensils" }]);
+  setBudgets([{ id: "b1", category: "อาหารและเครื่องดื่ม", categoryId: "cat-food", limit: 100 }]);
+  setTransactions([{ id: "t0", type: "expense", date: new Date().toISOString().slice(0, 7) + "-01", category: "อาหารและเครื่องดื่ม", categoryId: "cat-food", amount: 90 }]);
+  const newTx = { type: "expense", date: new Date().toISOString().slice(0, 10), category: "อาหารและเครื่องดื่ม", categoryId: "cat-food", amount: 20 };
+  const msg = checkBudgetAlert(newTx);
+  assert.match(msg, /Groceries \(renamed\)/);
+});
+
+test("computeBreakdown: groups two transactions with different .category text but the same categoryId into one entry", () => {
+  setCategories([{ id: "cat-food", type: "expense", name: "Food", icon: "utensils" }]);
+  setTransactions([
+    { id: "t1", type: "expense", date: "2026-03-05", category: "Old Name", categoryId: "cat-food", amount: 100 },
+    { id: "t2", type: "expense", date: "2026-03-10", category: "New Name", categoryId: "cat-food", amount: 50 }
+  ]);
+  const entries = computeBreakdown("2026-03");
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].category, "Food");
+  assert.equal(entries[0].total, 150);
 });

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mergeRowsById, mergeBudgetsByCategory } from "../src/merge.js";
+import { mergeRowsById } from "../src/merge.js";
 
 // A minimal, deterministic "row -> object" mapper standing in for the real
 // rowToTx/rowToBill/rowToGoal in sync.js -- these tests only care about
@@ -69,46 +69,8 @@ test("mergeRowsById: incoming row with equal updatedAt does not overwrite local"
   assert.equal(result[0].value, "local");
 });
 
-// --- mergeBudgetsByCategory: documents the current (buggy) behaviour on
-// purpose -- see the doc comment in src/merge.js. Not to be "fixed" here.
-
-const toBudgetObj = (r) => ({ id: r.id, category: r.category, limit: r.limit, updatedAt: new Date(r.updated_at).getTime() });
-
-test("mergeBudgetsByCategory: keys by category name, not id -- incoming always overwrites regardless of updatedAt", () => {
-  const local = [{ id: "local-id", category: "Food", limit: 100, updatedAt: 9999999 }];
-  const incoming = [{ id: "cloud-id", category: "Food", limit: 200, updated_at: new Date(1).toISOString(), deleted: false }];
-  const result = mergeBudgetsByCategory(local, incoming, toBudgetObj);
-  assert.equal(result.length, 1);
-  assert.equal(result[0].id, "cloud-id");
-  assert.equal(result[0].limit, 200);
-});
-
-test("mergeBudgetsByCategory: empty incoming array returns local unchanged (bails out early)", () => {
-  const local = [{ id: "1", category: "Food", limit: 100, updatedAt: 1000 }];
-  const result = mergeBudgetsByCategory(local, [], toBudgetObj);
-  assert.equal(result, local);
-});
-
-test("mergeBudgetsByCategory: a deleted:true row is a no-op, not a removal", () => {
-  const local = [{ id: "1", category: "Food", limit: 100, updatedAt: 1000 }];
-  const incoming = [{ id: "1", category: "Food", updated_at: new Date(2000).toISOString(), deleted: true }];
-  const result = mergeBudgetsByCategory(local, incoming, toBudgetObj);
-  assert.equal(result.length, 1);
-  assert.equal(result[0].category, "Food");
-});
-
-test("mergeBudgetsByCategory: row present in cloud but not locally gets added", () => {
-  const local = [];
-  const incoming = [{ id: "1", category: "Travel", limit: 50, updated_at: new Date(1000).toISOString(), deleted: false }];
-  const result = mergeBudgetsByCategory(local, incoming, toBudgetObj);
-  assert.equal(result.length, 1);
-  assert.equal(result[0].category, "Travel");
-});
-
-test("mergeBudgetsByCategory: row present locally but not in cloud survives the merge", () => {
-  const local = [{ id: "1", category: "Food", limit: 100, updatedAt: 1000 }];
-  const incoming = [{ id: "2", category: "Travel", limit: 50, updated_at: new Date(1000).toISOString(), deleted: false }];
-  const result = mergeBudgetsByCategory(local, incoming, toBudgetObj);
-  const categories = result.map((b) => b.category).sort();
-  assert.deepEqual(categories, ["Food", "Travel"]);
-});
+// mergeBudgetsByCategory (and its dedicated tests, formerly here) was
+// removed once budgets gained a real categoryId -- see merge.js's own
+// doc comment. Budgets now merge via the plain mergeRowsById above, same
+// as bills/goals/categories; no separate test needed since it's the same
+// function already covered by the tests above.

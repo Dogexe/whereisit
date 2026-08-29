@@ -8,7 +8,7 @@ import { shouldWipeLocalData, getStoredUserId, setStoredUserId } from "./account
 import { applyTheme } from "./theme.js";
 import {
   sb, setCurrentUser, currentUser, hasLiveInputRisk, syncNow, setSyncStatus, setSyncRerenderCallback, markAllPending,
-  wipeLocalAccountData
+  wipeLocalAccountData, backfillCategoryIds
 } from "./sync.js";
 import { setDeferredInstallPrompt } from "./pwa-install.js";
 import { initErrorReporting } from "./error-report.js";
@@ -39,6 +39,11 @@ setSyncRerenderCallback(renderScreen);
 loadFromStorage();
 loadPending();
 loadWatermark();
+// One-time migration (docs/specs/custom-categories.md stage 2) -- stamps
+// categoryId onto any transaction/budget/bill that doesn't have one yet.
+// Run before the first render so even the very first paint reflects it,
+// though nothing currently on screen reads categoryId yet.
+backfillCategoryIds();
 applyTheme();
 renderScreen();
 refreshIcons();

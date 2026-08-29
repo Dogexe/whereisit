@@ -24,6 +24,7 @@ export const STRINGS = {
   financialOverview: ["ภาพรวมการเงิน", "Insights"], budgetsTab: ["งบประมาณ", "Budgets"],
   categoryTab: ["หมวดหมู่", "Categories"], trendTab: ["แนวโน้ม", "Trend"],
   spentSoFar: ["ใช้ไปแล้ว", "spent"], budgetOf: ["งบ", "Budget"], overBudget: ["เกินงบ", "Over"],
+  uncategorized: ["ไม่ระบุหมวดหมู่", "Uncategorized"],
   expenseByCategory: ["รายจ่ายตามหมวดหมู่", "Expenses by category"],
   noExpensesMonth: ["ยังไม่มีรายจ่ายในเดือนนี้", "No expenses yet this month"], settingsTitle: ["ตั้งค่า", "Settings"],
   personalAccount: ["บัญชีส่วนตัว", "Personal account"], languageSection: ["ภาษา", "Language"],

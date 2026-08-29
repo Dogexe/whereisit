@@ -1,20 +1,40 @@
-import { state, transactions, budgets, bills } from "./state.js";
+import { state, transactions, budgets, bills, categories } from "./state.js";
 import { monthKey, fmtMoney, monthLabel, dateLabel, displayYear } from "./utils.js";
+import { findCategoryId, categoryDisplayName } from "./categories.js";
 import { L } from "./i18n.js";
+
+// Budgets/transactions are moving from being matched by plain category
+// name to a stable categoryId (docs/specs/custom-categories.md stage 2),
+// but not every row has one yet -- pre-migration rows until the one-time
+// backfill runs, or any row created in the gap before a later stage moves
+// the Add/Settings screens themselves to writing categoryId directly.
+// Falling back to a name+type lookup here means every function below
+// works correctly regardless of which state a given row is in, without
+// needing to know or care which. Budgets/bills have no `.type` field of
+// their own (always expense-side -- see settings.js's own comment on
+// this), so callers pass "expense" explicitly for those.
+function resolveCategoryId(row, type) {
+  return row.categoryId || findCategoryId(categories, row.category, type);
+}
+function displayName(id, fallback) {
+  return categoryDisplayName(categories, id, fallback);
+}
 
 export function computeBudgets(forMonth) {
   const targetMonth = forMonth || new Date().toISOString().slice(0, 7);
-  const spentByCategory = {};
+  const spentByCategoryId = {};
   transactions.filter((t) => t.type === "expense" && monthKey(t.date) === targetMonth).forEach((t) => {
-    spentByCategory[t.category] = (spentByCategory[t.category] || 0) + t.amount;
+    const cid = resolveCategoryId(t, "expense");
+    spentByCategoryId[cid] = (spentByCategoryId[cid] || 0) + t.amount;
   });
   return budgets.map((b) => {
-    const spent = spentByCategory[b.category] || 0;
+    const bid = resolveCategoryId(b, "expense");
+    const spent = spentByCategoryId[bid] || 0;
     const pct = Math.min(100, Math.round((spent / b.limit) * 100));
     const over = spent > b.limit;
     const near = !over && spent / b.limit >= 0.8;
     return {
-      category: b.category, spentFmt: fmtMoney(spent), limitFmt: fmtMoney(b.limit), pct,
+      category: displayName(bid, b.category), categoryId: bid, spentFmt: fmtMoney(spent), limitFmt: fmtMoney(b.limit), pct,
       barColor: over ? "var(--color-expense)" : (near ? "var(--color-warning)" : "var(--color-accent)"),
       badgeClass: over ? "badge-expense" : (near ? "badge-warn" : "badge-brand"),
       statusLabel: over ? L().overBudget : pct + "%"
@@ -26,18 +46,20 @@ export function computeBudgets(forMonth) {
 // limit field -- budgets are defined as one monthly figure per category).
 export function computeBudgetsForYear(forYear) {
   const targetYear = forYear || String(new Date().getFullYear());
-  const spentByCategory = {};
+  const spentByCategoryId = {};
   transactions.filter((t) => t.type === "expense" && t.date.slice(0, 4) === targetYear).forEach((t) => {
-    spentByCategory[t.category] = (spentByCategory[t.category] || 0) + t.amount;
+    const cid = resolveCategoryId(t, "expense");
+    spentByCategoryId[cid] = (spentByCategoryId[cid] || 0) + t.amount;
   });
   return budgets.map((b) => {
-    const spent = spentByCategory[b.category] || 0;
+    const bid = resolveCategoryId(b, "expense");
+    const spent = spentByCategoryId[bid] || 0;
     const yearLimit = b.limit * 12;
     const pct = Math.min(100, Math.round((spent / yearLimit) * 100));
     const over = spent > yearLimit;
     const near = !over && spent / yearLimit >= 0.8;
     return {
-      category: b.category, spentFmt: fmtMoney(spent), limitFmt: fmtMoney(yearLimit), pct,
+      category: displayName(bid, b.category), categoryId: bid, spentFmt: fmtMoney(spent), limitFmt: fmtMoney(yearLimit), pct,
       barColor: over ? "var(--color-expense)" : (near ? "var(--color-warning)" : "var(--color-accent)"),
       badgeClass: over ? "badge-expense" : (near ? "badge-warn" : "badge-brand"),
       statusLabel: over ? L().overBudget : pct + "%"
@@ -53,16 +75,16 @@ export function computeBudgetsForYear(forYear) {
 // matching budget entry.
 export function unbudgetedSpend(forMonth) {
   const targetMonth = forMonth || new Date().toISOString().slice(0, 7);
-  const budgetedCats = new Set(budgets.map((b) => b.category));
+  const budgetedIds = new Set(budgets.map((b) => resolveCategoryId(b, "expense")));
   return transactions
-    .filter((t) => t.type === "expense" && monthKey(t.date) === targetMonth && !budgetedCats.has(t.category))
+    .filter((t) => t.type === "expense" && monthKey(t.date) === targetMonth && !budgetedIds.has(resolveCategoryId(t, "expense")))
     .reduce((a, t) => a + t.amount, 0);
 }
 export function unbudgetedSpendForYear(forYear) {
   const targetYear = forYear || String(new Date().getFullYear());
-  const budgetedCats = new Set(budgets.map((b) => b.category));
+  const budgetedIds = new Set(budgets.map((b) => resolveCategoryId(b, "expense")));
   return transactions
-    .filter((t) => t.type === "expense" && t.date.slice(0, 4) === targetYear && !budgetedCats.has(t.category))
+    .filter((t) => t.type === "expense" && t.date.slice(0, 4) === targetYear && !budgetedIds.has(resolveCategoryId(t, "expense")))
     .reduce((a, t) => a + t.amount, 0);
 }
 // Returns an alert message if adding/editing `tx` pushed its budget category
@@ -71,11 +93,13 @@ export function checkBudgetAlert(tx) {
   if (!tx || tx.type !== "expense") return null;
   const curMonthKey = new Date().toISOString().slice(0, 7);
   if (monthKey(tx.date) !== curMonthKey) return null;
-  const budget = budgets.find((b) => b.category === tx.category);
+  const txCid = resolveCategoryId(tx, "expense");
+  const budget = budgets.find((b) => resolveCategoryId(b, "expense") === txCid);
   if (!budget) return null;
-  const spent = transactions.filter((t) => t.type === "expense" && t.category === tx.category && monthKey(t.date) === curMonthKey).reduce((a, t) => a + t.amount, 0);
-  if (spent >= budget.limit) return L().toastBudgetOver.replace("{cat}", tx.category);
-  if (spent / budget.limit >= 0.8) return L().toastBudgetNear.replace("{cat}", tx.category);
+  const spent = transactions.filter((t) => t.type === "expense" && resolveCategoryId(t, "expense") === txCid && monthKey(t.date) === curMonthKey).reduce((a, t) => a + t.amount, 0);
+  const catName = displayName(txCid, tx.category);
+  if (spent >= budget.limit) return L().toastBudgetOver.replace("{cat}", catName);
+  if (spent / budget.limit >= 0.8) return L().toastBudgetNear.replace("{cat}", catName);
   return null;
 }
 // A bill's `day` recurs every month. This used to roll forward to next
@@ -169,38 +193,36 @@ export function upcomingBills() {
     .sort((a, b) => a.daysUntil - b.daysUntil);
 }
 export const CHART_COLORS = ["var(--color-accent)", "var(--color-income)", "var(--color-expense)", "var(--color-warning)", "#a190f7", "var(--color-tertiary)"];
-export function computeBreakdown(forMonth) {
-  const targetMonth = forMonth || new Date().toISOString().slice(0, 7);
-  const totals = {};
-  transactions.filter((t) => t.type === "expense" && monthKey(t.date) === targetMonth).forEach((t) => {
-    totals[t.category] = (totals[t.category] || 0) + t.amount;
+// Aggregates by categoryId but keeps a display name alongside each total
+// (rather than resolving it only at the end) so a transaction whose
+// category can't be matched to anything current still falls back to its
+// own stored .category text -- the same "never worse than before"
+// fallback resolveCategoryId/displayName give every other function here.
+function breakdownEntries(txs) {
+  const totals = {}, names = {};
+  txs.forEach((t) => {
+    const cid = resolveCategoryId(t, "expense") || t.category;
+    totals[cid] = (totals[cid] || 0) + t.amount;
+    names[cid] = t.category;
   });
   const entries = Object.entries(totals).sort((a, b) => b[1] - a[1]).slice(0, 6);
   const max = entries.length ? entries[0][1] : 1;
   const sum = entries.reduce((a, [, v]) => a + v, 0) || 1;
-  return entries.map(([cat, total], i) => ({
-    category: cat, total, totalFmt: fmtMoney(total),
+  return entries.map(([cid, total], i) => ({
+    category: displayName(cid, names[cid]), categoryId: cid, total, totalFmt: fmtMoney(total),
     pct: Math.max(4, Math.round((total / max) * 100)),
     sharePct: (total / sum) * 100,
     color: CHART_COLORS[i % CHART_COLORS.length]
   }));
 }
+export function computeBreakdown(forMonth) {
+  const targetMonth = forMonth || new Date().toISOString().slice(0, 7);
+  return breakdownEntries(transactions.filter((t) => t.type === "expense" && monthKey(t.date) === targetMonth));
+}
 // Same shape as computeBreakdown, but sums a whole year's spend per category.
 export function computeBreakdownForYear(forYear) {
   const targetYear = forYear || String(new Date().getFullYear());
-  const totals = {};
-  transactions.filter((t) => t.type === "expense" && t.date.slice(0, 4) === targetYear).forEach((t) => {
-    totals[t.category] = (totals[t.category] || 0) + t.amount;
-  });
-  const entries = Object.entries(totals).sort((a, b) => b[1] - a[1]).slice(0, 6);
-  const max = entries.length ? entries[0][1] : 1;
-  const sum = entries.reduce((a, [, v]) => a + v, 0) || 1;
-  return entries.map(([cat, total], i) => ({
-    category: cat, total, totalFmt: fmtMoney(total),
-    pct: Math.max(4, Math.round((total / max) * 100)),
-    sharePct: (total / sum) * 100,
-    color: CHART_COLORS[i % CHART_COLORS.length]
-  }));
+  return breakdownEntries(transactions.filter((t) => t.type === "expense" && t.date.slice(0, 4) === targetYear));
 }
 export function pieChartSvg(entries) {
   const total = entries.reduce((a, e) => a + e.total, 0) || 1;

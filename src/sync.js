@@ -1,10 +1,10 @@
-import { CATEGORIES, DEFAULT_CATEGORIES } from "./categories.js";
-import { $, escapeHtml } from "./utils.js";
+import { CATEGORIES, DEFAULT_CATEGORIES, findCategoryId } from "./categories.js";
+import { $, escapeHtml, uid } from "./utils.js";
 import { state, transactions, budgets, bills, goals, categories, setTransactions, setBudgets, setBills, setGoals, setCategories } from "./state.js";
 import { saveToStorage, saveSettings } from "./storage.js";
 import { L } from "./i18n.js";
 import { showToast } from "./toast.js";
-import { mergeRowsById, mergeBudgetsByCategory } from "./merge.js";
+import { mergeRowsById } from "./merge.js";
 import { markPending, clearPending, getPendingRows, clearAllPending } from "./pending.js";
 import { getWatermark, advanceWatermark, resetWatermark } from "./watermark.js";
 import { fetchAllPages } from "./paginate.js";
@@ -39,27 +39,27 @@ export function setSyncStatus(text, ok) {
 }
 
 function rowToTx(r) {
-  return { id: r.id, type: r.type, date: r.tx_date, category: r.category, amount: Number(r.amount), note: r.note || "", updatedAt: new Date(r.updated_at).getTime() };
+  return { id: r.id, type: r.type, date: r.tx_date, category: r.category, categoryId: r.category_id || null, amount: Number(r.amount), note: r.note || "", updatedAt: new Date(r.updated_at).getTime() };
 }
 function txToRow(t, deleted) {
   return {
-    id: t.id, user_id: currentUser ? currentUser.id : null, type: t.type, tx_date: t.date, category: t.category,
+    id: t.id, user_id: currentUser ? currentUser.id : null, type: t.type, tx_date: t.date, category: t.category, category_id: t.categoryId || null,
     amount: t.amount, note: t.note || "", deleted: !!deleted,
     updated_at: new Date(t.updatedAt || Date.now()).toISOString()
   };
 }
-function budgetRowToObj(r) { return { id: r.id, category: r.category, limit: Number(r.limit_amount), updatedAt: new Date(r.updated_at).getTime() }; }
+function budgetRowToObj(r) { return { id: r.id, category: r.category, categoryId: r.category_id || null, limit: Number(r.limit_amount), updatedAt: new Date(r.updated_at).getTime() }; }
 export function budgetToRow(b, deleted) {
   return {
-    id: b.id, user_id: currentUser ? currentUser.id : null, category: b.category, limit_amount: b.limit,
+    id: b.id, user_id: currentUser ? currentUser.id : null, category: b.category, category_id: b.categoryId || null, limit_amount: b.limit,
     deleted: !!deleted, updated_at: new Date(b.updatedAt || Date.now()).toISOString()
   };
 }
-function rowToBill(r) { return { id: r.id, name: r.name, amount: Number(r.amount), day: r.day, category: r.category || CATEGORIES.expense[CATEGORIES.expense.length - 1], lastPaidCycle: r.last_paid_cycle || null, updatedAt: new Date(r.updated_at).getTime() }; }
+function rowToBill(r) { return { id: r.id, name: r.name, amount: Number(r.amount), day: r.day, category: r.category || CATEGORIES.expense[CATEGORIES.expense.length - 1], categoryId: r.category_id || null, lastPaidCycle: r.last_paid_cycle || null, updatedAt: new Date(r.updated_at).getTime() }; }
 export function billToRow(b, deleted) {
   return {
     id: b.id, user_id: currentUser ? currentUser.id : null, name: b.name, amount: b.amount, day: b.day,
-    category: b.category || CATEGORIES.expense[CATEGORIES.expense.length - 1], last_paid_cycle: b.lastPaidCycle || null,
+    category: b.category || CATEGORIES.expense[CATEGORIES.expense.length - 1], category_id: b.categoryId || null, last_paid_cycle: b.lastPaidCycle || null,
     deleted: !!deleted, updated_at: new Date(b.updatedAt || Date.now()).toISOString()
   };
 }
@@ -127,6 +127,55 @@ export function markAllPending() {
   markPending("categories", categories.map((c) => categoryToRow(c, false)));
 }
 
+const BACKFILL_KEY = "expense_tracker_category_backfill_v1";
+// One-time migration, stage 2 of docs/specs/custom-categories.md: every
+// transaction/budget/bill that predates this feature only has a plain
+// .category name string, no .categoryId. Stamps categoryId directly onto
+// each existing object (not a new array) by matching name+type against
+// the current category list, then pushes just the now-modified rows
+// through the same chunked pushRows everything else uses -- so a device
+// with thousands of transactions doesn't build one oversized request.
+// Gated on a one-time flag so a reload never re-runs it (harmless if it
+// did, since already-stamped rows are skipped, but wasteful). Budgets and
+// bills are always expense-side (see settings.js's own comment on this),
+// so they're matched against "expense" explicitly rather than needing a
+// type field of their own.
+//
+// The "no match" branch below shouldn't fire for any pre-existing data --
+// the Add/Settings forms have only ever offered a fixed dropdown of
+// exactly today's category names, never free text -- but is handled
+// defensively anyway: lazily creates one "Uncategorized" category per
+// type, only if a row genuinely can't be matched, rather than seeding an
+// always-present 17th/18th category nobody actually needs.
+export function backfillCategoryIds() {
+  try { if (window.localStorage.getItem(BACKFILL_KEY)) return; } catch (e) { /* proceed anyway */ }
+  const uncategorizedId = { income: null, expense: null };
+  function resolve(name, type) {
+    const found = findCategoryId(categories, name, type);
+    if (found) return found;
+    if (!uncategorizedId[type]) {
+      const c = { id: uid(), type, name: L().uncategorized, icon: "circle", sortOrder: 999, updatedAt: Date.now() };
+      categories.push(c);
+      uncategorizedId[type] = c.id;
+    }
+    return uncategorizedId[type];
+  }
+  const changedTx = [], changedBudgets = [], changedBills = [];
+  transactions.forEach((t) => { if (!t.categoryId) { t.categoryId = resolve(t.category, t.type); t.updatedAt = Date.now(); changedTx.push(t); } });
+  budgets.forEach((b) => { if (!b.categoryId) { b.categoryId = resolve(b.category, "expense"); b.updatedAt = Date.now(); changedBudgets.push(b); } });
+  bills.forEach((b) => { if (!b.categoryId) { b.categoryId = resolve(b.category, "expense"); b.updatedAt = Date.now(); changedBills.push(b); } });
+  saveToStorage();
+  saveSettings();
+  try { window.localStorage.setItem(BACKFILL_KEY, "1"); } catch (e) { /* best-effort, see pending.js's own note on this pattern */ }
+  if (changedTx.length) pushRows("transactions", changedTx.map((t) => txToRow(t, false)));
+  if (changedBudgets.length) pushRows("budgets", changedBudgets.map((b) => budgetToRow(b, false)));
+  if (changedBills.length) pushRows("bills", changedBills.map((b) => billToRow(b, false)));
+  if (uncategorizedId.income || uncategorizedId.expense) {
+    const newCats = categories.filter((c) => c.id === uncategorizedId.income || c.id === uncategorizedId.expense);
+    pushRows("categories", newCats.map((c) => categoryToRow(c, false)));
+  }
+}
+
 // Clears everything scoped to the signed-in account -- transactions,
 // budgets, bills, goals, the pending upload queue, and the pull watermark
 // -- from both memory and localStorage. Called from main.js's auth
@@ -174,9 +223,7 @@ export function wipeLocalAccountData() {
 // removed the id from the live array, the stale pending entry must be
 // dropped too -- otherwise the push phase right after would resurrect a row
 // another device already deleted, both locally on the next pull elsewhere
-// and in the cloud. Budgets don't need this: pullBudgets/
-// mergeBudgetsByCategory never actually removes a row on a tombstone (see
-// its own doc comment), so a pending budget entry can't go stale this way.
+// and in the cloud.
 function dropPendingForRemovedIds(table, liveArray) {
   const liveIds = new Set(liveArray.map((x) => x.id));
   const stale = getPendingRows(table).filter((r) => !r.deleted && !liveIds.has(r.id));
@@ -199,9 +246,9 @@ function dropPendingForRemovedIds(table, liveArray) {
 // pull, a silent, unrecoverable miss (worse for a tombstone: the deleted
 // record would never get removed elsewhere). .gte() means the row(s)
 // already at the boundary get re-fetched every cycle once any data exists,
-// but that's harmless: mergeRowsById/mergeBudgetsByCategory only overwrite
-// on a strictly newer updatedAt, so re-receiving an already-merged row is a
-// no-op. Trading a few redundant bytes for never silently dropping a row.
+// but that's harmless: mergeRowsById only overwrites on a strictly newer
+// updatedAt, so re-receiving an already-merged row is a no-op. Trading a
+// few redundant bytes for never silently dropping a row.
 //
 // Ordered by updated_at then id, both ascending: keyset pagination below
 // requires a stable total order to anchor its cursor on, and updated_at
@@ -274,22 +321,23 @@ async function pullTransactions(epoch) {
     return true;
   } catch (e) { return false; }
 }
+// Used to key by category name (mergeBudgetsByCategory), a documented
+// quirk that ignored updatedAt and never honored deletion tombstones --
+// the only reason was budgets had no better shared key to merge by. Stage
+// 2 of docs/specs/custom-categories.md gives budgets a real category_id,
+// but the fix that actually matters here is unrelated to categories at
+// all: budgets already carry their own row id end-to-end (state.js's
+// seed data, Settings' edit/delete-by-id), so this is now a plain
+// id-keyed merge exactly like bills/goals -- meaning a budget deleted on
+// one device now correctly disappears from another device's next pull,
+// which it never did before.
 async function pullBudgets(epoch) {
   if (!sb || !currentUser) return false;
   try {
     const { data, error } = await pullAllPages("budgets");
     if (error) throw error;
     if (epoch !== syncEpoch) return false;
-    // Matches the original: an empty result (now also the steady-state
-    // case once the watermark has caught up, not just a genuinely empty
-    // cloud table) skips the merge (and the localStorage write) entirely
-    // rather than calling saveSettings() with an unchanged array -- see
-    // mergeBudgetsByCategory's own doc comment for why this whole
-    // function's shape is a preserved quirk, not a fix. `data` here is
-    // already the combined result across every page, not just the first,
-    // so this check is correct even when budgets spans multiple pages.
-    if (!data || !data.length) return true;
-    setBudgets(mergeBudgetsByCategory(budgets, data, budgetRowToObj));
+    setBudgets(mergeRowsById(budgets, data, budgetRowToObj));
     saveSettings();
     advanceWatermark("budgets", data);
     return true;
@@ -370,6 +418,7 @@ export async function syncNow() {
   const pullTxOk = await pullTransactions(epoch);
   dropPendingForRemovedIds("transactions", transactions);
   const pullBudgetOk = await pullBudgets(epoch);
+  dropPendingForRemovedIds("budgets", budgets);
   const pullBillOk = await pullBills(epoch);
   dropPendingForRemovedIds("bills", bills);
   const pullGoalOk = await pullGoals(epoch);
