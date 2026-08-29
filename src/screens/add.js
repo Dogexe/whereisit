@@ -1,17 +1,24 @@
 import { L } from "../i18n.js";
-import { state, transactions, setTransactions } from "../state.js";
+import { state, transactions, categories, setTransactions } from "../state.js";
 import { $, uid, escapeHtml, dateLabel, formatDateTyping, parseDateText, optionsHtml, refreshIcons } from "../utils.js";
-import { CATEGORIES, guessCategory } from "../categories.js";
-import { checkBudgetAlert } from "../derived.js";
+import { guessCategory, categoryDisplayName } from "../categories.js";
+import { checkBudgetAlert, resolveCategoryId } from "../derived.js";
 import { saveToStorage } from "../storage.js";
 import { pushTx, pushDeleteTx, syncNow } from "../sync.js";
 import { showToast } from "../toast.js";
 import { setTab, renderScreen } from "./router.js";
 
+// Stage 4 of docs/specs/custom-categories.md: the form tracks a
+// categoryId now, not a category name -- the Add screen is the last
+// place in the app that still only wrote the plain .category string at
+// creation time (Settings' budget/bill forms already moved to this in
+// stage 3). New transactions write both categoryId and a .category name
+// snapshot (for the old text column / any not-yet-migrated display code,
+// stage 5).
 export function resetForm() {
   state.formType = "expense";
   state.formDate = new Date().toISOString().slice(0, 10);
-  state.formCategory = CATEGORIES.expense[0];
+  state.formCategoryId = (categories.find((c) => c.type === "expense") || {}).id || null;
   state.editingId = null;
   state.categoryManual = false;
 }
@@ -21,7 +28,7 @@ export function editTx(id) {
   state.editingId = id;
   state.formType = tx.type;
   state.formDate = tx.date;
-  state.formCategory = tx.category;
+  state.formCategoryId = resolveCategoryId(tx, tx.type);
   state.categoryManual = true;
   setTab("add");
 }
@@ -43,8 +50,8 @@ export function deleteTx(id) {
   });
 }
 export function renderFormCategoryOptions(select) {
-  const opts = state.formType === "income" ? CATEGORIES.income : CATEGORIES.expense;
-  select.innerHTML = optionsHtml(opts, state.formCategory);
+  const opts = categories.filter((c) => c.type === state.formType);
+  select.innerHTML = optionsHtml(opts.map((c) => c.id), state.formCategoryId, (id) => categoryDisplayName(categories, id, id));
 }
 export function renderAdd() {
   const l = L();
@@ -92,12 +99,13 @@ export function renderAdd() {
   }
   document.querySelectorAll('input[name="form-type"]').forEach((r) => r.addEventListener("change", (e) => {
     state.formType = e.target.value;
-    const guess = state.categoryManual ? state.formCategory : guessCategory($("txNote").value, state.formType);
-    const opts = state.formType === "income" ? CATEGORIES.income : CATEGORIES.expense;
-    state.formCategory = (guess && opts.includes(guess)) ? guess : opts[0];
+    const guess = state.categoryManual ? state.formCategoryId : guessCategory($("txNote").value, state.formType);
+    const opts = categories.filter((c) => c.type === state.formType);
+    const guessValid = guess && opts.some((c) => c.id === guess);
+    state.formCategoryId = guessValid ? guess : (opts[0] || {}).id || null;
     renderFormCategoryOptions($("txCategory"));
   }));
-  $("txCategory").addEventListener("change", (e) => { state.formCategory = e.target.value; state.categoryManual = true; });
+  $("txCategory").addEventListener("change", (e) => { state.formCategoryId = e.target.value; state.categoryManual = true; });
   $("txDateText").addEventListener("input", function () { this.value = formatDateTyping(this.value); });
   $("txDateText").addEventListener("change", function () {
     const iso = parseDateText(this.value);
@@ -114,7 +122,7 @@ export function renderAdd() {
   $("txNote").addEventListener("input", function () {
     if (state.categoryManual) return;
     const guess = guessCategory(this.value, state.formType);
-    if (guess) { state.formCategory = guess; $("txCategory").value = guess; }
+    if (guess) { state.formCategoryId = guess; $("txCategory").value = guess; }
   });
   if (isEditing) $("cancelEditBtn").addEventListener("click", () => { resetForm(); setTab("transactions"); });
   $("addForm").addEventListener("submit", function (e) {
@@ -128,17 +136,18 @@ export function renderAdd() {
       return;
     }
     const note = $("txNote").value.trim();
-    const category = $("txCategory").value;
+    const categoryId = $("txCategory").value;
+    const category = categoryDisplayName(categories, categoryId, "");
     let savedTx = null;
     if (state.editingId) {
       const idx = transactions.findIndex((t) => t.id === state.editingId);
       if (idx >= 0) {
-        transactions[idx] = Object.assign({}, transactions[idx], { type: state.formType, date, category, amount, note, updatedAt: Date.now() });
+        transactions[idx] = Object.assign({}, transactions[idx], { type: state.formType, date, category, categoryId, amount, note, updatedAt: Date.now() });
         savedTx = transactions[idx];
       }
       showToast(L().toastEdited);
     } else {
-      savedTx = { id: uid(), type: state.formType, date, category, amount, note, updatedAt: Date.now() };
+      savedTx = { id: uid(), type: state.formType, date, category, categoryId, amount, note, updatedAt: Date.now() };
       transactions.push(savedTx);
       showToast(checkBudgetAlert(savedTx) || L().toastAdded);
     }

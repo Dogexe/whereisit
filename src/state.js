@@ -1,4 +1,4 @@
-import { CATEGORIES, DEFAULT_CATEGORIES } from "./categories.js";
+import { DEFAULT_CATEGORIES } from "./categories.js";
 
 export const state = {
   lang: "th", dark: false,
@@ -6,7 +6,7 @@ export const state = {
   insightsMonthNum: new Date().toISOString().slice(5, 7), insightsYear: String(new Date().getFullYear()), insightsPeriodMode: "month",
   txFilterType: "all", txFilterMonthNum: "all", txFilterYear: "all", txFilterCategory: "all", txSearch: "", txPeriodMode: "all",
   formType: "expense", formDate: new Date().toISOString().slice(0, 10),
-  formCategory: CATEGORIES.expense[0], editingId: null, categoryManual: false,
+  formCategoryId: (DEFAULT_CATEGORIES.find((c) => c.type === "expense") || {}).id || null, editingId: null, categoryManual: false,
   budgetEditId: null, billEditId: null, goalEditId: null, goalContributeId: null, categoryEditId: null,
   settingsGroupOpen: { budgets: false, bills: false, goals: false, categories: false }
 };

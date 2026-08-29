@@ -22,14 +22,6 @@ export const CATEGORY_KEYWORDS = {
     ["ดอกเบี้ย/เงินลงทุน", ["ดอกเบี้ย", "ปันผล"]]
   ]
 };
-export function guessCategory(note, type) {
-  if (!note) return null;
-  const text = note.toLowerCase();
-  for (const [cat, words] of (CATEGORY_KEYWORDS[type] || [])) {
-    if (words.some((w) => text.includes(w.toLowerCase()))) return cat;
-  }
-  return null;
-}
 export const CATEGORY_ICON = {
   "เงินเดือน": "briefcase", "โบนัส/รายได้พิเศษ": "gift", "ธุรกิจ/ฟรีแลนซ์": "laptop", "ดอกเบี้ย/เงินลงทุน": "trending-up", "อื่นๆ (รายรับ)": "plus-circle",
   "อาหารและเครื่องดื่ม": "utensils", "การเดินทาง": "car", "ที่อยู่อาศัย/ค่าเช่า": "home", "สาธารณูปโภค (ไฟ/น้ำ/เน็ต)": "zap", "ช้อปปิ้ง": "shopping-bag",
@@ -54,6 +46,31 @@ export const DEFAULT_CATEGORIES = ["income", "expense"].flatMap((type) =>
     id: `default-${type}-${DEFAULT_SLUGS[type][i]}`, type, name, icon: CATEGORY_ICON[name], sortOrder: i
   }))
 );
+// Stage 4 of docs/specs/custom-categories.md: guessCategory returns a
+// categoryId, not a display name, so it keeps working after a rename.
+// CATEGORY_KEYWORDS itself stays name-keyed (untouched, so its Thai
+// keyword lists never need retyping) -- this re-keys it to ids exactly
+// once here, resolved against DEFAULT_CATEGORIES specifically (the fixed,
+// never-renamed original list), never the live/renamable `categories`
+// state array. That's what makes the id lookup immune to a later rename:
+// it's baked in at module load, not recomputed against whatever the
+// category is currently called.
+const DEFAULT_ID_BY_NAME = new Map(DEFAULT_CATEGORIES.map((c) => [c.name, c.id]));
+function keyedByCategoryId(entries) {
+  return entries.map(([name, words]) => [DEFAULT_ID_BY_NAME.get(name), words]);
+}
+const CATEGORY_KEYWORDS_BY_ID = {
+  expense: keyedByCategoryId(CATEGORY_KEYWORDS.expense),
+  income: keyedByCategoryId(CATEGORY_KEYWORDS.income)
+};
+export function guessCategory(note, type) {
+  if (!note) return null;
+  const text = note.toLowerCase();
+  for (const [id, words] of (CATEGORY_KEYWORDS_BY_ID[type] || [])) {
+    if (words.some((w) => text.includes(w.toLowerCase()))) return id;
+  }
+  return null;
+}
 // Icon choices offered when adding/editing a category (Settings, stage 3
 // of docs/specs/custom-categories.md) -- per that spec's interview, this
 // is deliberately the ~16 icons already used by a built-in category, not
