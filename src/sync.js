@@ -42,7 +42,13 @@ export function setSyncStatus(text, ok) {
 function rowToTx(r) {
   return { id: r.id, type: r.type, date: r.tx_date, category: r.category, categoryId: r.category_id || null, accountId: r.account_id || null, toAccountId: r.to_account_id || null, amount: Number(r.amount), note: r.note || "", updatedAt: new Date(r.updated_at).getTime() };
 }
-function txToRow(t, deleted) {
+// Exported (unlike a purely-internal helper would be) so docs/specs/
+// csv-import.md's batched commit can build one array of rows for a single
+// pushRows("transactions", ...) call, matching how budgetToRow/billToRow/
+// goalToRow/categoryToRow/accountToRow are already exported for the exact
+// same reason -- settings.js's inline CRUD needs the row shape without a
+// dedicated pushX wrapper per call site.
+export function txToRow(t, deleted) {
   return {
     // category is a NOT NULL column at the DB level (confirmed by a real
     // upsert rejecting a null value, not assumed) -- a transfer has no
@@ -492,6 +498,14 @@ export function hasLiveInputRisk() {
   // desktop full-page case above -- both can be live at once, just never
   // on the same device/width.
   if (state.addSheetOpen) return true;
+  // docs/specs/csv-import.md: a background sync's renderScreen() call
+  // would fully rebuild Settings' DOM mid-import -- state.importStep/
+  // importMapping/importAccountId all survive that (they live on `state`),
+  // but a full re-render while a file's already parsed (import-sheet.js's
+  // own module-level parsedFile/importPlan, untouched by this) would still
+  // be a jarring close/reopen flash for no reason, so it's guarded here
+  // the same as every other in-progress sheet/form.
+  if (state.importSheetOpen) return true;
   if (state.budgetEditId || state.billEditId || state.goalEditId || state.goalContributeId || state.accountEditId) return true;
   const active = document.activeElement;
   const screenEl = $("screen");

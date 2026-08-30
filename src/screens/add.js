@@ -128,6 +128,12 @@ function renderAccountChipPicker(chipRowId, selectId, stateKey, excludeId, refre
   refreshIcons();
 }
 export function renderAccountChips() { renderAccountChipPicker("accountChipRow", "txAccount", "formAccountId"); }
+// docs/specs/csv-import.md stage 3: the Import sheet's account picker
+// reuses this exact same underlying picker (a hidden <select id="importAccount">
+// as the real form value, chips as the visible UI) rather than a second
+// implementation -- import-sheet.js renders that select+chip-row container
+// and calls this after, same shape as renderAccountChips above.
+export function renderImportAccountChips() { renderAccountChipPicker("importAccountChipRow", "importAccount", "importAccountId"); }
 // The Transfer tab's From picker reuses formAccountId/txAccount directly --
 // a transfer's source account IS its .accountId, the same field every
 // other transaction type already uses (see the spec's schema decision), so
@@ -245,13 +251,29 @@ function updateFormTypeVisibility() {
   $("accountFieldLabel").textContent = isTransfer ? l.transferFromLabel : l.accountLabel;
   $("transferToField").classList.toggle("form-field-hidden", !isTransfer);
 }
+// Real bug found live while testing docs/specs/csv-import.md's account
+// picker reuse (unrelated to that spec itself): this used to call
+// renderTransferAccountChips() unconditionally, regardless of which type
+// tab was active. renderTransferAccountChips() always excludes
+// state.formToAccountId -- which resetForm()/editTx() set to a real
+// account id (defaultToAccountId) whether or not Transfer is the active
+// tab -- so with exactly 2 accounts, the plain Expense/Income picker could
+// permanently show the *other* account disabled, with no tab switch ever
+// correcting it (the type-radio handler below never re-rendered the
+// account chips at all before this fix). Conditioning on state.formType
+// here AND re-running it on every type switch fixes both the wrong
+// initial render and the missing re-render on switching tabs.
+function renderAccountFieldChips() {
+  if (state.formType === "transfer") renderTransferAccountChips();
+  else renderAccountChips();
+}
 function wireAddForm({ onSaved, onCancelled }) {
   const isEditing = !!state.editingId;
   renderFormCategoryOptions($("txCategory"));
   renderFormAccountOptions($("txAccount"));
   renderFormTransferToOptions($("txTransferTo"));
   renderCategoryChips();
-  renderTransferAccountChips();
+  renderAccountFieldChips();
   updateFormTypeVisibility();
   if (isEditing) {
     const tx = transactions.find((t) => t.id === state.editingId);
@@ -265,6 +287,7 @@ function wireAddForm({ onSaved, onCancelled }) {
     state.formCategoryId = guessValid ? guess : (opts[0] || {}).id || null;
     renderFormCategoryOptions($("txCategory"));
     renderCategoryChips();
+    renderAccountFieldChips();
     updateFormTypeVisibility();
   }));
   $("txCategory").addEventListener("change", (e) => { state.formCategoryId = e.target.value; state.categoryManual = true; renderCategoryChips(); });

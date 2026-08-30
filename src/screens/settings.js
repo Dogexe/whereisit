@@ -19,6 +19,7 @@ import { renderChrome, renderScreen } from "./router.js";
 import { deferredInstallPrompt, setDeferredInstallPrompt } from "../pwa-install.js";
 import { exportToGoogleSheets } from "../sheets-export.js";
 import { pushReminderState, enableBillReminders, disableBillReminders } from "../push.js";
+import { importSheetHtml, wireImportSheet } from "./import-sheet.js";
 
 // Both are simple named lists edited inline in Settings; share one row/CRUD shape.
 // `iconHtml` is a pre-built iconAvatar() string -- category icon for
@@ -622,8 +623,13 @@ export function renderSettings() {
             ${iconAvatar("download", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
             <span class="label">${escapeHtml(l.exportBtn)}</span>
           </button>
+          <button type="button" class="toggle-row" id="openImportSheetBtn">
+            ${iconAvatar("upload", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+            <span class="label">${escapeHtml(l.importBtn)}</span>
+          </button>
         </div>
         ${exportSheetHtml()}
+        ${importSheetHtml()}
       </div>
 
       <div data-settings-panel="manage">
@@ -759,6 +765,7 @@ export function renderSettings() {
     d.addEventListener("toggle", () => { state.settingsGroupOpen[d.getAttribute("data-group")] = d.open; });
   });
   wireExportSheet();
+  wireImportSheet();
   $("exportCsvBtn").addEventListener("click", function () {
     const l = L();
     const header = [l.csvDate, l.csvType, l.csvCategory, l.csvNote, l.csvAmount];

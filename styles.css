@@ -393,6 +393,13 @@
 
   /* — add form — */
   .add-form { display: flex; flex-direction: column; gap: 16px; }
+
+  /* — CSV import sheet (docs/specs/csv-import.md) — */
+  .import-step { display: flex; flex-direction: column; gap: 16px; }
+  .import-step-actions { display: flex; gap: 10px; }
+  .import-step-actions .btn-primary { flex: 1; }
+  .import-preview-row { padding: 6px 10px; border-radius: 8px; background: var(--color-bg); font-size: 13px; margin-bottom: 4px; }
+  .import-preview-row-bad { color: var(--color-expense); }
   .date-input-wrap { position: relative; }
   .date-input-wrap .input-wrap input { padding-right: 24px; }
   .date-icon { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--color-tertiary); }

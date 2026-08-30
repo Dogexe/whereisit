@@ -70,6 +70,16 @@ export const state = {
   // export options (CSV/JSON/Google Sheets) live behind one bottom sheet
   // instead of three separate always-visible rows.
   exportSheetOpen: false,
+  // importSheetOpen/importStep/importAccountId/importMapping: UI-only, not
+  // persisted -- same treatment as exportSheetOpen (docs/specs/csv-import.md).
+  // importStep resets to "pick" every time the sheet opens (import-sheet.js's
+  // openImportSheet). The parsed file's own headers/rows/plan are
+  // deliberately NOT here -- they live as module-level state inside
+  // import-sheet.js instead, per that spec's own decision, since a parsed
+  // CSV can be thousands of rows and there's no precedent for bulk parsed
+  // data living on this shared object.
+  importSheetOpen: false, importStep: "pick", importAccountId: null,
+  importMapping: { dateCol: null, amountCol: null, noteCol: null, categoryCol: null, dateFormat: "YYYY-MM-DD" },
   budgetEditId: null, billEditId: null, goalEditId: null, goalContributeId: null, categoryEditId: null, accountEditId: null,
   settingsGroupOpen: { budgets: false, bills: false, goals: false, categories: false, accounts: false },
   // Which section is shown in the right-hand panel of Settings' desktop
