@@ -98,14 +98,46 @@ export function categoryToRow(c, deleted) {
 // correctly-marked in the pending map from the markPending() call above
 // and will simply retry on the next cycle.
 const PUSH_CHUNK_SIZE = 500;
+// categories is the one synced table with a composite primary key
+// (id, user_id) -- see supabase/migrations/20260829060000_categories.sql's
+// own comment for why (default categories intentionally share the same id
+// across every user's account). Every other table here has a plain
+// single-column `id` primary key, so a bare .upsert(chunk) is unambiguous
+// for them and deliberately left alone below.
+//
+// This onConflict is a defensive/explicitness fix, not a confirmed bug
+// fix -- worth recording exactly what was and wasn't verified, since it's
+// easy to assume the composite key needs this and never actually check.
+// Investigated directly against the live project before touching this
+// file (a category-edits-don't-sync report): upserted a row, re-upserted
+// it with a changed name via the exact same request shape pushRows sends
+// (no onConflict, same columns= list) -- it updated correctly, and a
+// second test seeding the *same* id under two different accounts (the
+// exact collision this composite key exists to prevent) confirmed each
+// account's edit only ever touched its own row. Also verified end-to-end
+// through the real running app (edit a category in Settings, confirm the
+// row in the database) and through a simulated second device (stale local
+// copy + cleared watermark, confirmed the newer name arrives via a real
+// pull/mergeRowsById cycle). All of that passed with no onConflict at
+// all: PostgREST already defaults an upsert's conflict target to the
+// table's full primary key whenever every PK column is present in the
+// payload (categoryToRow always includes both id and user_id), which is
+// documented behavior, not implementation-specific luck. So whatever
+// caused the original report, it wasn't this. Added anyway because it's
+// free insurance: relying on an implicit default is one schema-cache
+// reload gap (see PostgREST's own upsert docs: "after creating a table
+// or changing its primary key, you must refresh PostgREST's schema
+// cache") away from silently reverting to ambiguous or wrong behavior,
+// and naming the real conflict target explicitly costs nothing here.
 export async function pushRows(table, rows) {
   if (!rows.length) return true;
   markPending(table, rows);
   if (!sb || !currentUser) return true;
+  const opts = table === "categories" ? { onConflict: "id,user_id" } : undefined;
   for (let i = 0; i < rows.length; i += PUSH_CHUNK_SIZE) {
     const chunk = rows.slice(i, i + PUSH_CHUNK_SIZE);
     try {
-      const { error } = await sb.from(table).upsert(chunk);
+      const { error } = await sb.from(table).upsert(chunk, opts);
       if (error) throw error;
       clearPending(table, chunk);
     } catch (e) { return false; }
