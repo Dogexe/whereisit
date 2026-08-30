@@ -169,11 +169,18 @@
   .input-wrap input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; font: inherit; font-size: 15px; color: var(--color-text); height: 100%; padding: 0; }
 
   .tabs { display: inline-flex; background: var(--color-surface); border-radius: var(--radius-pill); padding: 4px; gap: 2px; max-width: 100%; }
-  .tabs.block { display: flex; width: 100%; }
+  .tabs.block { display: flex; width: 100%; justify-content: space-between; }
+  /* flex:0 0 auto (not flex:1) -- equal-width cells made a short label
+     (e.g. "All") sit in a cell sized for the row's longest label (e.g.
+     "Transfer"), so the two ended up with wildly different amounts of
+     whitespace around them. Content-sized cells give every label the same
+     8px/16px padding regardless of its own length; .tabs.block's own
+     justify-content:space-between (above) spreads the now-content-sized
+     cells back out to fill the row. */
   .tab-opt {
-    display: inline-flex; align-items: center; justify-content: center; flex: 1;
+    display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; min-width: 0;
     padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: var(--radius-pill);
-    color: var(--color-muted); white-space: nowrap; text-align: center;
+    color: var(--color-muted); white-space: nowrap; text-align: center; overflow: hidden; text-overflow: ellipsis;
     transition: background var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard);
   }
   .tab-opt input { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
@@ -470,7 +477,7 @@
     font-size: 14.5px; font-weight: 700; color: var(--color-text); padding: 0 2px;
   }
   .period-pill .trigger .icon { width: 16px; height: 16px; color: var(--color-accent); flex-shrink: 0; }
-  .period-pill .trigger span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .period-pill .trigger span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .period-pill .trigger:hover { color: var(--color-accent); }
   .period-pill .trigger[aria-expanded="true"] { color: var(--color-accent); }
 

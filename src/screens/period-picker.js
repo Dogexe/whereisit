@@ -65,19 +65,34 @@ export function wirePeriodPicker(name, handlers) {
 // silently drifting apart the next time any of them needs a tweak.
 const SHORTCUT_ICON = { today: "sun", all: "globe" };
 function shortcutPillLabel(key, label) {
-  // "today" gets the richer "<label> · <date>" pill text (matching what
-  // shipped for Insights' Breakdown tab); any other shortcut (e.g.
-  // Transactions' "all") just shows its own label verbatim once active,
-  // since there's no secondary value ("all" isn't a specific day) to
-  // append.
+  // Used only for the main pill's own trigger label once a shortcut is
+  // active (see pillPickerHtml below) -- "today" gets the richer
+  // "<label> · <date>" text there, since the trigger is the one place in
+  // the row with room for it. The shortcut *buttons* themselves (in the
+  // popover's shortcut row) always show their own plain label with no
+  // date appended -- the date is already visible on the trigger above
+  // them, so repeating it on the smaller button was both redundant and
+  // the thing that made "Today · 30/08/2026" cramped next to "All".
   return key === "today" ? `${label} · ${dateLabel(localDateIso())}` : label;
+}
+// "AUG 26" -- short month name (locale-aware, via monthNameShort) + the
+// display year's last two digits (via yearLabel, so Thai's Buddhist-era
+// year shortens the same way Gregorian does). Opt-in per caller
+// (opts.shortLabel) rather than applied to every pill: Budgets' pill is
+// full-width with no Filters button beside it, so it never had the
+// overflow risk that prompted this, and changing its label format without
+// being asked would be a bigger visual change than requested.
+function monthYearLabel(monthNum1to12, year, short) {
+  return short
+    ? `${monthNameShort(monthNum1to12).toUpperCase()} ${yearLabel(year).slice(-2)}`
+    : `${monthNameFull(monthNum1to12)} ${yearLabel(year)}`;
 }
 export function pillPickerHtml(id, mode, monthNum, year, popoverOpen, activeShortcut, opts) {
   const l = L();
   const shortcuts = (opts && opts.shortcuts) || [];
   const activeDef = shortcuts.find((s) => s.key === activeShortcut);
   const isYear = mode === "year";
-  const label = activeDef ? shortcutPillLabel(activeDef.key, activeDef.label) : (isYear ? `${l.periodYearLabel} ${yearLabel(year)}` : `${monthNameFull(Number(monthNum))} ${yearLabel(year)}`);
+  const label = activeDef ? shortcutPillLabel(activeDef.key, activeDef.label) : (isYear ? `${l.periodYearLabel} ${yearLabel(year)}` : monthYearLabel(Number(monthNum), year, !!(opts && opts.shortLabel)));
   const monthCells = Array.from({ length: 12 }, (_, i) => i + 1).map((m) => {
     const mm = String(m).padStart(2, "0");
     const isSel = !activeDef && !isYear && m === Number(monthNum);
@@ -95,7 +110,7 @@ export function pillPickerHtml(id, mode, monthNum, year, popoverOpen, activeShor
       <div class="picker-popover${popoverOpen ? " open" : ""}">
         ${shortcuts.length ? `
         <div class="shortcut-row">
-          ${shortcuts.map((sc) => `<button type="button" class="shortcut-btn${sc.key === activeShortcut ? " active" : ""}" data-pill-shortcut="${id}" data-shortcut-key="${escapeHtml(sc.key)}">${icon(SHORTCUT_ICON[sc.key] || "calendar")}<span>${escapeHtml(sc.key === "today" ? shortcutPillLabel(sc.key, sc.label) : sc.label)}</span></button>`).join("")}
+          ${shortcuts.map((sc) => `<button type="button" class="shortcut-btn${sc.key === activeShortcut ? " active" : ""}" data-pill-shortcut="${id}" data-shortcut-key="${escapeHtml(sc.key)}">${icon(SHORTCUT_ICON[sc.key] || "calendar")}<span>${escapeHtml(sc.label)}</span></button>`).join("")}
         </div>` : ""}
         <div class="picker-year-row">
           <button type="button" class="step" data-pill-year-step="-1" data-picker="${id}" aria-label="${escapeHtml(l.prevAria)}">${icon("chevron-left")}</button>

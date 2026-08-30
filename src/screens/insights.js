@@ -106,7 +106,7 @@ function renderBreakdownToolbar() {
   row.innerHTML = `
     <div class="toolbar">
       <div class="toolbar-row">
-        ${showPill ? pillPickerHtml("breakdown", state.insightsBreakdownMode, state.insightsBreakdownMonthNum, state.insightsBreakdownYear, state.insightsBreakdownPopoverOpen, state.insightsBreakdownIsToday ? "today" : null, { shortcuts: [{ key: "today", label: L().periodTodayLabel }] }) : ""}
+        ${showPill ? pillPickerHtml("breakdown", state.insightsBreakdownMode, state.insightsBreakdownMonthNum, state.insightsBreakdownYear, state.insightsBreakdownPopoverOpen, state.insightsBreakdownIsToday ? "today" : null, { shortcuts: [{ key: "today", label: L().periodTodayLabel }], shortLabel: true }) : ""}
         <button type="button" class="btn btn-secondary filters-btn" id="openInsightsFiltersBtn">
           ${icon("filter")}<span>${escapeHtml(L().filtersBtn)}</span><span class="filter-badge" id="insightsFiltersBadge" ${count ? "" : "hidden"}>${count}</span>
         </button>
