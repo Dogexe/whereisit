@@ -218,6 +218,11 @@
   .account-chip .icon { width: 16px; height: 16px; }
   .account-chip:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
   .account-chip.active { background: var(--color-accent); border-color: var(--color-accent); color: #fff; }
+  /* Add form's Transfer tab (requested after the Transfer tab shipped):
+     whichever account the other picker (From/To) currently holds renders
+     disabled here, so picking the same account for both is caught at the
+     chip itself instead of only after a submit attempt. */
+  .account-chip:disabled, .account-chip.account-chip-disabled { opacity: 0.4; cursor: not-allowed; }
   /* Add/Edit form's account picker (option requested after the initial
      multi-account-support pass shipped) -- same chip shape as the switcher
      above, but its own row class since this one lives inside a .field like

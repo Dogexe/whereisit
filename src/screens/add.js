@@ -103,18 +103,27 @@ export function renderFormTransferToOptions(select) {
 // each chip row's own container, not document-wide, so wiring the From
 // picker can never also attach to the To picker's buttons (both use the
 // same [data-account-chip] attribute).
-function renderAccountChipPicker(chipRowId, selectId, stateKey) {
+// excludeId (requested after the Transfer tab shipped): renders that one
+// account's chip disabled -- used so From can't pick whatever To currently
+// holds and vice versa, catching the same-account case at the picker
+// itself instead of only after a submit attempt. refresh, when given, is
+// called instead of self-re-rendering after a pick -- the Transfer tab's
+// pair passes renderTransferAccountChips so picking one side immediately
+// updates the other's disabled state too; the plain single-account picker
+// has no sibling to keep in sync, so it defaults to re-rendering itself.
+function renderAccountChipPicker(chipRowId, selectId, stateKey, excludeId, refresh) {
   const selectedId = state[stateKey];
   const opts = accounts.filter((a) => !a.archived || a.id === selectedId);
   const row = $(chipRowId);
-  row.innerHTML = opts.map((a) =>
-    `<button type="button" class="account-chip${a.id === selectedId ? " active" : ""}" data-account-chip="${a.id}">${icon(a.icon)}<span>${escapeHtml(a.name)}</span></button>`
-  ).join("");
-  row.querySelectorAll("[data-account-chip]").forEach((btn) => btn.addEventListener("click", () => {
+  row.innerHTML = opts.map((a) => {
+    const disabled = excludeId != null && a.id === excludeId;
+    return `<button type="button" class="account-chip${a.id === selectedId ? " active" : ""}${disabled ? " account-chip-disabled" : ""}" data-account-chip="${a.id}"${disabled ? " disabled" : ""}>${icon(a.icon)}<span>${escapeHtml(a.name)}</span></button>`;
+  }).join("");
+  row.querySelectorAll("[data-account-chip]:not([disabled])").forEach((btn) => btn.addEventListener("click", () => {
     const id = btn.getAttribute("data-account-chip");
     state[stateKey] = id;
     $(selectId).value = id;
-    renderAccountChipPicker(chipRowId, selectId, stateKey);
+    (refresh || (() => renderAccountChipPicker(chipRowId, selectId, stateKey)))();
   }));
   refreshIcons();
 }
@@ -124,8 +133,8 @@ export function renderAccountChips() { renderAccountChipPicker("accountChipRow",
 // other transaction type already uses (see the spec's schema decision), so
 // there's no separate "from" state or select to keep in sync.
 export function renderTransferAccountChips() {
-  renderAccountChipPicker("accountChipRow", "txAccount", "formAccountId");
-  renderAccountChipPicker("transferToChipRow", "txTransferTo", "formToAccountId");
+  renderAccountChipPicker("accountChipRow", "txAccount", "formAccountId", state.formToAccountId, renderTransferAccountChips);
+  renderAccountChipPicker("transferToChipRow", "txTransferTo", "formToAccountId", state.formAccountId, renderTransferAccountChips);
 }
 // docs/specs/category-icon-chips.md: standalone (not folded into
 // renderAdd) so a chip click / note-guess / select change can refresh

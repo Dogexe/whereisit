@@ -119,6 +119,28 @@ export function pillPickerHtml(id, mode, monthNum, year, popoverOpen, activeShor
 // onPickShortcut(key) fires with whichever shortcut's key was tapped,
 // only wired when the caller passed at least one `opts.shortcuts` entry
 // at render time; the caller distinguishes which one fired by `key`.
+// Requested after live use surfaced it: the popover's CSS centers it on
+// its own anchor (left:50%; transform:translateX(-50%)), which is correct
+// when the anchor spans the full row (Budgets' standalone pill) but wrong
+// whenever the anchor shares its row with something else (Breakdown's and
+// Transactions' pills, both sitting beside a Filters button) -- the
+// anchor's own midpoint then sits left of the screen's true center, so a
+// popover wide enough relative to a narrow (mobile) viewport gets pushed
+// past the right edge and clipped, not just visually off-center. Rather
+// than hand-tuning CSS per caller, this measures the popover's actual
+// rendered position after it opens and nudges it back on-screen with a
+// plain margin-left offset, leaving the CSS centering as the (correct,
+// unmodified) starting point for the common case where nothing overflows.
+function clampPopoverToViewport(popoverEl) {
+  if (!popoverEl) return;
+  popoverEl.style.marginLeft = "";
+  const margin = 8;
+  const rect = popoverEl.getBoundingClientRect();
+  let shift = 0;
+  if (rect.left < margin) shift = margin - rect.left;
+  else if (rect.right > window.innerWidth - margin) shift = (window.innerWidth - margin) - rect.right;
+  if (shift !== 0) popoverEl.style.marginLeft = `${shift}px`;
+}
 // Also scrolls the popover into view when opening it (a no-op if it's
 // already fully visible) -- Transactions' pill lives inside a scrolling
 // Filters sheet, where a popover opened near the bottom of the sheet can
@@ -140,5 +162,8 @@ export function wirePillPicker(id, handlers) {
   if (backdrop) backdrop.addEventListener("click", handlers.onClose);
   const anchor = openBtn ? openBtn.closest(".picker-anchor") : null;
   const popoverEl = anchor ? anchor.querySelector(".picker-popover.open") : null;
-  if (popoverEl) requestAnimationFrame(() => popoverEl.scrollIntoView({ block: "nearest", behavior: "smooth" }));
+  if (popoverEl) requestAnimationFrame(() => {
+    clampPopoverToViewport(popoverEl);
+    popoverEl.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  });
 }

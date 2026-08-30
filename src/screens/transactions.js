@@ -334,7 +334,7 @@ export function renderTransactions() {
     <div class="tx-toolbar-row">
       <input class="input" id="txSearchInput" placeholder="${escapeHtml(l.searchPlaceholder)}" value="${escapeHtml(state.txSearch)}">
       <button type="button" class="btn btn-secondary filters-btn" id="openTxFiltersBtn">
-        <span>${escapeHtml(l.filtersBtn)}</span><span class="filter-badge" id="txFiltersBadge" hidden></span>
+        ${icon("filter")}<span>${escapeHtml(l.filtersBtn)}</span><span class="filter-badge" id="txFiltersBadge" hidden></span>
       </button>
     </div>
     <div class="active-filter-chips" id="txActiveChips"></div>
