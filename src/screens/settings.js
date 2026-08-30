@@ -174,6 +174,15 @@ function renderManageSheet() {
   if (saveBtn) saveBtn.addEventListener("click", active.saveFn);
   const cancelBtn = $(active.cancelId);
   if (cancelBtn) cancelBtn.addEventListener("click", dismiss);
+  // Category/Account forms' icon picker (see renderSettings()'s own copy of
+  // this exact wiring for the desktop-inline case) -- this sheet's copy of
+  // the form didn't exist yet when that pass ran (renderManageSheet() runs
+  // after it, populating #manageSheetContainer fresh each time), so without
+  // this the picker rendered correctly but every icon button was inert.
+  container.querySelectorAll(".icon-picker-option").forEach((btn) => btn.addEventListener("click", () => {
+    btn.parentElement.querySelectorAll(".icon-picker-option").forEach((b) => b.classList.remove("selected"));
+    btn.classList.add("selected");
+  }));
   refreshIcons();
   if (!state.manageSheetOpen) { state.manageSheetOpen = true; manageSheetFocusTrap.activate(); }
 }
