@@ -84,7 +84,13 @@ export function inlineForm(fieldsHtml, saveId, saveLabel, cancelId, extraStyle) 
 export function wireInlineCrud(prefix, stateKey, deleteFn, saveFn, onOpen) {
   const tag = prefix.toLowerCase();
   const addBtn = $("add" + prefix + "Btn");
-  if (addBtn) addBtn.addEventListener("click", () => { state[stateKey] = "new"; if (onOpen) onOpen(); renderSettings(); });
+  // The add button now lives inside the section's <summary> (its own
+  // header row, not a separate line above the list) -- clicking anywhere
+  // in <summary> is a native disclosure toggle, so without preventDefault()
+  // here a click would also open/close the <details> as a browser default
+  // action, fighting (and on desktop, hiding behind a closed panel) the
+  // add flow this handler is trying to start.
+  if (addBtn) addBtn.addEventListener("click", (e) => { e.preventDefault(); state[stateKey] = "new"; if (onOpen) onOpen(); renderSettings(); });
   document.querySelectorAll(`[data-edit-${tag}]`).forEach((btn) => btn.addEventListener("click", () => {
     state[stateKey] = btn.getAttribute(`data-edit-${tag}`); if (onOpen) onOpen(); renderSettings();
   }));

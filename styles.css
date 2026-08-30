@@ -954,4 +954,10 @@
        render. */
     [data-settings-panel="manage"] .settings-group summary { cursor: default; pointer-events: none; }
     [data-settings-panel="manage"] .settings-group summary > .icon:last-child { display: none; }
+    /* The add button (moved into summary itself, see settings.js) isn't
+       part of the now-neutralized disclosure interaction above -- it's a
+       real action, not a toggle -- so it needs pointer-events re-enabled
+       specifically, or the blanket rule above would make it unclickable
+       here too. */
+    [data-settings-panel="manage"] .settings-group summary .btn-icon { pointer-events: auto; cursor: pointer; }
   }
