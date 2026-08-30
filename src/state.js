@@ -78,6 +78,13 @@ export const state = {
   // import-sheet.js instead, per that spec's own decision, since a parsed
   // CSV can be thousands of rows and there's no precedent for bulk parsed
   // data living on this shared object.
+  // manageSheetOpen: docs/specs/settings-manage-swipe-and-sheet.md -- UI-only,
+  // not persisted, same treatment as addSheetOpen. Layered on top of the six
+  // already-existing per-section edit-id fields below (budgetEditId etc.):
+  // those say *what* is being edited, this says *whether* that's currently
+  // shown as a mobile sheet (true) vs. desktop's inline form (never set,
+  // since desktop doesn't use this flag at all).
+  manageSheetOpen: false,
   importSheetOpen: false, importStep: "pick", importAccountId: null,
   importMapping: { dateCol: null, amountCol: null, noteCol: null, categoryCol: null, dateFormat: "YYYY-MM-DD" },
   budgetEditId: null, billEditId: null, goalEditId: null, goalContributeId: null, categoryEditId: null, accountEditId: null,

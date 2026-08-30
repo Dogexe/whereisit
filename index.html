@@ -93,6 +93,16 @@
        Home/Transactions/Insights/Settings alike. Empty until opened. -->
   <div id="addSheetContainer"></div>
 
+  <!-- Mobile-only Manage-section (Budgets/Bills/Goals/Categories/Accounts)
+       add/edit bottom sheet (docs/specs/settings-manage-swipe-and-sheet.md).
+       Same reasoning as #addSheetContainer above: renderSettings() fully
+       replaces $("screen").innerHTML on every re-render (an accordion
+       toggle, a language switch, a sync pull), so a sheet living inside
+       that output would get wiped by the next unrelated re-render. Only
+       ever populated by screens/settings.js's renderManageSheet(). Empty
+       until opened. -->
+  <div id="manageSheetContainer"></div>
+
   <div class="tabbar-wrap">
     <nav class="tabbar" id="tabbar">
       <button type="button" class="nav-btn" data-tab="home">

@@ -1,9 +1,10 @@
 import { L } from "../i18n.js";
 import { state, transactions, budgets, bills, goals, categories, accounts, setBudgets, setBills, setGoals, setCategories, setAccounts } from "../state.js";
 import {
-  $, uid, icon, iconAvatar, escapeHtml, fmtMoney, optionsHtml, refreshIcons, createFocusTrap,
+  $, uid, icon, iconAvatar, escapeHtml, fmtMoney, optionsHtml, refreshIcons, createFocusTrap, isDesktopShell,
   EDIT_ICON, DELETE_ICON, PLUS_ICON
 } from "../utils.js";
+import { manageSwipeWrapHtml, wireManageRowSwipe } from "./manage-row-swipe.js";
 import { CATEGORY_ICON_CHOICES, GOAL_TONES, GOAL_ICONS, iconFor, rowTone, categoryDisplayName } from "../categories.js";
 import { ACCOUNT_ICON_CHOICES, accountNameById } from "../accounts.js";
 import { accountDisplayName } from "../account.js";
@@ -32,17 +33,30 @@ import { importSheetHtml, wireImportSheet } from "./import-sheet.js";
 // edit+archive/unarchive, so they pass their own actions markup instead of
 // `editAttr`/`deleteAttr`. Every other caller (budgets/bills/categories)
 // leaves this undefined and gets the original edit+delete pair unchanged.
-export function manageRowHtml(iconHtml, name, sub, amt, editAttr, deleteAttr, extraClass, actionsOverrideHtml) {
+// docs/specs/settings-manage-swipe-and-sheet.md: below 1024px, actions
+// hide behind a swipe (manage-row-swipe.js) instead of always showing --
+// desktop is completely untouched. `actionCount` only matters for the
+// mobile branch (it sizes the reveal width) and defaults to 2 (the
+// edit+delete pair every caller except accountRowHtml uses); accounts'
+// 3-button actionsOverrideHtml passes 3 explicitly. The swipe wrapper
+// doesn't need a real per-row id (manage-row-swipe.js's drag physics never
+// reads data-id, only data-reveal), so "" is passed rather than trying to
+// extract one out of editAttr/deleteAttr's raw HTML-attribute strings.
+export function manageRowHtml(iconHtml, name, sub, amt, editAttr, deleteAttr, extraClass, actionsOverrideHtml, actionCount) {
+  const content = `
+    ${iconHtml}
+    <div class="info"><div class="name">${escapeHtml(name)}</div><div class="sub">${escapeHtml(sub)}</div></div>
+    ${amt ? `<div class="amt">${amt}</div>` : ""}`;
+  const actions = actionsOverrideHtml || `
+    <button type="button" class="btn btn-icon" ${editAttr} aria-label="${escapeHtml(L().editAria)}">${EDIT_ICON}</button>
+    <button type="button" class="btn btn-icon" style="color:var(--color-expense-700)" ${deleteAttr} aria-label="${escapeHtml(L().deleteAria)}">${DELETE_ICON}</button>`;
+  if (!isDesktopShell()) {
+    return manageSwipeWrapHtml("", content, actions, actionCount || 2, `manage-row-content manage-row${extraClass ? " " + extraClass : ""}`);
+  }
   return `
     <div class="manage-row${extraClass ? " " + extraClass : ""}">
-      ${iconHtml}
-      <div class="info"><div class="name">${escapeHtml(name)}</div><div class="sub">${escapeHtml(sub)}</div></div>
-      ${amt ? `<div class="amt">${amt}</div>` : ""}
-      <div class="row-actions">
-        ${actionsOverrideHtml || `
-        <button type="button" class="btn btn-icon" ${editAttr} aria-label="${escapeHtml(L().editAria)}">${EDIT_ICON}</button>
-        <button type="button" class="btn btn-icon" style="color:var(--color-expense-700)" ${deleteAttr} aria-label="${escapeHtml(L().deleteAria)}">${DELETE_ICON}</button>`}
-      </div>
+      ${content}
+      <div class="row-actions">${actions}</div>
     </div>`;
 }
 // Budgets and bills are always expense-side, so rowTone("expense")
@@ -80,6 +94,88 @@ export function wireInlineCrud(prefix, stateKey, deleteFn, saveFn, onOpen) {
   const cancelBtn = $("cancel" + prefix + "FormBtn");
   if (cancelBtn) cancelBtn.addEventListener("click", () => { state[stateKey] = null; renderSettings(); });
 }
+
+// docs/specs/settings-manage-swipe-and-sheet.md: below 1024px, every
+// Manage section's add/edit(/contribute) form opens in this one shared
+// sheet instead of expanding inline -- desktop is completely untouched
+// (isDesktopShell() below), still rendering each xFormHtml() inline via
+// the same wireInlineCrud pass as before this spec.
+//
+// Deliberately reactive rather than exposing separate openManageSheet()/
+// closeManageSheet() functions the click handlers would need to call:
+// wireInlineCrud's own add/edit/cancel handlers already set one of these
+// six fields and call renderSettings() completely unchanged from their
+// original desktop-only behavior. renderManageSheet(), called once at the
+// very end of renderSettings() below, is the single place that decides
+// whether that state change should now be showing as a sheet -- so
+// wireInlineCrud never needed to learn about desktop vs. mobile at all.
+//
+// Each xFormHtml() is DOM-location-agnostic already (wires its own fields
+// by plain id, not by assuming a parent container), so moving its
+// rendered output into #manageSheetContainer needs no changes to any of
+// them -- only to *where* the HTML string lands, and to never rendering
+// the same form in both places at once (duplicate ids would break the
+// id-based wiring both copies rely on).
+function manageSheetFormDefs() {
+  const l = L();
+  return [
+    { key: "budgetEditId", title: l.budgetsSection, formFn: budgetFormHtml, saveId: "saveBudgetFormBtn", saveFn: saveBudgetForm, cancelId: "cancelBudgetFormBtn" },
+    { key: "billEditId", title: l.billsSection, formFn: billFormHtml, saveId: "saveBillFormBtn", saveFn: saveBillForm, cancelId: "cancelBillFormBtn" },
+    { key: "goalEditId", title: l.goalsSection, formFn: goalFormHtml, saveId: "saveGoalFormBtn", saveFn: saveGoalForm, cancelId: "cancelGoalFormBtn" },
+    { key: "goalContributeId", title: l.contributeAria, formFn: goalContributeFormHtml, saveId: "saveContributeBtn", saveFn: saveContribution, cancelId: "cancelContributeBtn" },
+    { key: "categoryEditId", title: l.categoriesSection, formFn: categoryFormHtml, saveId: "saveCategoryFormBtn", saveFn: saveCategoryForm, cancelId: "cancelCategoryFormBtn" },
+    { key: "accountEditId", title: l.accountsSection, formFn: accountFormHtml, saveId: "saveAccountFormBtn", saveFn: saveAccountForm, cancelId: "cancelAccountFormBtn" },
+  ];
+}
+const manageSheetFocusTrap = createFocusTrap(() => {
+  const backdrop = $("manageSheetBackdrop");
+  return backdrop && !backdrop.hidden ? backdrop.querySelector(".filter-sheet") : null;
+});
+// wireInlineCrud's own cancel/close wiring (against #screen's content)
+// can't reach a form rendered into #manageSheetContainer -- that
+// container is populated by this function, called *after* the pass that
+// wires #screen, so the sheet's copy of the same save/cancel button ids
+// needs its own explicit wiring here every time it's (re)rendered.
+function renderManageSheet() {
+  const container = $("manageSheetContainer");
+  if (!container) return;
+  const active = manageSheetFormDefs().find((d) => state[d.key]);
+  if (!active || isDesktopShell()) {
+    if (state.manageSheetOpen) { state.manageSheetOpen = false; manageSheetFocusTrap.deactivate(); }
+    container.innerHTML = "";
+    return;
+  }
+  const l = L();
+  const dismiss = () => { state[active.key] = null; renderSettings(); };
+  container.innerHTML = `
+    <div class="filter-sheet-backdrop" id="manageSheetBackdrop">
+      <div class="filter-sheet" role="dialog" aria-label="${escapeHtml(active.title)}">
+        <div class="filter-sheet-header">
+          <h3>${escapeHtml(active.title)}</h3>
+          <button type="button" class="filter-sheet-close-btn" id="manageSheetClose" aria-label="${escapeHtml(l.closeAria)}">&times;</button>
+        </div>
+        ${active.formFn()}
+      </div>
+    </div>`;
+  $("manageSheetClose").addEventListener("click", dismiss);
+  $("manageSheetBackdrop").addEventListener("click", (e) => { if (e.target === $("manageSheetBackdrop")) dismiss(); });
+  // The form's own Save button does exactly what it already does on
+  // desktop (mutate state, toast, call renderSettings()) -- that
+  // renderSettings() call reaches this same function again afterward and
+  // finds the relevant key cleared, which is what actually closes the
+  // sheet. No separate "close after save" step needed here.
+  const saveBtn = $(active.saveId);
+  if (saveBtn) saveBtn.addEventListener("click", active.saveFn);
+  const cancelBtn = $(active.cancelId);
+  if (cancelBtn) cancelBtn.addEventListener("click", dismiss);
+  refreshIcons();
+  if (!state.manageSheetOpen) { state.manageSheetOpen = true; manageSheetFocusTrap.activate(); }
+}
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape" || !state.manageSheetOpen) return;
+  const active = manageSheetFormDefs().find((d) => state[d.key]);
+  if (active) { state[active.key] = null; renderSettings(); }
+});
 
 export function budgetRowHtml(b) {
   const bid = resolveCategoryId(b, "expense");
@@ -322,8 +418,41 @@ export function accountRowHtml(a) {
   const l = L();
   const actions = `
     <button type="button" class="btn btn-icon" data-edit-account="${a.id}" aria-label="${escapeHtml(l.editAria)}">${EDIT_ICON}</button>
-    <button type="button" class="btn btn-icon" data-toggle-archive-account="${a.id}" aria-label="${escapeHtml(a.archived ? l.unarchiveAria : l.archiveAria)}">${icon("archive")}</button>`;
-  return manageRowHtml(iconHtml, a.name, a.archived ? l.archivedLabel : "", fmtMoney(computeBalance(a.id)), "", "", a.archived ? "manage-row-archived" : null, actions);
+    <button type="button" class="btn btn-icon" data-toggle-archive-account="${a.id}" aria-label="${escapeHtml(a.archived ? l.unarchiveAria : l.archiveAria)}">${icon("archive")}</button>
+    <button type="button" class="btn btn-icon" style="color:var(--color-expense-700)" data-delete-account="${a.id}" aria-label="${escapeHtml(l.deleteAria)}">${DELETE_ICON}</button>`;
+  return manageRowHtml(iconHtml, a.name, a.archived ? l.archivedLabel : "", fmtMoney(computeBalance(a.id)), "", "", a.archived ? "manage-row-archived" : null, actions, 3);
+}
+// Same guard shape as deleteCategory above: block (toast, no state change,
+// exact count) rather than orphan a transaction's accountId or cascade the
+// delete -- transactions/toAccountId have no FK/cascade of their own (see
+// the accounts migration's own comment), so silently allowing this would
+// leave dangling references with no clean fallback the way a stale
+// category name at least degrades to plain text.
+function accountUsageCount(accountId) {
+  return transactions.filter((t) => t.accountId === accountId || t.toAccountId === accountId).length;
+}
+export function deleteAccount(id) {
+  const a = accounts.find((x) => x.id === id);
+  if (!a) return;
+  const usage = accountUsageCount(id);
+  if (usage > 0) { showToast(L().toastAccountInUse.replace("{n}", usage)); return; }
+  if (!a.archived && accounts.filter((x) => !x.archived).length <= 1) {
+    showToast(L().toastAccountArchiveBlocked);
+    return;
+  }
+  setAccounts(accounts.filter((x) => x.id !== id));
+  saveSettings();
+  if (state.accountEditId === id) state.accountEditId = null;
+  renderSettings();
+  a.updatedAt = Date.now();
+  pushRows("accounts", [accountToRow(a, true)]).then(() => syncNow());
+  showToast(L().toastAccountDeleted, () => {
+    const restored = Object.assign({}, a, { updatedAt: Date.now() });
+    accounts.push(restored);
+    saveSettings();
+    renderSettings();
+    pushRows("accounts", [accountToRow(restored, false)]).then(() => syncNow());
+  });
 }
 export function accountFormHtml() {
   const l = L();
@@ -381,29 +510,38 @@ export function toggleArchiveAccount(id) {
   showToast(a.archived ? L().toastAccountArchived : L().toastAccountUnarchived);
 }
 
+// Below 1024px, Edit/Delete move behind a swipe (same generalized
+// component every other Manage row uses) while Contribute stays an
+// always-visible button on the card face -- it's the primary action on a
+// savings goal, not housekeeping (docs/specs/settings-manage-swipe-and-
+// sheet.md decision 2). The swipe wrapper only ever contains the
+// icon+name+badge; Contribute lives outside it as a sibling, so it's
+// never hidden and never part of the drag surface.
 export function goalCardHtml(g, idx) {
   const l = L();
   const pct = Math.min(100, Math.round((g.saved / g.target) * 100));
   const complete = g.saved >= g.target;
   const tone = GOAL_TONES[idx % GOAL_TONES.length];
   const gIcon = GOAL_ICONS[idx % GOAL_ICONS.length];
+  const infoContent = `
+    ${iconAvatar(gIcon, tone.bg, tone.color)}
+    <div style="flex:1;min-width:0">
+      <div class="name">${escapeHtml(g.name)}</div>
+      <div class="progress-label">${fmtMoney(g.saved)} ${escapeHtml(l.ofLabel || "/")} ${fmtMoney(g.target)}</div>
+    </div>
+    <span class="badge ${complete ? "badge-income" : "badge-brand"}">${complete ? escapeHtml(l.goalComplete) : pct + "%"}</span>`;
+  const contributeBtn = `<button type="button" class="btn btn-icon" data-contribute-goal="${g.id}" aria-label="${escapeHtml(l.contributeAria)}">${PLUS_ICON}</button>`;
+  const editDeleteActions = `
+    <button type="button" class="btn btn-icon" data-edit-goal="${g.id}" aria-label="${escapeHtml(l.editAria)}">${EDIT_ICON}</button>
+    <button type="button" class="btn btn-icon" style="color:var(--color-expense-700)" data-delete-goal="${g.id}" aria-label="${escapeHtml(l.deleteAria)}">${DELETE_ICON}</button>`;
+  const topRow = isDesktopShell()
+    ? `${infoContent}<div class="goal-card-actions">${contributeBtn}${editDeleteActions}</div>`
+    : `${manageSwipeWrapHtml("", infoContent, editDeleteActions, 2, "goal-card-top-content", "goal-card-swipe-wrap")}${contributeBtn}`;
   return `
     <div class="goal-card">
-      <div class="top">
-        ${iconAvatar(gIcon, tone.bg, tone.color)}
-        <div style="flex:1;min-width:0">
-          <div class="name">${escapeHtml(g.name)}</div>
-          <div class="progress-label">${fmtMoney(g.saved)} ${escapeHtml(l.ofLabel || "/")} ${fmtMoney(g.target)}</div>
-        </div>
-        <span class="badge ${complete ? "badge-income" : "badge-brand"}">${complete ? escapeHtml(l.goalComplete) : pct + "%"}</span>
-        <div class="goal-card-actions">
-          <button type="button" class="btn btn-icon" data-contribute-goal="${g.id}" aria-label="${escapeHtml(l.contributeAria)}">${PLUS_ICON}</button>
-          <button type="button" class="btn btn-icon" data-edit-goal="${g.id}" aria-label="${escapeHtml(l.editAria)}">${EDIT_ICON}</button>
-          <button type="button" class="btn btn-icon" style="color:var(--color-expense-700)" data-delete-goal="${g.id}" aria-label="${escapeHtml(l.deleteAria)}">${DELETE_ICON}</button>
-        </div>
-      </div>
+      <div class="top">${topRow}</div>
       <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${complete ? "var(--color-income)" : tone.color}"></div></div>
-      ${state.goalContributeId === g.id ? goalContributeFormHtml() : ""}
+      ${state.goalContributeId === g.id && isDesktopShell() ? goalContributeFormHtml() : ""}
     </div>`;
 }
 export function goalContributeFormHtml() {
@@ -640,13 +778,11 @@ export function renderSettings() {
               ${iconAvatar("wallet", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
               <span class="label">${escapeHtml(l.budgetsSection)}</span>
               <span class="settings-badge-count">${budgets.length}</span>
+              <button type="button" class="btn btn-icon" id="addBudgetBtn" aria-label="${escapeHtml(l.addBudgetBtn)}">${PLUS_ICON}</button>
               ${icon("chevron-right")}
             </summary>
             <div class="settings-group-body">
-              <div style="text-align:right;margin-bottom:10px">
-                <button type="button" class="btn btn-ghost" id="addBudgetBtn">${escapeHtml(l.addBudgetBtn)}</button>
-              </div>
-              <div id="budgetFormSlot">${budgetFormHtml()}</div>
+              <div id="budgetFormSlot">${isDesktopShell() ? budgetFormHtml() : ""}</div>
               ${budgets.map(budgetRowHtml).join("") || `<div class="empty-note">${escapeHtml(l.noBudgets)}</div>`}
             </div>
           </details>
@@ -655,13 +791,11 @@ export function renderSettings() {
               ${iconAvatar("receipt", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
               <span class="label">${escapeHtml(l.billsSection)}</span>
               <span class="settings-badge-count">${bills.length}</span>
+              <button type="button" class="btn btn-icon" id="addBillBtn" aria-label="${escapeHtml(l.addBillBtn)}">${PLUS_ICON}</button>
               ${icon("chevron-right")}
             </summary>
             <div class="settings-group-body">
-              <div style="text-align:right;margin-bottom:10px">
-                <button type="button" class="btn btn-ghost" id="addBillBtn">${escapeHtml(l.addBillBtn)}</button>
-              </div>
-              <div id="billFormSlot">${billFormHtml()}</div>
+              <div id="billFormSlot">${isDesktopShell() ? billFormHtml() : ""}</div>
               ${bills.map(billRowHtml).join("") || `<div class="empty-note">${escapeHtml(l.noBills)}</div>`}
             </div>
           </details>
@@ -670,13 +804,11 @@ export function renderSettings() {
               ${iconAvatar("target", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
               <span class="label">${escapeHtml(l.goalsSection)}</span>
               <span class="settings-badge-count">${goals.length}</span>
+              <button type="button" class="btn btn-icon" id="addGoalBtn" aria-label="${escapeHtml(l.addGoalBtn)}">${PLUS_ICON}</button>
               ${icon("chevron-right")}
             </summary>
             <div class="settings-group-body">
-              <div style="text-align:right;margin-bottom:10px">
-                <button type="button" class="btn btn-ghost" id="addGoalBtn">${escapeHtml(l.addGoalBtn)}</button>
-              </div>
-              <div id="goalFormSlot">${state.goalEditId ? goalFormHtml() : ""}</div>
+              <div id="goalFormSlot">${state.goalEditId && isDesktopShell() ? goalFormHtml() : ""}</div>
               <div class="insight-cards" style="padding-bottom:0">
                 ${goals.map(goalCardHtml).join("") || `<div class="empty-note">${escapeHtml(l.noGoals)}</div>`}
               </div>
@@ -687,13 +819,11 @@ export function renderSettings() {
               ${iconAvatar("layout-grid", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
               <span class="label">${escapeHtml(l.categoriesSection)}</span>
               <span class="settings-badge-count">${categories.length}</span>
+              <button type="button" class="btn btn-icon" id="addCategoryBtn" aria-label="${escapeHtml(l.addCategoryBtn)}">${PLUS_ICON}</button>
               ${icon("chevron-right")}
             </summary>
             <div class="settings-group-body">
-              <div style="text-align:right;margin-bottom:10px">
-                <button type="button" class="btn btn-ghost" id="addCategoryBtn">${escapeHtml(l.addCategoryBtn)}</button>
-              </div>
-              <div id="categoryFormSlot">${categoryFormHtml()}</div>
+              <div id="categoryFormSlot">${isDesktopShell() ? categoryFormHtml() : ""}</div>
               ${categories.map(categoryRowHtml).join("") || `<div class="empty-note">${escapeHtml(l.noCategories)}</div>`}
             </div>
           </details>
@@ -702,13 +832,11 @@ export function renderSettings() {
               ${iconAvatar("landmark", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
               <span class="label">${escapeHtml(l.accountsSection)}</span>
               <span class="settings-badge-count">${accounts.length}</span>
+              <button type="button" class="btn btn-icon" id="addAccountBtn" aria-label="${escapeHtml(l.addAccountBtn)}">${PLUS_ICON}</button>
               ${icon("chevron-right")}
             </summary>
             <div class="settings-group-body">
-              <div style="text-align:right;margin-bottom:10px">
-                <button type="button" class="btn btn-ghost" id="addAccountBtn">${escapeHtml(l.addAccountBtn)}</button>
-              </div>
-              <div id="accountFormSlot">${accountFormHtml()}</div>
+              <div id="accountFormSlot">${isDesktopShell() ? accountFormHtml() : ""}</div>
               ${accounts.map(accountRowHtml).join("") || `<div class="empty-note">${escapeHtml(l.noAccounts)}</div>`}
             </div>
           </details>
@@ -796,11 +924,17 @@ export function renderSettings() {
   if ($("saveContributeBtn")) $("saveContributeBtn").addEventListener("click", saveContribution);
   if ($("cancelContributeBtn")) $("cancelContributeBtn").addEventListener("click", () => { state.goalContributeId = null; renderSettings(); });
   wireInlineCrud("Category", "categoryEditId", deleteCategory, saveCategoryForm);
-  // No deleteFn: accounts have no delete action at all (archive only, see
-  // toggleArchiveAccount below) -- passing null is safe here because
-  // accountRowHtml never emits a [data-delete-account] attribute for
-  // wireInlineCrud's delete-button listener to ever match and invoke it.
-  wireInlineCrud("Account", "accountEditId", null, saveAccountForm);
+  // deleteAccount (an in-use-count guard, same shape as deleteCategory)
+  // used to be a null deleteFn here -- accounts only had archive/unarchive
+  // (toggleArchiveAccount below, wired separately since it isn't a
+  // delete). A real bug from adding delete without updating this line: a
+  // duplicate manual listener on [data-delete-account] alongside this
+  // generic one fired deleteFn(null) first and threw, caught only by
+  // checking the console during live verification, not by the click
+  // "working" (the second, correct listener still fired despite the
+  // first one's exception) -- removed the duplicate, this is the only
+  // wiring for the account delete button now.
+  wireInlineCrud("Account", "accountEditId", deleteAccount, saveAccountForm);
   document.querySelectorAll("[data-toggle-archive-account]").forEach((btn) => btn.addEventListener("click", () => toggleArchiveAccount(btn.getAttribute("data-toggle-archive-account"))));
   // Pure DOM toggling, not a re-render -- the picker's selection is only
   // ever read (via the .selected class) at save time in saveCategoryForm,
@@ -810,4 +944,6 @@ export function renderSettings() {
     btn.classList.add("selected");
   }));
   refreshIcons();
+  if (!isDesktopShell()) wireManageRowSwipe($("screen"));
+  renderManageSheet();
 }

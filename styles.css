@@ -614,6 +614,26 @@
   .manage-row .name { font-size: 15px; font-weight: 500; }
   .manage-row .sub { font-size: 12px; color: var(--color-muted); margin-top: 2px; }
   .manage-row .amt { font-size: 14px; font-weight: 600; flex-shrink: 0; }
+  /* Mobile-only (<1024px) swipe-to-reveal for Manage rows
+     (docs/specs/settings-manage-swipe-and-sheet.md), a sibling of
+     tx-row.js's .tx-row-wrap/.tx-trail-group pattern -- see
+     manage-row-swipe.js's own doc comment for why .manage-row-content
+     needs no fixed natural-width baseline the way .tx-lead does. The
+     wrapper owns the row's border-bottom (not .manage-row-content
+     itself, which reuses the plain .manage-row rules above and would
+     otherwise double up the divider line). */
+  .manage-row-wrap { display: flex; align-items: stretch; position: relative; overflow: hidden; border-bottom: 1px solid var(--color-divider); touch-action: pan-y; user-select: none; }
+  .manage-row-wrap:last-child { border-bottom: none; }
+  .manage-row-wrap .manage-row-content { border-bottom: none; flex: 1; min-width: 0; }
+  .manage-row-actions-group { display: flex; align-items: center; flex-shrink: 0; overflow: hidden; transition: width 240ms cubic-bezier(.22,1,.36,1); }
+  .manage-row-actions-group.dragging { transition: none; }
+  /* Goal cards (mobile-only swipe for Edit/Delete, Contribute stays
+     always-visible outside the swipe wrapper -- docs/specs/
+     settings-manage-swipe-and-sheet.md) are their own self-contained box,
+     not a list row -- no divider needed between the swiped area and the
+     Contribute button beside it. */
+  .manage-row-wrap.goal-card-swipe-wrap { border-bottom: none; flex: 1; min-width: 0; }
+  .goal-card-top-content { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
   /* Category add/edit form's icon picker (docs/specs/custom-categories.md
      stage 3) -- selection is tracked purely by the .selected class
      (settings.js reads it straight from the DOM at save time), so this is

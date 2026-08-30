@@ -145,6 +145,8 @@ export const STRINGS = {
   archiveAria: ["เก็บเข้าคลัง", "Archive"], unarchiveAria: ["เรียกคืนจากคลัง", "Unarchive"],
   toastAccountArchived: ["เก็บบัญชีเข้าคลังแล้ว", "Account archived"], toastAccountUnarchived: ["เรียกคืนบัญชีแล้ว", "Account unarchived"],
   toastAccountArchiveBlocked: ["ต้องมีบัญชีที่ใช้งานอยู่อย่างน้อย 1 บัญชี", "At least one active account is required"],
+  toastAccountDeleted: ["ลบบัญชีแล้ว", "Account deleted"],
+  toastAccountInUse: ["ลบไม่ได้ มี {n} รายการที่ยังใช้บัญชีนี้อยู่", "Can't delete — {n} transaction(s) still use this account"],
   archivedLabel: ["เก็บเข้าคลังแล้ว", "Archived"],
   toastInvalidAccountName: ["กรุณาระบุชื่อบัญชี", "Please enter an account name"],
   accountLabel: ["บัญชี", "Account"], allAccountsOption: ["ทุกบัญชี", "All accounts"],
