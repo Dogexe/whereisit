@@ -1,6 +1,6 @@
 import { L } from "../i18n.js";
 import { state, categories } from "../state.js";
-import { $, escapeHtml, fmtMoney, icon, refreshIcons, monthNameFull } from "../utils.js";
+import { $, escapeHtml, fmtMoney, icon, refreshIcons, monthNameFull, createFocusTrap } from "../utils.js";
 import { categoryDisplayName } from "../categories.js";
 import {
   yearLabel, computeBudgets, computeBudgetsForYear,
@@ -139,7 +139,7 @@ function renderBreakdownToolbar() {
     onClose: () => { state.insightsBreakdownPopoverOpen = false; renderBreakdownToolbar(); }
   });
   const openBtn = $("openInsightsFiltersBtn");
-  if (openBtn) openBtn.addEventListener("click", () => { state.insightsFilterSheetOpen = true; renderBreakdownFilterSheet(); });
+  if (openBtn) openBtn.addEventListener("click", () => { state.insightsFilterSheetOpen = true; renderBreakdownFilterSheet(); insightsFilterFocusTrap.activate(); });
   refreshIcons();
 }
 
@@ -223,8 +223,18 @@ function closeInsightsFilterSheet() {
   state.insightsFilterSheetOpen = false;
   const backdrop = document.getElementById("insightsFilterSheetBackdrop");
   if (backdrop) backdrop.hidden = true;
+  insightsFilterFocusTrap.deactivate();
 }
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && state.insightsFilterSheetOpen) closeInsightsFilterSheet(); });
+// Looked up fresh on every Tab keypress -- unlike the Transactions/Add
+// sheets, this one fully replaces its own inner HTML on almost every field
+// change while still open (renderBreakdownFilterSheet), so the trap can't
+// hold a reference to a single dialog element; re-querying by id means it
+// keeps working across those re-renders without being re-armed each time.
+const insightsFilterFocusTrap = createFocusTrap(() => {
+  const backdrop = document.getElementById("insightsFilterSheetBackdrop");
+  return backdrop && !backdrop.hidden ? backdrop.querySelector(".filter-sheet") : null;
+});
 function renderBreakdownFilterSheet() {
   const container = $("breakdownFilterSheet");
   if (!container) return;

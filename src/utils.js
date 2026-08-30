@@ -81,3 +81,58 @@ export function refreshIcons() {}
 export function optionsHtml(values, selected, labelFn) {
   return values.map((v) => `<option value="${escapeHtml(v)}"${v === selected ? " selected" : ""}>${escapeHtml(labelFn ? labelFn(v) : v)}</option>`).join("");
 }
+const FOCUSABLE_SELECTOR = 'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+function trapFocusableElements(container) {
+  return Array.from(container.querySelectorAll(FOCUSABLE_SELECTOR)).filter((el) => el.offsetParent !== null);
+}
+// Shared focus trap for the app's dialog/sheet overlays (Transactions' and
+// Insights' Filters sheets, the Add/Edit bottom sheet) -- keeps Tab/Shift+Tab
+// cycling within the open sheet instead of leaking focus into the page
+// content it's covering. `getContainer` is a function, not an element,
+// because some of these sheets fully replace their own inner HTML while
+// still open (e.g. insights.js's renderBreakdownFilterSheet on every field
+// change) -- looking the container up fresh on every keydown, the same
+// pattern this codebase already uses for its module-level Escape listeners,
+// means the trap keeps working across those re-renders without needing to
+// be re-armed each time. It should return the current dialog element (not
+// its backdrop) when the sheet is open, or a falsy value when it's closed.
+export function createFocusTrap(getContainer) {
+  let previouslyFocused = null;
+  function onKeydown(e) {
+    if (e.key !== "Tab") return;
+    const container = getContainer();
+    if (!container) return;
+    const focusables = trapFocusableElements(container);
+    if (!focusables.length) { e.preventDefault(); return; }
+    const first = focusables[0], last = focusables[focusables.length - 1];
+    const active = document.activeElement;
+    if (e.shiftKey) {
+      if (active === first || !container.contains(active)) { e.preventDefault(); last.focus(); }
+    } else if (active === last || !container.contains(active)) {
+      e.preventDefault(); first.focus();
+    }
+  }
+  document.addEventListener("keydown", onKeydown);
+  return {
+    // Call once, right after the sheet becomes visible in the DOM. Saves
+    // whatever had focus (the button that opened the sheet) so it can be
+    // restored on deactivate(), then moves focus to the first focusable
+    // element inside the sheet -- in every one of this app's sheets that's
+    // the close button, since it's the first thing in DOM order, so no
+    // separate "or the close button" fallback branch is needed.
+    activate() {
+      previouslyFocused = document.activeElement;
+      const container = getContainer();
+      if (!container) return;
+      const first = trapFocusableElements(container)[0];
+      if (first) first.focus();
+    },
+    // Call once, right when the sheet closes (Escape, close button,
+    // backdrop tap -- every dismissal path already converges on one
+    // close*Sheet() function per sheet, so this only needs one call site).
+    deactivate() {
+      if (previouslyFocused && document.body.contains(previouslyFocused)) previouslyFocused.focus();
+      previouslyFocused = null;
+    }
+  };
+}

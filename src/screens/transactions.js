@@ -1,6 +1,6 @@
 import { L } from "../i18n.js";
 import { state, categories } from "../state.js";
-import { $, escapeHtml, refreshIcons, icon, fmtMoney, monthLabel, dateLabel } from "../utils.js";
+import { $, escapeHtml, refreshIcons, icon, fmtMoney, monthLabel, dateLabel, createFocusTrap } from "../utils.js";
 import { categoryDisplayName } from "../categories.js";
 import { availableYears, yearLabel, filteredTxList } from "../derived.js";
 import { groupedTxRowsHtml, wireTxRowActions } from "./tx-row.js";
@@ -262,17 +262,22 @@ function closeTxFilterSheet() {
   state.txFilterSheetOpen = false;
   const backdrop = document.getElementById("txFilterSheetBackdrop");
   if (backdrop) backdrop.hidden = true;
+  txFilterFocusTrap.deactivate();
 }
 // Registered once at module load, not per-render -- renderTransactions()
 // runs on every navigation to this tab (and on sync-triggered re-renders),
 // and a per-render document-level listener would pile up indefinitely
-// since nothing ever removes it.
+// since nothing ever removes it. Same reasoning for the focus trap below.
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && state.txFilterSheetOpen) closeTxFilterSheet(); });
+const txFilterFocusTrap = createFocusTrap(() => {
+  const backdrop = document.getElementById("txFilterSheetBackdrop");
+  return backdrop && !backdrop.hidden ? backdrop.querySelector(".filter-sheet") : null;
+});
 function wireFilterSheet() {
   const backdrop = document.getElementById("txFilterSheetBackdrop");
   const openBtn = document.getElementById("openTxFiltersBtn");
   const closeBtn = document.getElementById("txFilterSheetClose");
-  openBtn.addEventListener("click", () => { state.txFilterSheetOpen = true; backdrop.hidden = false; });
+  openBtn.addEventListener("click", () => { state.txFilterSheetOpen = true; backdrop.hidden = false; txFilterFocusTrap.activate(); });
   closeBtn.addEventListener("click", closeTxFilterSheet);
   backdrop.addEventListener("click", (e) => { if (e.target === backdrop) closeTxFilterSheet(); });
   document.querySelectorAll('input[name="tx-type-filter"]').forEach((r) => r.addEventListener("change", (e) => { state.txFilterType = e.target.value; refreshFilteredResults(); }));

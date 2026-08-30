@@ -1,6 +1,6 @@
 import { L } from "../i18n.js";
 import { state, transactions, categories, setTransactions } from "../state.js";
-import { $, uid, escapeHtml, dateLabel, formatDateTyping, parseDateText, optionsHtml, refreshIcons, icon, isDesktopShell } from "../utils.js";
+import { $, uid, escapeHtml, dateLabel, formatDateTyping, parseDateText, optionsHtml, refreshIcons, icon, isDesktopShell, createFocusTrap } from "../utils.js";
 import { guessCategory, categoryDisplayName } from "../categories.js";
 import { checkBudgetAlert, resolveCategoryId, mostUsedCategoryIds } from "../derived.js";
 import { saveToStorage } from "../storage.js";
@@ -263,14 +263,20 @@ function renderAddSheet() {
 export function openAddSheet() {
   state.addSheetOpen = true;
   renderAddSheet();
+  addSheetFocusTrap.activate();
 }
 export function closeAddSheet() {
   state.addSheetOpen = false;
   const backdrop = $("addSheetBackdrop");
   if (backdrop) backdrop.hidden = true;
+  addSheetFocusTrap.deactivate();
 }
 // Registered once at module load, not per-render -- see transactions.js's
 // identical pattern/reasoning for its own Filters-sheet Escape listener.
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && state.addSheetOpen) { resetForm(); closeAddSheet(); }
+});
+const addSheetFocusTrap = createFocusTrap(() => {
+  const backdrop = $("addSheetBackdrop");
+  return backdrop && !backdrop.hidden ? backdrop.querySelector(".filter-sheet") : null;
 });
