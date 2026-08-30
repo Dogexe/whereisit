@@ -1,4 +1,5 @@
 import { DEFAULT_CATEGORIES } from "./categories.js";
+import { DEFAULT_ACCOUNT } from "./accounts.js";
 
 // Local (not UTC) "today," used only to seed the initial default field
 // values below. new Date().toISOString() converts to UTC first, which
@@ -28,7 +29,7 @@ export const state = {
   insightsBudgetsPopoverOpen: false,
   insightsBreakdownMode: "month", insightsBreakdownMonthNum: curMonthNumLocal, insightsBreakdownYear: String(now.getFullYear()),
   insightsBreakdownPopoverOpen: false, insightsBreakdownIsToday: false,
-  txFilterType: "all", txFilterMonthNum: "all", txFilterYear: "all", txFilterCategory: new Set(), txSearch: "", txPeriodMode: "all",
+  txFilterType: "all", txFilterMonthNum: "all", txFilterYear: "all", txFilterCategory: new Set(), txFilterAccount: new Set(), txSearch: "", txPeriodMode: "all",
   txFilterAmountMin: null, txFilterAmountMax: null, txFilterDateFrom: "", txFilterDateTo: "", txFilterSheetOpen: false,
   // txPillPopoverOpen: UI-only, not persisted -- same treatment as
   // insightsBudgetsPopoverOpen/insightsBreakdownPopoverOpen. txCustomKind
@@ -44,13 +45,33 @@ export const state = {
   insightsCustomKind: "range", insightsFilterDateFrom: "", insightsFilterDateTo: "",
   formType: "expense", formDate: todayLocalIso,
   formCategoryId: (DEFAULT_CATEGORIES.find((c) => c.type === "expense") || {}).id || null, editingId: null, categoryManual: false,
+  // formAccountId: stage 4 of docs/specs/multi-account-support.md, set via
+  // derived.js's defaultAccountId() at reset/edit time (see add.js), not
+  // seeded with a fixed default here -- unlike formCategoryId, the right
+  // default depends on the live accounts list, not a fixed constant.
+  formAccountId: null,
+  // formToAccountId: stage 2 of docs/specs/account-transfers.md -- the Add
+  // form's Transfer tab only, the destination account. A transfer's
+  // *source* account reuses formAccountId (and account_id) directly, same
+  // as any other transaction's account -- this is the only genuinely new
+  // field a transfer needs.
+  formToAccountId: null,
+  // homeSelectedAccountId: UI-only, not persisted -- same treatment as
+  // insightsTab. Inert until stage 5 wires Home's account switcher; carried
+  // here (not stage 5) only so stage 4's markBillPaid can already read it.
+  homeSelectedAccountId: null,
   // addSheetOpen: UI-only, not persisted -- same treatment as
   // txFilterSheetOpen/insightsFilterSheetOpen. Mobile-only (docs/specs/
   // add-transaction-bottom-sheet.md): below 1024px, Add/Edit opens as a
   // bottom sheet instead of navigating state.tab to "add".
   addSheetOpen: false,
-  budgetEditId: null, billEditId: null, goalEditId: null, goalContributeId: null, categoryEditId: null,
-  settingsGroupOpen: { budgets: false, bills: false, goals: false, categories: false },
+  // exportSheetOpen: UI-only, not persisted -- same treatment as
+  // txFilterSheetOpen/insightsFilterSheetOpen/addSheetOpen. Settings' three
+  // export options (CSV/JSON/Google Sheets) live behind one bottom sheet
+  // instead of three separate always-visible rows.
+  exportSheetOpen: false,
+  budgetEditId: null, billEditId: null, goalEditId: null, goalContributeId: null, categoryEditId: null, accountEditId: null,
+  settingsGroupOpen: { budgets: false, bills: false, goals: false, categories: false, accounts: false },
   // Which section is shown in the right-hand panel of Settings' desktop
   // (1024px+) list-left/detail-right layout -- see styles.css's 1024px
   // block. Purely a UI-state field, same as settingsGroupOpen (not
@@ -77,6 +98,12 @@ export let goals = [];
 // CATEGORIES strings directly. Sliced so mutating this array can never
 // mutate categories.js's own DEFAULT_CATEGORIES export.
 export let categories = DEFAULT_CATEGORIES.slice();
+// Stage 1 of docs/specs/multi-account-support.md: seeded with one default
+// "Cash" account so a fresh, never-signed-in install already has a valid
+// account to save transactions against. Object.assign copies it so mutating
+// this array's entries can never mutate accounts.js's own DEFAULT_ACCOUNT
+// export -- same reasoning as categories' .slice() above.
+export let accounts = [Object.assign({}, DEFAULT_ACCOUNT)];
 
 // Reassigning an imported `let` binding from another module isn't allowed in
 // ES modules (only mutation is) -- these setters are how storage.js/sync code
@@ -86,3 +113,4 @@ export function setBudgets(arr) { budgets = arr; }
 export function setBills(arr) { bills = arr; }
 export function setGoals(arr) { goals = arr; }
 export function setCategories(arr) { categories = arr; }
+export function setAccounts(arr) { accounts = arr; }

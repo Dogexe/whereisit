@@ -1,17 +1,18 @@
 import { L } from "../i18n.js";
-import { state, transactions, budgets, bills, goals, categories, setBudgets, setBills, setGoals, setCategories } from "../state.js";
+import { state, transactions, budgets, bills, goals, categories, accounts, setBudgets, setBills, setGoals, setCategories, setAccounts } from "../state.js";
 import {
-  $, uid, icon, iconAvatar, escapeHtml, fmtMoney, optionsHtml, refreshIcons,
+  $, uid, icon, iconAvatar, escapeHtml, fmtMoney, optionsHtml, refreshIcons, createFocusTrap,
   EDIT_ICON, DELETE_ICON, PLUS_ICON
 } from "../utils.js";
 import { CATEGORY_ICON_CHOICES, GOAL_TONES, GOAL_ICONS, iconFor, rowTone, categoryDisplayName } from "../categories.js";
+import { ACCOUNT_ICON_CHOICES, accountNameById } from "../accounts.js";
 import { accountDisplayName } from "../account.js";
-import { daysUntilBillDue, dueSoonLabel, resolveCategoryId } from "../derived.js";
+import { daysUntilBillDue, dueSoonLabel, resolveCategoryId, computeBalance } from "../derived.js";
 import { saveSettings } from "../storage.js";
 import { applyTheme } from "../theme.js";
 import {
   currentUser, lastSyncStatus, signInWithGoogle, signOutUser, syncNow,
-  budgetToRow, billToRow, goalToRow, categoryToRow, pushRows
+  budgetToRow, billToRow, goalToRow, categoryToRow, accountToRow, pushRows
 } from "../sync.js";
 import { showToast } from "../toast.js";
 import { renderChrome, renderScreen } from "./router.js";
@@ -24,15 +25,22 @@ import { pushReminderState, enableBillReminders, disableBillReminders } from "..
 // budgets/bills, matching the same icon-led row shape as every other
 // row in this redesigned Settings screen (toggle rows, group headers,
 // transaction rows) instead of being the one bare-text exception.
-export function manageRowHtml(iconHtml, name, sub, amt, editAttr, deleteAttr, extraClass) {
+// `actionsOverrideHtml`, when given, replaces the default edit+delete
+// button pair entirely -- accounts (stage 3 of
+// docs/specs/multi-account-support.md) have no delete action at all, only
+// edit+archive/unarchive, so they pass their own actions markup instead of
+// `editAttr`/`deleteAttr`. Every other caller (budgets/bills/categories)
+// leaves this undefined and gets the original edit+delete pair unchanged.
+export function manageRowHtml(iconHtml, name, sub, amt, editAttr, deleteAttr, extraClass, actionsOverrideHtml) {
   return `
     <div class="manage-row${extraClass ? " " + extraClass : ""}">
       ${iconHtml}
       <div class="info"><div class="name">${escapeHtml(name)}</div><div class="sub">${escapeHtml(sub)}</div></div>
       ${amt ? `<div class="amt">${amt}</div>` : ""}
       <div class="row-actions">
+        ${actionsOverrideHtml || `
         <button type="button" class="btn btn-icon" ${editAttr} aria-label="${escapeHtml(L().editAria)}">${EDIT_ICON}</button>
-        <button type="button" class="btn btn-icon" style="color:var(--color-expense-700)" ${deleteAttr} aria-label="${escapeHtml(L().deleteAria)}">${DELETE_ICON}</button>
+        <button type="button" class="btn btn-icon" style="color:var(--color-expense-700)" ${deleteAttr} aria-label="${escapeHtml(L().deleteAria)}">${DELETE_ICON}</button>`}
       </div>
     </div>`;
 }
@@ -302,6 +310,76 @@ export function deleteCategory(id) {
   });
 }
 
+// Stage 3 of docs/specs/multi-account-support.md: full add/edit/archive
+// over accounts -- deliberately no delete action (the original request's
+// "archived flag rather than hard delete"), so the row's actions differ
+// from every other manage-row in this file (edit + archive/unarchive, not
+// edit + delete) via manageRowHtml's actionsOverrideHtml parameter.
+export function accountRowHtml(a) {
+  const tone = rowTone("expense");
+  const iconHtml = iconAvatar(a.icon, tone.bg, tone.color, "sm", 'width="15" height="15"');
+  const l = L();
+  const actions = `
+    <button type="button" class="btn btn-icon" data-edit-account="${a.id}" aria-label="${escapeHtml(l.editAria)}">${EDIT_ICON}</button>
+    <button type="button" class="btn btn-icon" data-toggle-archive-account="${a.id}" aria-label="${escapeHtml(a.archived ? l.unarchiveAria : l.archiveAria)}">${icon("archive")}</button>`;
+  return manageRowHtml(iconHtml, a.name, a.archived ? l.archivedLabel : "", fmtMoney(computeBalance(a.id)), "", "", a.archived ? "manage-row-archived" : null, actions);
+}
+export function accountFormHtml() {
+  const l = L();
+  if (!state.accountEditId) return "";
+  const isNew = state.accountEditId === "new";
+  const editing = !isNew ? accounts.find((a) => a.id === state.accountEditId) : null;
+  if (!isNew && !editing) return "";
+  const curIcon = isNew ? ACCOUNT_ICON_CHOICES[0] : editing.icon;
+  const iconPicker = `<div class="field"><label>${escapeHtml(l.iconLabel)}</label><div class="icon-picker">${ACCOUNT_ICON_CHOICES.map((name) => `<button type="button" class="icon-picker-option${name === curIcon ? " selected" : ""}" data-icon="${name}" aria-label="${escapeHtml(name)}">${icon(name)}</button>`).join("")}</div></div>`;
+  const fields = `<div class="field"><label>${escapeHtml(l.accountNameLabel)}</label><input class="input" type="text" id="accountNameInput" value="${isNew ? "" : escapeHtml(editing.name)}"></div>`
+    + `<div class="field"><label>${escapeHtml(l.openingBalanceLabel)}</label><input class="input" type="number" id="accountOpeningBalanceInput" step="0.01" value="${isNew ? "0" : editing.openingBalance}"></div>`
+    + iconPicker;
+  return inlineForm(fields, "saveAccountFormBtn", l.saveAccountBtn, "cancelAccountFormBtn");
+}
+export function saveAccountForm() {
+  const isNew = state.accountEditId === "new";
+  const name = ($("accountNameInput") || {}).value ? $("accountNameInput").value.trim() : "";
+  if (!name) { showToast(L().toastInvalidAccountName); return; }
+  const openingBalance = parseFloat(($("accountOpeningBalanceInput") || {}).value);
+  if (Number.isNaN(openingBalance)) { showToast(L().toastInvalidAmount); return; }
+  const selectedIconBtn = document.querySelector(".icon-picker-option.selected");
+  const iconName = selectedIconBtn ? selectedIconBtn.getAttribute("data-icon") : ACCOUNT_ICON_CHOICES[0];
+  let saved;
+  if (isNew) {
+    saved = { id: uid(), name, icon: iconName, openingBalance, archived: false, updatedAt: Date.now() };
+    accounts.push(saved);
+  } else {
+    const a = accounts.find((x) => x.id === state.accountEditId);
+    if (!a) return;
+    a.name = name; a.icon = iconName; a.openingBalance = openingBalance; a.updatedAt = Date.now();
+    saved = a;
+  }
+  saveSettings();
+  state.accountEditId = null;
+  showToast(L().toastAccountSaved);
+  renderSettings();
+  pushRows("accounts", [accountToRow(saved, false)]).then(() => syncNow());
+}
+// Blocks (toast, no state change) if archiving would leave zero active
+// accounts -- every new transaction needs a real account to save against,
+// so at least one must always stay active. No such guard is needed for
+// unarchiving, which only ever adds an active account back.
+export function toggleArchiveAccount(id) {
+  const a = accounts.find((x) => x.id === id);
+  if (!a) return;
+  if (!a.archived && accounts.filter((x) => !x.archived).length <= 1) {
+    showToast(L().toastAccountArchiveBlocked);
+    return;
+  }
+  a.archived = !a.archived;
+  a.updatedAt = Date.now();
+  saveSettings();
+  renderSettings();
+  pushRows("accounts", [accountToRow(a, false)]).then(() => syncNow());
+  showToast(a.archived ? L().toastAccountArchived : L().toastAccountUnarchived);
+}
+
 export function goalCardHtml(g, idx) {
   const l = L();
   const pct = Math.min(100, Math.round((g.saved / g.target) * 100));
@@ -418,6 +496,60 @@ function pushReminderRowHtml() {
     ${hint ? `<div class="empty-note" style="padding:4px 4px 10px;text-align:left">${escapeHtml(hint)}</div>` : ""}`;
 }
 
+// The three export options (CSV/JSON/Google Sheets) used to be three
+// always-visible toggle-rows; now they're one "Export" row that opens a
+// bottom sheet, copying Transactions' filter-sheet structure exactly
+// (.filter-sheet-backdrop/.filter-sheet, createFocusTrap, Escape-to-close,
+// role="dialog") rather than inventing a second sheet mechanism.
+function exportSheetHtml() {
+  const l = L();
+  return `
+    <div class="filter-sheet-backdrop" id="exportSheetBackdrop" ${state.exportSheetOpen ? "" : "hidden"}>
+      <div class="filter-sheet" role="dialog" aria-label="${escapeHtml(l.exportBtn)}">
+        <div class="filter-sheet-header">
+          <h3>${escapeHtml(l.exportBtn)}</h3>
+          <button type="button" class="filter-sheet-close-btn" id="exportSheetClose" aria-label="${escapeHtml(l.closeAria)}">&times;</button>
+        </div>
+        <button type="button" class="toggle-row" id="exportCsvBtn">
+          ${iconAvatar("download", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+          <span class="label">${escapeHtml(l.exportCsvBtn)}</span>
+        </button>
+        <button type="button" class="toggle-row" id="exportJsonBtn">
+          ${iconAvatar("download", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+          <span class="label">${escapeHtml(l.exportJsonBtn)}</span>
+        </button>
+        <button type="button" class="toggle-row" id="exportSheetsBtn">
+          ${iconAvatar("table", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+          <span class="label">${escapeHtml(l.exportSheetsBtn)}</span>
+        </button>
+      </div>
+    </div>`;
+}
+// Looked up fresh from the DOM rather than closed over at wire-time, same
+// reasoning as transactions.js's closeTxFilterSheet.
+function closeExportSheet() {
+  state.exportSheetOpen = false;
+  const backdrop = document.getElementById("exportSheetBackdrop");
+  if (backdrop) backdrop.hidden = true;
+  exportSheetFocusTrap.deactivate();
+}
+// Registered once at module load, not per-render -- renderSettings() runs
+// on every navigation to this tab, and a per-render document-level
+// listener would pile up indefinitely since nothing ever removes it.
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && state.exportSheetOpen) closeExportSheet(); });
+const exportSheetFocusTrap = createFocusTrap(() => {
+  const backdrop = document.getElementById("exportSheetBackdrop");
+  return backdrop && !backdrop.hidden ? backdrop.querySelector(".filter-sheet") : null;
+});
+function wireExportSheet() {
+  const backdrop = document.getElementById("exportSheetBackdrop");
+  const openBtn = document.getElementById("openExportSheetBtn");
+  const closeBtn = document.getElementById("exportSheetClose");
+  openBtn.addEventListener("click", () => { state.exportSheetOpen = true; backdrop.hidden = false; exportSheetFocusTrap.activate(); });
+  closeBtn.addEventListener("click", closeExportSheet);
+  backdrop.addEventListener("click", (e) => { if (e.target === backdrop) closeExportSheet(); });
+}
+
 export function renderSettings() {
   const l = L();
   const meta = currentUser ? (currentUser.user_metadata || {}) : {};
@@ -434,7 +566,9 @@ export function renderSettings() {
           <div class="profile-name">${escapeHtml(name)}</div>
           <div class="profile-sub">${escapeHtml(currentUser ? l.personalAccount : "")}</div>
         </div>
-        <button type="button" class="btn btn-secondary btn-sm" id="authBtn">${escapeHtml(currentUser ? l.signOutBtn : l.signInGoogle)}</button>
+        ${currentUser
+          ? `<button type="button" class="btn btn-icon" id="authBtn" aria-label="${escapeHtml(l.signOutBtn)}">${icon("log-out")}</button>`
+          : `<button type="button" class="btn btn-secondary btn-sm" id="authBtn">${escapeHtml(l.signInGoogle)}</button>`}
       </div>
 
       <div class="settings-layout" data-active="${state.settingsActiveSection}">
@@ -445,6 +579,7 @@ export function renderSettings() {
           <button type="button" class="settings-nav-item${state.settingsActiveSection === "bills" ? " active" : ""}" data-settings-section="bills">${iconAvatar("receipt", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}<span>${escapeHtml(l.billsSection)}</span></button>
           <button type="button" class="settings-nav-item${state.settingsActiveSection === "goals" ? " active" : ""}" data-settings-section="goals">${iconAvatar("target", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}<span>${escapeHtml(l.goalsSection)}</span></button>
           <button type="button" class="settings-nav-item${state.settingsActiveSection === "categories" ? " active" : ""}" data-settings-section="categories">${iconAvatar("layout-grid", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}<span>${escapeHtml(l.categoriesSection)}</span></button>
+          <button type="button" class="settings-nav-item${state.settingsActiveSection === "accounts" ? " active" : ""}" data-settings-section="accounts">${iconAvatar("landmark", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}<span>${escapeHtml(l.accountsSection)}</span></button>
         </nav>
         <div class="settings-panels">
 
@@ -483,19 +618,12 @@ export function renderSettings() {
               ${escapeHtml(l.installAppBtn)}
             </button>
           </div>` : ""}
-          <button type="button" class="toggle-row" id="exportCsvBtn">
+          <button type="button" class="toggle-row" id="openExportSheetBtn">
             ${iconAvatar("download", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
-            <span class="label">${escapeHtml(l.exportCsvBtn)}</span>
-          </button>
-          <button type="button" class="toggle-row" id="exportJsonBtn">
-            ${iconAvatar("download", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
-            <span class="label">${escapeHtml(l.exportJsonBtn)}</span>
-          </button>
-          <button type="button" class="toggle-row" id="exportSheetsBtn">
-            ${iconAvatar("table", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
-            <span class="label">${escapeHtml(l.exportSheetsBtn)}</span>
+            <span class="label">${escapeHtml(l.exportBtn)}</span>
           </button>
         </div>
+        ${exportSheetHtml()}
       </div>
 
       <div data-settings-panel="manage">
@@ -563,6 +691,21 @@ export function renderSettings() {
               ${categories.map(categoryRowHtml).join("") || `<div class="empty-note">${escapeHtml(l.noCategories)}</div>`}
             </div>
           </details>
+          <details class="settings-group" data-group="accounts" ${state.settingsGroupOpen.accounts ? "open" : ""}>
+            <summary>
+              ${iconAvatar("landmark", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+              <span class="label">${escapeHtml(l.accountsSection)}</span>
+              <span class="settings-badge-count">${accounts.length}</span>
+              ${icon("chevron-right")}
+            </summary>
+            <div class="settings-group-body">
+              <div style="text-align:right;margin-bottom:10px">
+                <button type="button" class="btn btn-ghost" id="addAccountBtn">${escapeHtml(l.addAccountBtn)}</button>
+              </div>
+              <div id="accountFormSlot">${accountFormHtml()}</div>
+              ${accounts.map(accountRowHtml).join("") || `<div class="empty-note">${escapeHtml(l.noAccounts)}</div>`}
+            </div>
+          </details>
         </div>
       </div>
 
@@ -615,6 +758,7 @@ export function renderSettings() {
   document.querySelectorAll(".settings-group").forEach((d) => {
     d.addEventListener("toggle", () => { state.settingsGroupOpen[d.getAttribute("data-group")] = d.open; });
   });
+  wireExportSheet();
   $("exportCsvBtn").addEventListener("click", function () {
     const l = L();
     const header = [l.csvDate, l.csvType, l.csvCategory, l.csvNote, l.csvAmount];
@@ -624,14 +768,19 @@ export function renderSettings() {
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "transactions.csv";
     document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
     showToast(L().toastCsv);
+    closeExportSheet();
   });
   $("exportJsonBtn").addEventListener("click", function () {
     const blob = new Blob([JSON.stringify(transactions, null, 2)], { type: "application/json" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "transactions.json";
     document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
     showToast(L().toastJson);
+    closeExportSheet();
   });
-  $("exportSheetsBtn").addEventListener("click", exportToGoogleSheets);
+  $("exportSheetsBtn").addEventListener("click", function () {
+    exportToGoogleSheets();
+    closeExportSheet();
+  });
 
   wireInlineCrud("Budget", "budgetEditId", deleteBudget, saveBudgetForm);
   wireInlineCrud("Bill", "billEditId", deleteBill, saveBillForm);
@@ -640,6 +789,12 @@ export function renderSettings() {
   if ($("saveContributeBtn")) $("saveContributeBtn").addEventListener("click", saveContribution);
   if ($("cancelContributeBtn")) $("cancelContributeBtn").addEventListener("click", () => { state.goalContributeId = null; renderSettings(); });
   wireInlineCrud("Category", "categoryEditId", deleteCategory, saveCategoryForm);
+  // No deleteFn: accounts have no delete action at all (archive only, see
+  // toggleArchiveAccount below) -- passing null is safe here because
+  // accountRowHtml never emits a [data-delete-account] attribute for
+  // wireInlineCrud's delete-button listener to ever match and invoke it.
+  wireInlineCrud("Account", "accountEditId", null, saveAccountForm);
+  document.querySelectorAll("[data-toggle-archive-account]").forEach((btn) => btn.addEventListener("click", () => toggleArchiveAccount(btn.getAttribute("data-toggle-archive-account"))));
   // Pure DOM toggling, not a re-render -- the picker's selection is only
   // ever read (via the .selected class) at save time in saveCategoryForm,
   // same as every other field in this form reading straight from the DOM.

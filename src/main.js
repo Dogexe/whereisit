@@ -8,7 +8,7 @@ import { shouldWipeLocalData, getStoredUserId, setStoredUserId } from "./account
 import { applyTheme } from "./theme.js";
 import {
   sb, setCurrentUser, currentUser, hasLiveInputRisk, syncNow, setSyncStatus, setSyncRerenderCallback, markAllPending,
-  wipeLocalAccountData, backfillCategoryIds
+  wipeLocalAccountData, backfillCategoryIds, backfillAccountIds
 } from "./sync.js";
 import { setDeferredInstallPrompt } from "./pwa-install.js";
 import { initErrorReporting } from "./error-report.js";
@@ -44,6 +44,10 @@ loadWatermark();
 // Run before the first render so even the very first paint reflects it,
 // though nothing currently on screen reads categoryId yet.
 backfillCategoryIds();
+// One-time migration (docs/specs/multi-account-support.md stage 2) --
+// stamps accountId onto any transaction that doesn't have one yet, creating
+// a default account first if this device/account genuinely has none.
+backfillAccountIds();
 applyTheme();
 renderScreen();
 refreshIcons();

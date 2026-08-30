@@ -1,7 +1,8 @@
 import { iconFor, rowTone, categoryDisplayName } from "../categories.js";
+import { accountNameById } from "../accounts.js";
 import { iconAvatar, escapeHtml, fmtMoney, dateLabel, EDIT_ICON, DELETE_ICON } from "../utils.js";
 import { groupByDate, resolveCategoryId } from "../derived.js";
-import { categories } from "../state.js";
+import { categories, accounts } from "../state.js";
 import { editTx, deleteTx } from "./add.js";
 import { L } from "../i18n.js";
 
@@ -15,7 +16,57 @@ const PEEK_KEY = "expense_tracker_swipe_peek_shown_v1";
 // stored .category string / the old iconFor() map for anything that
 // still can't be matched), so a rename or icon edit shows up here too --
 // this row previously kept showing a stale name/icon after either.
-export function txRowHtml(t) {
+// Stage 3 of docs/specs/account-transfers.md: a transfer renders as a
+// neutral, direction-labeled row ("Cash → Bank") -- no +/- sign or
+// income/expense coloring -- everywhere EXCEPT when a caller explicitly
+// passes viewingAccountId (Home only, the one place that always resolves
+// to a single account-or-"all" context) and the transfer touches that
+// account: then it renders signed relative to it, matching every other
+// row on Home. The Transactions list never passes this param, per the
+// spec's confirmed decision, so a transfer there is always the neutral
+// form regardless of any active account filter.
+export function txRowHtml(t, viewingAccountId) {
+  if (t.type === "transfer") {
+    const l = L();
+    const tone = rowTone(t.type);
+    const viewingFrom = viewingAccountId != null && t.accountId === viewingAccountId;
+    const viewingTo = viewingAccountId != null && t.toAccountId === viewingAccountId;
+    let label, sign, amountColor;
+    if (viewingFrom) {
+      label = l.transferToRowLabel.replace("{name}", accountNameById(accounts, t.toAccountId, t.toAccountId));
+      sign = "−"; amountColor = "var(--color-text)";
+    } else if (viewingTo) {
+      label = l.transferFromRowLabel.replace("{name}", accountNameById(accounts, t.accountId, t.accountId));
+      sign = "+"; amountColor = "var(--color-income)";
+    } else {
+      const fromName = accountNameById(accounts, t.accountId, t.accountId);
+      const toName = accountNameById(accounts, t.toAccountId, t.toAccountId);
+      label = `${fromName} → ${toName}`;
+      sign = ""; amountColor = "var(--color-text)";
+    }
+    return `
+    <div class="tx-row-wrap" data-id="${t.id}">
+      <div class="tx-date-cell">${escapeHtml(dateLabel(t.date))}</div>
+      <div class="tx-row-inner">
+        <div class="tx-lead">
+          ${iconAvatar("arrow-right-left", tone.bg, tone.color)}
+          <div class="info">
+            <div class="cat">${escapeHtml(label)}</div>
+            ${t.note ? `<div class="meta">${escapeHtml(t.note)}</div>` : ""}
+          </div>
+        </div>
+        <div class="tx-trail-group">
+          <div class="tx-trail">
+            <div class="amt" style="color:${amountColor}">${sign}${fmtMoney(t.amount)}</div>
+          </div>
+          <div class="tx-row-actions">
+            <button type="button" class="btn btn-icon" data-edit="${t.id}" aria-label="${escapeHtml(L().editAria)}">${EDIT_ICON}</button>
+            <button type="button" class="btn btn-icon" style="color:var(--color-expense-700)" data-delete="${t.id}" aria-label="${escapeHtml(L().deleteAria)}">${DELETE_ICON}</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }
   const tone = rowTone(t.type);
   const amountColor = t.type === "income" ? "var(--color-income)" : "var(--color-text)";
   const sign = t.type === "income" ? "+" : "−";
@@ -48,11 +99,13 @@ export function txRowHtml(t) {
 }
 // Renders an already-sorted (byRecency) transaction list as consecutive
 // date-header + row groups. Shared by Home's Recent Activity and the
-// Transactions screen so both stay visually consistent.
-export function groupedTxRowsHtml(txs) {
+// Transactions screen so both stay visually consistent. viewingAccountId
+// (stage 3 of docs/specs/account-transfers.md) is optional and passed
+// straight through to txRowHtml -- only Home ever supplies it.
+export function groupedTxRowsHtml(txs, viewingAccountId) {
   return groupByDate(txs).map((g) => `
     <div class="tx-date-group">${escapeHtml(g.label)}</div>
-    ${g.items.map((t) => txRowHtml(t)).join("")}`).join("");
+    ${g.items.map((t) => txRowHtml(t, viewingAccountId)).join("")}`).join("");
 }
 
 // .tx-trail-group (amount + Edit/Delete) reveals by expanding its own

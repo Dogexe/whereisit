@@ -13,9 +13,9 @@
 // gets established in the first place.
 
 const WATERMARK_KEY = "expense_tracker_watermark_v1";
-const TABLES = ["transactions", "budgets", "bills", "goals", "categories"];
+const TABLES = ["transactions", "budgets", "bills", "goals", "categories", "accounts"];
 
-const watermark = { transactions: null, budgets: null, bills: null, goals: null, categories: null };
+const watermark = { transactions: null, budgets: null, bills: null, goals: null, categories: null, accounts: null };
 
 function persist() {
   try {

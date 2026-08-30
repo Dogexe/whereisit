@@ -1,4 +1,4 @@
-import { state, transactions, budgets, bills, categories } from "./state.js";
+import { state, transactions, budgets, bills, categories, accounts } from "./state.js";
 import { monthKey, fmtMoney, monthLabel, dateLabel, displayYear, monthKeyOf, localDateIso, localMonthKey, localIsoFromDate } from "./utils.js";
 import { findCategoryId, categoryDisplayName } from "./categories.js";
 import { L } from "./i18n.js";
@@ -46,6 +46,62 @@ export function mostUsedCategoryIds(type, n) {
   const rest = live.slice().sort((a, b) => a.sortOrder - b.sortOrder)
     .map((c) => c.id).filter((id) => !ranked.includes(id));
   return ranked.concat(rest).slice(0, n);
+}
+
+// Stage 2 of docs/specs/multi-account-support.md. accountId: null means "all
+// accounts combined" -- every account's opening balance plus every
+// transaction regardless of account, deliberately including archived
+// accounts (their balance is real money that existed; archiving only
+// restricts them as a target for *new* transactions, a UI-layer rule, not
+// a math one -- see the spec's decision 8). A specific id means that one
+// account's own opening balance plus only its own transactions.
+//
+// Stage 1 of docs/specs/account-transfers.md: a transfer (type "transfer")
+// has no .accountId of its own (it has fromAccountId/toAccountId, i.e.
+// .accountId is the from side and .toAccountId is the destination) and its
+// combined effect across every account is always exactly zero -- money
+// just moved, none of it left or entered the household. The combined
+// branch below explicitly filters to income/expense before reducing
+// (rather than assuming "not income" means "subtract", which used to
+// silently subtract a transfer's amount instead of netting it to zero);
+// the per-account branch adds a second reduce specifically for transfers
+// touching that account, since income/expense's own .accountId-based
+// filter never matches a transfer row at all.
+export function computeBalance(accountId) {
+  if (accountId == null) {
+    const openingSum = accounts.reduce((a, acc) => a + (acc.openingBalance || 0), 0);
+    const net = transactions.filter((t) => t.type === "income" || t.type === "expense")
+      .reduce((a, t) => a + (t.type === "income" ? t.amount : -t.amount), 0);
+    return openingSum + net;
+  }
+  const acc = accounts.find((a) => a.id === accountId);
+  const opening = acc ? (acc.openingBalance || 0) : 0;
+  const net = transactions.filter((t) => t.accountId === accountId && (t.type === "income" || t.type === "expense"))
+    .reduce((a, t) => a + (t.type === "income" ? t.amount : -t.amount), 0);
+  const transferNet = transactions.filter((t) => t.type === "transfer")
+    .reduce((a, t) => {
+      // A transfer's .accountId IS the source ("from") account -- the
+      // existing field is reused rather than adding a separate fromAccountId,
+      // per the spec's schema decision (only toAccountId is new).
+      if (t.accountId === accountId) return a - t.amount;
+      if (t.toAccountId === accountId) return a + t.amount;
+      return a;
+    }, 0);
+  return opening + net + transferNet;
+}
+// The Add screen's default account pick: whichever account the user's most
+// recent transaction used, as long as it's still active (not archived) --
+// falls back to the first active account otherwise (e.g. right after the
+// default account is created with zero transactions yet, or if the last
+// transaction's account was since archived). Never returns an archived
+// account, and returns null only when there are zero active accounts at
+// all (shouldn't normally happen -- Settings blocks archiving the last
+// active one -- but a total function is safer than assuming).
+export function defaultAccountId() {
+  const active = accounts.filter((a) => !a.archived);
+  const lastTx = transactions.slice().sort(byRecency)[0];
+  if (lastTx && lastTx.accountId && active.some((a) => a.id === lastTx.accountId)) return lastTx.accountId;
+  return (active[0] || {}).id || null;
 }
 
 // Shared by computeBudgets/computeBudgetsForYear/computeBudgetsForRange --
@@ -204,6 +260,14 @@ export function filteredTxList() {
   // means this still matches a transaction whose own .category text has
   // since gone stale (renamed or predates the backfill).
   if (state.txFilterCategory.size > 0) rows = rows.filter((t) => state.txFilterCategory.has(resolveCategoryId(t, t.type)));
+  // Stage 6 of docs/specs/multi-account-support.md -- same multi-select-Set
+  // shape as the category filter just above. Stage 1 of
+  // docs/specs/account-transfers.md added the transfer fallback: a
+  // transfer's .accountId is its *from* account, so it already matches the
+  // plain .has(t.accountId) check on that side, but its .toAccountId also
+  // needs checking or a transfer would silently vanish from a filter
+  // narrowed to just its destination account.
+  if (state.txFilterAccount.size > 0) rows = rows.filter((t) => state.txFilterAccount.has(t.accountId) || (t.type === "transfer" && state.txFilterAccount.has(t.toAccountId)));
   if (state.txFilterAmountMin != null) rows = rows.filter((t) => t.amount >= state.txFilterAmountMin);
   if (state.txFilterAmountMax != null) rows = rows.filter((t) => t.amount <= state.txFilterAmountMax);
   const q = state.txSearch.trim().toLowerCase();
@@ -338,8 +402,12 @@ export function computeTrend() {
     expenseH: Math.max(2, Math.round((byMonth[k].expense / max) * 130))
   }));
 }
-export function monthTotal(key, type) {
-  return transactions.filter((t) => t.type === type && monthKey(t.date) === key).reduce((a, t) => a + t.amount, 0);
+// accountId: stage 5 of docs/specs/multi-account-support.md, optional --
+// omitted (or null) means every account combined, matching every existing
+// caller's behavior unchanged. Only home.js calls this, so this is a
+// backward-compatible extension, not a breaking change.
+export function monthTotal(key, type, accountId) {
+  return transactions.filter((t) => t.type === type && monthKey(t.date) === key && (accountId == null || t.accountId === accountId)).reduce((a, t) => a + t.amount, 0);
 }
 // Whether any transaction of `type` falls in month `key` -- pass no type
 // to check for any transaction at all that month. Used to tell "the prior
@@ -348,8 +416,8 @@ export function monthTotal(key, type) {
 // there really does mean no transactions, but balance (income - expense)
 // very normally lands on exactly 0 in a month with real transactions on
 // both sides, and that's not the same situation.
-export function monthHasTransactions(key, type) {
-  return transactions.some((t) => (!type || t.type === type) && monthKey(t.date) === key);
+export function monthHasTransactions(key, type, accountId) {
+  return transactions.some((t) => (!type || t.type === type) && monthKey(t.date) === key && (accountId == null || t.accountId === accountId));
 }
 // Returns null (render no comparison badge) rather than a percentage
 // whenever there's nothing meaningful to compare against: either the
@@ -370,10 +438,19 @@ export function prevMonthKey() {
   if (pm < 0) { pm = 11; py -= 1; }
   return py + "-" + String(pm + 1).padStart(2, "0");
 }
-// Running net balance per day (last 8 datapoints) for the home hero sparkline.
-export function computeSparklinePoints() {
+// Running net balance per day (last 8 datapoints) for the home hero
+// sparkline. accountId: stage 5 of docs/specs/multi-account-support.md,
+// optional -- omitted (or null) means every account's transactions
+// combined, matching prior behavior unchanged.
+//
+// Stage 1 of docs/specs/account-transfers.md: transfers are deliberately
+// excluded entirely (not made transfer-aware like computeBalance) -- this
+// is a decorative trend line, not a source of truth, so the simpler fix is
+// applied here rather than threading from/to-account transfer math into a
+// sparkline.
+export function computeSparklinePoints(accountId) {
   const netByDay = {};
-  transactions.slice().sort((a, b) => a.date.localeCompare(b.date)).forEach((t) => {
+  transactions.slice().filter((t) => (t.type === "income" || t.type === "expense") && (accountId == null || t.accountId === accountId)).sort((a, b) => a.date.localeCompare(b.date)).forEach((t) => {
     netByDay[t.date] = (netByDay[t.date] || 0) + (t.type === "income" ? t.amount : -t.amount);
   });
   let running = 0;

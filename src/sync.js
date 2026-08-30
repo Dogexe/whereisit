@@ -1,6 +1,7 @@
 import { CATEGORIES, DEFAULT_CATEGORIES, findCategoryId } from "./categories.js";
+import { DEFAULT_ACCOUNT } from "./accounts.js";
 import { $, escapeHtml, uid } from "./utils.js";
-import { state, transactions, budgets, bills, goals, categories, setTransactions, setBudgets, setBills, setGoals, setCategories } from "./state.js";
+import { state, transactions, budgets, bills, goals, categories, accounts, setTransactions, setBudgets, setBills, setGoals, setCategories, setAccounts } from "./state.js";
 import { saveToStorage, saveSettings } from "./storage.js";
 import { L } from "./i18n.js";
 import { showToast } from "./toast.js";
@@ -39,12 +40,19 @@ export function setSyncStatus(text, ok) {
 }
 
 function rowToTx(r) {
-  return { id: r.id, type: r.type, date: r.tx_date, category: r.category, categoryId: r.category_id || null, amount: Number(r.amount), note: r.note || "", updatedAt: new Date(r.updated_at).getTime() };
+  return { id: r.id, type: r.type, date: r.tx_date, category: r.category, categoryId: r.category_id || null, accountId: r.account_id || null, toAccountId: r.to_account_id || null, amount: Number(r.amount), note: r.note || "", updatedAt: new Date(r.updated_at).getTime() };
 }
 function txToRow(t, deleted) {
   return {
-    id: t.id, user_id: currentUser ? currentUser.id : null, type: t.type, tx_date: t.date, category: t.category, category_id: t.categoryId || null,
-    amount: t.amount, note: t.note || "", deleted: !!deleted,
+    // category is a NOT NULL column at the DB level (confirmed by a real
+    // upsert rejecting a null value, not assumed) -- a transfer has no
+    // category at all, so it needs an explicit "" fallback here the same
+    // way `note` already defaults to "" below, rather than a second
+    // migration to loosen a column that's a legacy display fallback
+    // anyway (category_id is the real source of truth, see
+    // docs/specs/custom-categories.md).
+    id: t.id, user_id: currentUser ? currentUser.id : null, type: t.type, tx_date: t.date, category: t.category || "", category_id: t.categoryId || null,
+    account_id: t.accountId || null, to_account_id: t.toAccountId || null, amount: t.amount, note: t.note || "", deleted: !!deleted,
     updated_at: new Date(t.updatedAt || Date.now()).toISOString()
   };
 }
@@ -75,6 +83,13 @@ export function categoryToRow(c, deleted) {
   return {
     id: c.id, user_id: currentUser ? currentUser.id : null, type: c.type, name: c.name, icon: c.icon, sort_order: c.sortOrder || 0,
     deleted: !!deleted, updated_at: new Date(c.updatedAt || Date.now()).toISOString()
+  };
+}
+function rowToAccount(r) { return { id: r.id, name: r.name, icon: r.icon, openingBalance: Number(r.opening_balance), archived: !!r.archived, updatedAt: new Date(r.updated_at).getTime() }; }
+export function accountToRow(a, deleted) {
+  return {
+    id: a.id, user_id: currentUser ? currentUser.id : null, name: a.name, icon: a.icon, opening_balance: a.openingBalance,
+    archived: !!a.archived, deleted: !!deleted, updated_at: new Date(a.updatedAt || Date.now()).toISOString()
   };
 }
 
@@ -157,6 +172,7 @@ export function markAllPending() {
   markPending("bills", bills.map((b) => billToRow(b, false)));
   markPending("goals", goals.map((g) => goalToRow(g, false)));
   markPending("categories", categories.map((c) => categoryToRow(c, false)));
+  markPending("accounts", accounts.map((a) => accountToRow(a, false)));
 }
 
 const BACKFILL_KEY = "expense_tracker_category_backfill_v1";
@@ -208,6 +224,39 @@ export function backfillCategoryIds() {
   }
 }
 
+const ACCOUNT_BACKFILL_KEY = "expense_tracker_account_backfill_v1";
+// One-time migration, stage 2 of docs/specs/multi-account-support.md: every
+// transaction that predates this feature only has a plain type/category, no
+// accountId. Ensures a default account exists (an existing multi-device
+// user's cloud data may genuinely have none yet, even though a fresh local
+// install already seeds one via state.js), then stamps that account's id
+// directly onto each existing transaction, then pushes just the modified
+// rows through the same chunked pushRows everything else uses.
+//
+// Uses accounts.js's fixed DEFAULT_ACCOUNT.id (not uid()), deliberately
+// diverging from backfillCategoryIds's lazily-uid()'d "Uncategorized"
+// fallback above -- determinism matters more here: two devices backfilling
+// independently before ever syncing to each other must land on the exact
+// same default account id, not two duplicate "Cash" accounts that would
+// otherwise need reconciling by hand later.
+export function backfillAccountIds() {
+  try { if (window.localStorage.getItem(ACCOUNT_BACKFILL_KEY)) return; } catch (e) { /* proceed anyway */ }
+  let defaultAccount = accounts.find((a) => !a.deleted);
+  let createdNew = false;
+  if (!defaultAccount) {
+    defaultAccount = Object.assign({}, DEFAULT_ACCOUNT, { updatedAt: Date.now() });
+    accounts.push(defaultAccount);
+    createdNew = true;
+  }
+  const changedTx = [];
+  transactions.forEach((t) => { if (!t.accountId) { t.accountId = defaultAccount.id; t.updatedAt = Date.now(); changedTx.push(t); } });
+  saveToStorage();
+  if (createdNew) saveSettings();
+  try { window.localStorage.setItem(ACCOUNT_BACKFILL_KEY, "1"); } catch (e) { /* best-effort, see pending.js's own note on this pattern */ }
+  if (changedTx.length) pushRows("transactions", changedTx.map((t) => txToRow(t, false)));
+  if (createdNew) pushRows("accounts", [accountToRow(defaultAccount, false)]);
+}
+
 // Clears everything scoped to the signed-in account -- transactions,
 // budgets, bills, goals, the pending upload queue, and the pull watermark
 // -- from both memory and localStorage. Called from main.js's auth
@@ -234,12 +283,21 @@ export function backfillCategoryIds() {
 // newly signed-in, pre-first-sync) session isn't left with an empty
 // dropdown, and doesn't leak anything account-specific either, since
 // these are just the built-in defaults everyone starts with.
+// Accounts get the same re-seed-not-empty treatment as categories, for a
+// different reason: it's not that an account is app vocabulary, it's that
+// zero accounts breaks a real invariant -- the Add screen cannot save a new
+// transaction without a valid account to assign it to, unlike budgets/
+// bills/goals whose absence doesn't block any core flow. See
+// docs/specs/multi-account-support.md's stage 1 for the full reasoning
+// (this was a correction found during implementation planning, confirmed
+// with the user, not the original draft's assumption).
 export function wipeLocalAccountData() {
   setTransactions([]);
   setBudgets([]);
   setBills([]);
   setGoals([]);
   setCategories(DEFAULT_CATEGORIES.slice());
+  setAccounts([Object.assign({}, DEFAULT_ACCOUNT)]);
   saveToStorage();
   saveSettings();
   clearAllPending();
@@ -411,6 +469,18 @@ async function pullCategories(epoch) {
     return true;
   } catch (e) { return false; }
 }
+async function pullAccounts(epoch) {
+  if (!sb || !currentUser) return false;
+  try {
+    const { data, error } = await pullAllPages("accounts");
+    if (error) throw error;
+    if (epoch !== syncEpoch) return false;
+    setAccounts(mergeRowsById(accounts, data, rowToAccount));
+    saveSettings();
+    advanceWatermark("accounts", data);
+    return true;
+  } catch (e) { return false; }
+}
 
 // True while the user has an uncontrolled form open/focused that a full
 // screen re-render would silently reset mid-edit (Add screen, budget/bill
@@ -422,7 +492,7 @@ export function hasLiveInputRisk() {
   // desktop full-page case above -- both can be live at once, just never
   // on the same device/width.
   if (state.addSheetOpen) return true;
-  if (state.budgetEditId || state.billEditId || state.goalEditId || state.goalContributeId) return true;
+  if (state.budgetEditId || state.billEditId || state.goalEditId || state.goalContributeId || state.accountEditId) return true;
   const active = document.activeElement;
   const screenEl = $("screen");
   if (active && screenEl && screenEl.contains(active) && /^(INPUT|SELECT|TEXTAREA)$/.test(active.tagName)) return true;
@@ -462,6 +532,8 @@ export async function syncNow() {
   dropPendingForRemovedIds("goals", goals);
   const pullCategoryOk = await pullCategories(epoch);
   dropPendingForRemovedIds("categories", categories);
+  const pullAccountOk = await pullAccounts(epoch);
+  dropPendingForRemovedIds("accounts", accounts);
   // Every individual create/edit/delete already pushed its own single row
   // immediately (see pushTx/pushRows calls throughout the screens/ modules)
   // -- this is a retry pass for whatever's still pending because that push
@@ -474,7 +546,8 @@ export async function syncNow() {
   const pushBillOk = await pushRows("bills", getPendingRows("bills"));
   const pushGoalOk = await pushRows("goals", getPendingRows("goals"));
   const pushCategoryOk = await pushRows("categories", getPendingRows("categories"));
-  if (pushTxOk && pushBudgetOk && pushBillOk && pushGoalOk && pushCategoryOk && pullTxOk && pullBudgetOk && pullBillOk && pullGoalOk && pullCategoryOk) {
+  const pushAccountOk = await pushRows("accounts", getPendingRows("accounts"));
+  if (pushTxOk && pushBudgetOk && pushBillOk && pushGoalOk && pushCategoryOk && pushAccountOk && pullTxOk && pullBudgetOk && pullBillOk && pullGoalOk && pullCategoryOk && pullAccountOk) {
     setSyncStatus(L().syncLatest + new Date().toLocaleTimeString(state.lang === "en" ? "en-US" : "th-TH"), true);
     lastSyncFailed = false;
     if (!hasLiveInputRisk()) onSyncRerender();

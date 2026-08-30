@@ -1,8 +1,9 @@
 import { L } from "../i18n.js";
-import { state, transactions, categories, setTransactions } from "../state.js";
+import { state, transactions, categories, accounts, setTransactions } from "../state.js";
 import { $, uid, escapeHtml, dateLabel, formatDateTyping, parseDateText, optionsHtml, refreshIcons, icon, isDesktopShell, createFocusTrap, localDateIso } from "../utils.js";
 import { guessCategory, categoryDisplayName } from "../categories.js";
-import { checkBudgetAlert, resolveCategoryId, mostUsedCategoryIds } from "../derived.js";
+import { accountNameById } from "../accounts.js";
+import { checkBudgetAlert, resolveCategoryId, mostUsedCategoryIds, defaultAccountId } from "../derived.js";
 import { saveToStorage } from "../storage.js";
 import { pushTx, pushDeleteTx, syncNow } from "../sync.js";
 import { showToast } from "../toast.js";
@@ -15,10 +16,21 @@ import { setTab, renderScreen } from "./router.js";
 // stage 3). New transactions write both categoryId and a .category name
 // snapshot (for the old text column / any not-yet-migrated display code,
 // stage 5).
+// Stage 2 of docs/specs/account-transfers.md: defaults the Transfer tab's
+// "To" picker to the first active account that ISN'T the current "From"
+// selection -- picking the same account for both would be immediately
+// invalid, so defaulting to something already different avoids the user
+// having to fix that every single time they open the tab.
+function defaultToAccountId(fromId) {
+  const active = accounts.filter((a) => !a.archived && a.id !== fromId);
+  return (active[0] || {}).id || null;
+}
 export function resetForm() {
   state.formType = "expense";
   state.formDate = localDateIso();
   state.formCategoryId = (categories.find((c) => c.type === "expense") || {}).id || null;
+  state.formAccountId = defaultAccountId();
+  state.formToAccountId = defaultToAccountId(state.formAccountId);
   state.editingId = null;
   state.categoryManual = false;
 }
@@ -33,6 +45,8 @@ export function editTx(id) {
   state.formType = tx.type;
   state.formDate = tx.date;
   state.formCategoryId = resolveCategoryId(tx, tx.type);
+  state.formAccountId = tx.accountId || defaultAccountId();
+  state.formToAccountId = tx.toAccountId || defaultToAccountId(state.formAccountId);
   state.categoryManual = true;
   if (isDesktopShell()) { setTab("add"); return; }
   openAddSheet();
@@ -57,6 +71,61 @@ export function deleteTx(id) {
 export function renderFormCategoryOptions(select) {
   const opts = categories.filter((c) => c.type === state.formType);
   select.innerHTML = optionsHtml(opts.map((c) => c.id), state.formCategoryId, (id) => categoryDisplayName(categories, id, id));
+}
+// Stage 4 of docs/specs/multi-account-support.md. Excludes archived
+// accounts as a target for *new* transactions, except the one currently
+// selected -- so opening the edit form for a transaction booked against an
+// account that's since been archived still shows it correctly pre-selected
+// instead of silently reassigning it to something else the moment the form
+// opens.
+export function renderFormAccountOptions(select) {
+  const opts = accounts.filter((a) => !a.archived || a.id === state.formAccountId);
+  select.innerHTML = optionsHtml(opts.map((a) => a.id), state.formAccountId, (id) => accountNameById(accounts, id, id));
+}
+// Same shape as renderFormAccountOptions, for the Transfer tab's To picker.
+export function renderFormTransferToOptions(select) {
+  const opts = accounts.filter((a) => !a.archived || a.id === state.formToAccountId);
+  select.innerHTML = optionsHtml(opts.map((a) => a.id), state.formToAccountId, (id) => accountNameById(accounts, id, id));
+}
+// Chip-style account picker, mirroring renderCategoryChips' visual pattern
+// but simpler: unlike categories (which can run into the dozens and need a
+// ranked top-N + "more" overflow into the raw <select>), a user's account
+// list is always small, so every available account renders as its own chip
+// with no truncation or overflow chip needed. The underlying <select>
+// stays in the DOM as the actual form control wireAddForm's submit handler
+// reads from -- just always visually collapsed, since chips already
+// represent every selectable account exhaustively.
+//
+// Generalized (stage 2 of docs/specs/account-transfers.md) to take a chip
+// row/select id pair and a state field name, so the exact same rendering/
+// wiring logic drives both the single-account picker (expense/income) and
+// the Transfer tab's independent From/To pair -- listeners are scoped to
+// each chip row's own container, not document-wide, so wiring the From
+// picker can never also attach to the To picker's buttons (both use the
+// same [data-account-chip] attribute).
+function renderAccountChipPicker(chipRowId, selectId, stateKey) {
+  const selectedId = state[stateKey];
+  const opts = accounts.filter((a) => !a.archived || a.id === selectedId);
+  const row = $(chipRowId);
+  row.innerHTML = opts.map((a) =>
+    `<button type="button" class="account-chip${a.id === selectedId ? " active" : ""}" data-account-chip="${a.id}">${icon(a.icon)}<span>${escapeHtml(a.name)}</span></button>`
+  ).join("");
+  row.querySelectorAll("[data-account-chip]").forEach((btn) => btn.addEventListener("click", () => {
+    const id = btn.getAttribute("data-account-chip");
+    state[stateKey] = id;
+    $(selectId).value = id;
+    renderAccountChipPicker(chipRowId, selectId, stateKey);
+  }));
+  refreshIcons();
+}
+export function renderAccountChips() { renderAccountChipPicker("accountChipRow", "txAccount", "formAccountId"); }
+// The Transfer tab's From picker reuses formAccountId/txAccount directly --
+// a transfer's source account IS its .accountId, the same field every
+// other transaction type already uses (see the spec's schema decision), so
+// there's no separate "from" state or select to keep in sync.
+export function renderTransferAccountChips() {
+  renderAccountChipPicker("accountChipRow", "txAccount", "formAccountId");
+  renderAccountChipPicker("transferToChipRow", "txTransferTo", "formToAccountId");
 }
 // docs/specs/category-icon-chips.md: standalone (not folded into
 // renderAdd) so a chip click / note-guess / select change can refresh
@@ -108,6 +177,7 @@ function addFormFieldsHtml(l, isEditing) {
         <div class="tabs block" role="radiogroup">
           <label class="tab-opt"><input type="radio" name="form-type" value="expense" ${state.formType === "expense" ? "checked" : ""}>${escapeHtml(l.expenseLabel)}</label>
           <label class="tab-opt"><input type="radio" name="form-type" value="income" ${state.formType === "income" ? "checked" : ""}>${escapeHtml(l.incomeLabel)}</label>
+          <label class="tab-opt"><input type="radio" name="form-type" value="transfer" ${state.formType === "transfer" ? "checked" : ""}>${escapeHtml(l.transferLabel)}</label>
         </div>
       </div>
       <div class="field">
@@ -120,10 +190,20 @@ function addFormFieldsHtml(l, isEditing) {
           <input class="date-native-overlay" type="date" id="txDateNative" value="${state.formDate}" tabindex="-1" aria-hidden="true">
         </div>
       </div>
-      <div class="field">
+      <div class="field${state.formType === "transfer" ? " form-field-hidden" : ""}" id="categoryField">
         <label>${escapeHtml(l.categoryLabel)}</label>
         <div class="category-chip-row" id="categoryChipRow"></div>
         <select class="input" id="txCategory" required></select>
+      </div>
+      <div class="field">
+        <label id="accountFieldLabel">${escapeHtml(state.formType === "transfer" ? l.transferFromLabel : l.accountLabel)}</label>
+        <div class="account-chip-row" id="accountChipRow"></div>
+        <select class="input account-select-collapsed" id="txAccount" required></select>
+      </div>
+      <div class="field${state.formType === "transfer" ? "" : " form-field-hidden"}" id="transferToField">
+        <label>${escapeHtml(l.transferToLabel)}</label>
+        <div class="account-chip-row" id="transferToChipRow"></div>
+        <select class="input account-select-collapsed" id="txTransferTo" required></select>
       </div>
       <div class="field">
         <label for="txAmount">${escapeHtml(l.amountLabel)}</label>
@@ -143,10 +223,27 @@ function addFormFieldsHtml(l, isEditing) {
 // responsible for resetForm() itself; each caller's own callback decides
 // when to reset (both current callers do it immediately). Call once
 // after addFormFieldsHtml()'s markup is in the DOM.
+// Toggles Category vs. Transfer-To visibility and the account field's
+// label to match the currently selected type tab -- called once at wire
+// time (to match whatever addFormFieldsHtml already rendered) and again on
+// every type-tab change, without a full form re-render (which would blow
+// away the amount/note fields' values and focus, same reasoning as
+// renderCategoryChips staying standalone).
+function updateFormTypeVisibility() {
+  const l = L();
+  const isTransfer = state.formType === "transfer";
+  $("categoryField").classList.toggle("form-field-hidden", isTransfer);
+  $("accountFieldLabel").textContent = isTransfer ? l.transferFromLabel : l.accountLabel;
+  $("transferToField").classList.toggle("form-field-hidden", !isTransfer);
+}
 function wireAddForm({ onSaved, onCancelled }) {
   const isEditing = !!state.editingId;
   renderFormCategoryOptions($("txCategory"));
+  renderFormAccountOptions($("txAccount"));
+  renderFormTransferToOptions($("txTransferTo"));
   renderCategoryChips();
+  renderTransferAccountChips();
+  updateFormTypeVisibility();
   if (isEditing) {
     const tx = transactions.find((t) => t.id === state.editingId);
     if (tx) { $("txAmount").value = tx.amount; $("txNote").value = tx.note || ""; }
@@ -159,8 +256,11 @@ function wireAddForm({ onSaved, onCancelled }) {
     state.formCategoryId = guessValid ? guess : (opts[0] || {}).id || null;
     renderFormCategoryOptions($("txCategory"));
     renderCategoryChips();
+    updateFormTypeVisibility();
   }));
   $("txCategory").addEventListener("change", (e) => { state.formCategoryId = e.target.value; state.categoryManual = true; renderCategoryChips(); });
+  $("txAccount").addEventListener("change", (e) => { state.formAccountId = e.target.value; });
+  $("txTransferTo").addEventListener("change", (e) => { state.formToAccountId = e.target.value; });
   $("txDateText").addEventListener("input", function () { this.value = formatDateTyping(this.value); });
   $("txDateText").addEventListener("change", function () {
     const iso = parseDateText(this.value);
@@ -191,18 +291,46 @@ function wireAddForm({ onSaved, onCancelled }) {
       return;
     }
     const note = $("txNote").value.trim();
+    const accountId = $("txAccount").value;
+    let savedTx = null;
+    // Stage 2 of docs/specs/account-transfers.md: a transfer has no
+    // category (checkBudgetAlert is never called -- it was never
+    // spending) and needs its own two-different-accounts validation the
+    // expense/income path doesn't.
+    if (state.formType === "transfer") {
+      const toAccountId = $("txTransferTo").value;
+      if (!accountId || !toAccountId || accountId === toAccountId) {
+        showToast(L().toastInvalidTransferAccounts);
+        return;
+      }
+      if (state.editingId) {
+        const idx = transactions.findIndex((t) => t.id === state.editingId);
+        if (idx >= 0) {
+          transactions[idx] = Object.assign({}, transactions[idx], { type: "transfer", date, category: "", categoryId: null, accountId, toAccountId, amount, note, updatedAt: Date.now() });
+          savedTx = transactions[idx];
+        }
+        showToast(L().toastEdited);
+      } else {
+        savedTx = { id: uid(), type: "transfer", date, category: "", categoryId: null, accountId, toAccountId, amount, note, updatedAt: Date.now() };
+        transactions.push(savedTx);
+        showToast(L().toastAdded);
+      }
+      saveToStorage();
+      onSaved();
+      if (savedTx) pushTx(savedTx).then(() => syncNow());
+      return;
+    }
     const categoryId = $("txCategory").value;
     const category = categoryDisplayName(categories, categoryId, "");
-    let savedTx = null;
     if (state.editingId) {
       const idx = transactions.findIndex((t) => t.id === state.editingId);
       if (idx >= 0) {
-        transactions[idx] = Object.assign({}, transactions[idx], { type: state.formType, date, category, categoryId, amount, note, updatedAt: Date.now() });
+        transactions[idx] = Object.assign({}, transactions[idx], { type: state.formType, date, category, categoryId, accountId, toAccountId: null, amount, note, updatedAt: Date.now() });
         savedTx = transactions[idx];
       }
       showToast(L().toastEdited);
     } else {
-      savedTx = { id: uid(), type: state.formType, date, category, categoryId, amount, note, updatedAt: Date.now() };
+      savedTx = { id: uid(), type: state.formType, date, category, categoryId, accountId, amount, note, updatedAt: Date.now() };
       transactions.push(savedTx);
       showToast(checkBudgetAlert(savedTx) || L().toastAdded);
     }

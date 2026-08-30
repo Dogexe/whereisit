@@ -146,6 +146,12 @@
 
   /* — forms — */
   .field { display: flex; flex-direction: column; gap: 6px; }
+  /* Add form's Category/Transfer-To fields (stage 2 of
+     docs/specs/account-transfers.md) toggle visibility based on the
+     Expense/Income/Transfer tab -- a dedicated class rather than an
+     inline style so both the initial server-rendered state and the later
+     JS toggle (on tab change) go through the same rule. */
+  .form-field-hidden { display: none; }
   .field > label { font-size: 13px; font-weight: 500; color: var(--color-muted); }
   .input-wrap {
     display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 14px;
@@ -196,6 +202,32 @@
   .category-chip.active { background: var(--color-accent); border-color: var(--color-accent); color: #fff; }
   .category-chip-more { color: var(--color-muted); }
   .category-chip-more.active { background: var(--color-accent); border-color: var(--color-accent); color: #fff; }
+  /* Home's account switcher (stage 5 of docs/specs/multi-account-support.md)
+     -- structurally identical to the category-chip row above, kept as its
+     own class pair rather than reusing .category-chip directly since the
+     two aren't the same concept, just the same visual shape. */
+  .account-switcher-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; margin-bottom: 12px; -webkit-overflow-scrolling: touch; scrollbar-width: none; -ms-overflow-style: none; }
+  .account-switcher-row::-webkit-scrollbar { display: none; }
+  .account-chip {
+    display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+    padding: 8px 14px; border-radius: var(--radius-pill); border: 1px solid var(--color-border);
+    background: var(--color-card); color: var(--color-text); font-family: var(--font-sans); font-size: 13px; font-weight: 600;
+    white-space: nowrap; cursor: pointer;
+    transition: background var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+  }
+  .account-chip .icon { width: 16px; height: 16px; }
+  .account-chip:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+  .account-chip.active { background: var(--color-accent); border-color: var(--color-accent); color: #fff; }
+  /* Add/Edit form's account picker (option requested after the initial
+     multi-account-support pass shipped) -- same chip shape as the switcher
+     above, but its own row class since this one lives inside a .field like
+     the category chip row, not styled as a screen-level filter row. Always
+     collapses the underlying <select> (.account-select-collapsed), unlike
+     .category-select-collapsed's conditional toggle -- there's no "more"
+     overflow case here since every account always gets its own chip. */
+  .account-chip-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; -webkit-overflow-scrolling: touch; scrollbar-width: none; -ms-overflow-style: none; }
+  .account-chip-row::-webkit-scrollbar { display: none; }
+  .account-select-collapsed { display: none; }
   .category-select-collapsed { display: none; }
 
   /* — badges & switches — */
@@ -585,6 +617,11 @@
      reuses the expense color rather than inventing a new one, distinct from
      the plain --color-muted "due soon" text every other row uses. */
   .manage-row-overdue .sub { color: var(--color-expense-700); font-weight: 600; }
+  /* Archived accounts (Settings' Accounts section) -- a neutral, dimmed
+     treatment, deliberately not reusing manage-row-overdue's warning/expense
+     color, since "archived" isn't a problem state the way an overdue bill
+     is. */
+  .manage-row-archived { opacity: 0.6; }
   .row-actions { display: flex; gap: 4px; flex-shrink: 0; }
   .section-add-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
   .inline-form { display: flex; flex-direction: column; gap: 12px; padding: 16px; margin-bottom: 12px; }
@@ -859,7 +896,8 @@
     .settings-layout[data-active="budgets"] [data-settings-panel="manage"],
     .settings-layout[data-active="bills"] [data-settings-panel="manage"],
     .settings-layout[data-active="goals"] [data-settings-panel="manage"],
-    .settings-layout[data-active="categories"] [data-settings-panel="manage"] { display: block; }
+    .settings-layout[data-active="categories"] [data-settings-panel="manage"],
+    .settings-layout[data-active="accounts"] [data-settings-panel="manage"] { display: block; }
     /* Within the shared Manage panel, only the .settings-group matching the
        active section shows -- its own label is redundant with the nav
        item's, so it's hidden here rather than kept in sync on every click. */
@@ -868,7 +906,8 @@
     .settings-layout[data-active="budgets"] .settings-group[data-group="budgets"],
     .settings-layout[data-active="bills"] .settings-group[data-group="bills"],
     .settings-layout[data-active="goals"] .settings-group[data-group="goals"],
-    .settings-layout[data-active="categories"] .settings-group[data-group="categories"] { display: block; }
+    .settings-layout[data-active="categories"] .settings-group[data-group="categories"],
+    .settings-layout[data-active="accounts"] .settings-group[data-group="accounts"] { display: block; }
     /* The left nav now owns section selection, so the <details> disclosure
        interaction (built for the mobile accordion) is neutralized here --
        its summary becomes a static in-panel header (icon+name+count)

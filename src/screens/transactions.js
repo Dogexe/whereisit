@@ -1,7 +1,8 @@
 import { L } from "../i18n.js";
-import { state, categories } from "../state.js";
+import { state, categories, accounts } from "../state.js";
 import { $, escapeHtml, refreshIcons, icon, fmtMoney, monthLabel, dateLabel, createFocusTrap, localDateIso, localMonthKey } from "../utils.js";
 import { categoryDisplayName } from "../categories.js";
+import { accountNameById } from "../accounts.js";
 import { availableYears, yearLabel, filteredTxList } from "../derived.js";
 import { groupedTxRowsHtml, wireTxRowActions } from "./tx-row.js";
 import { pillPickerHtml, wirePillPicker } from "./period-picker.js";
@@ -154,14 +155,14 @@ function periodChipLabel() {
 // full re-render so every control (search, type, date, category, amount --
 // and the sheet, if it happens to be open) reflects the reset state too.
 function clearTxFilters() {
-  state.txFilterType = "all"; state.txFilterCategory = new Set(); state.txSearch = "";
+  state.txFilterType = "all"; state.txFilterCategory = new Set(); state.txFilterAccount = new Set(); state.txSearch = "";
   state.txFilterAmountMin = null; state.txFilterAmountMax = null;
   resetPeriod();
   renderTransactions();
 }
 function activeFacetCount() {
   return (state.txFilterType !== "all" ? 1 : 0) + (state.txPeriodMode !== "all" ? 1 : 0) +
-    state.txFilterCategory.size + (state.txFilterAmountMin != null || state.txFilterAmountMax != null ? 1 : 0);
+    state.txFilterCategory.size + state.txFilterAccount.size + (state.txFilterAmountMin != null || state.txFilterAmountMax != null ? 1 : 0);
 }
 function updateFiltersBtnBadge() {
   const badge = document.getElementById("txFiltersBadge");
@@ -170,14 +171,24 @@ function updateFiltersBtnBadge() {
   badge.hidden = n === 0;
   badge.textContent = String(n);
 }
+function typeFilterLabel(type, l) {
+  if (type === "income") return l.incomeLabel;
+  if (type === "transfer") return l.transferLabel;
+  return l.expenseLabel;
+}
 function renderActiveFilterChips() {
   const l = L();
   const container = document.getElementById("txActiveChips");
   if (!container) return;
   const chips = [];
-  if (state.txFilterType !== "all") chips.push({ key: "type", label: `${l.filterChipType}: ${state.txFilterType === "income" ? l.incomeLabel : l.expenseLabel}` });
+  // Stage 4 of docs/specs/account-transfers.md: this used to assume any
+  // non-"income" type meant "expense" -- correct back when those were the
+  // only two options, but silently wrong the moment "transfer" became a
+  // third. typeFilterLabel() below maps all three explicitly.
+  if (state.txFilterType !== "all") chips.push({ key: "type", label: `${l.filterChipType}: ${typeFilterLabel(state.txFilterType, l)}` });
   if (state.txPeriodMode !== "all") chips.push({ key: "period", label: `${l.filterChipDate}: ${periodChipLabel()}` });
   state.txFilterCategory.forEach((id) => chips.push({ key: "cat:" + id, label: `${l.filterChipCategory}: ${categoryDisplayName(categories, id, id)}` }));
+  state.txFilterAccount.forEach((id) => chips.push({ key: "acc:" + id, label: `${l.filterChipAccount}: ${accountNameById(accounts, id, id)}` }));
   if (state.txFilterAmountMin != null || state.txFilterAmountMax != null) {
     const min = state.txFilterAmountMin != null ? fmtMoney(state.txFilterAmountMin) : "";
     const max = state.txFilterAmountMax != null ? fmtMoney(state.txFilterAmountMax) : "";
@@ -194,6 +205,7 @@ function removeFilterChip(key) {
   else if (key === "period") resetPeriod();
   else if (key === "amount") { state.txFilterAmountMin = null; state.txFilterAmountMax = null; }
   else if (key.startsWith("cat:")) state.txFilterCategory.delete(key.slice(4));
+  else if (key.startsWith("acc:")) state.txFilterAccount.delete(key.slice(4));
   renderTransactions();
 }
 function refreshFilteredResults() {
@@ -220,6 +232,15 @@ function filterSheetHtml() {
       <input type="checkbox" data-filter-cat="${c.id}" ${state.txFilterCategory.has(c.id) ? "checked" : ""}>
       <span>${escapeHtml(c.name)}</span>
     </label>`).join("");
+  // Stage 6 of docs/specs/multi-account-support.md. Deliberately includes
+  // archived accounts (unlike the category list's !c.deleted filter above)
+  // -- decision 8 keeps an archived account's history findable, so it must
+  // stay filterable here too.
+  const accountCheckboxRows = accounts.map((a) => `
+    <label class="filter-checkbox-row">
+      <input type="checkbox" data-filter-account="${a.id}" ${state.txFilterAccount.has(a.id) ? "checked" : ""}>
+      <span>${escapeHtml(a.name)}</span>
+    </label>`).join("");
   return `
     <div class="filter-sheet-backdrop" id="txFilterSheetBackdrop" ${state.txFilterSheetOpen ? "" : "hidden"}>
       <div class="filter-sheet" role="dialog" aria-label="${escapeHtml(l.filtersBtn)}">
@@ -233,6 +254,7 @@ function filterSheetHtml() {
             <label class="tab-opt"><input type="radio" name="tx-type-filter" value="all" ${state.txFilterType === "all" ? "checked" : ""}>${escapeHtml(l.filterAll)}</label>
             <label class="tab-opt"><input type="radio" name="tx-type-filter" value="income" ${state.txFilterType === "income" ? "checked" : ""}>${escapeHtml(l.incomeLabel)}</label>
             <label class="tab-opt"><input type="radio" name="tx-type-filter" value="expense" ${state.txFilterType === "expense" ? "checked" : ""}>${escapeHtml(l.expenseLabel)}</label>
+            <label class="tab-opt"><input type="radio" name="tx-type-filter" value="transfer" ${state.txFilterType === "transfer" ? "checked" : ""}>${escapeHtml(l.transferLabel)}</label>
           </div>
         </div>
         <div class="field">
@@ -243,6 +265,10 @@ function filterSheetHtml() {
         <div class="field">
           <label>${escapeHtml(l.categoryLabel)}</label>
           <div class="filter-checkbox-list">${checkboxRows}</div>
+        </div>
+        <div class="field">
+          <label>${escapeHtml(l.accountLabel)}</label>
+          <div class="filter-checkbox-list">${accountCheckboxRows}</div>
         </div>
         <div class="field">
           <label>${escapeHtml(l.amountLabel)}</label>
@@ -284,6 +310,11 @@ function wireFilterSheet() {
   document.querySelectorAll("[data-filter-cat]").forEach((cb) => cb.addEventListener("change", () => {
     const id = cb.getAttribute("data-filter-cat");
     if (cb.checked) state.txFilterCategory.add(id); else state.txFilterCategory.delete(id);
+    refreshFilteredResults();
+  }));
+  document.querySelectorAll("[data-filter-account]").forEach((cb) => cb.addEventListener("change", () => {
+    const id = cb.getAttribute("data-filter-account");
+    if (cb.checked) state.txFilterAccount.add(id); else state.txFilterAccount.delete(id);
     refreshFilteredResults();
   }));
   $("sheetAmountMin").addEventListener("input", (e) => { state.txFilterAmountMin = e.target.value === "" ? null : parseFloat(e.target.value); refreshFilteredResults(); });

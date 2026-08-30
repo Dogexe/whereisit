@@ -1,11 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { state, setBills, setTransactions, setBudgets, setCategories } from "../src/state.js";
+import { state, setBills, setTransactions, setBudgets, setCategories, setAccounts } from "../src/state.js";
 import {
   nextBillDueDate, daysUntilBillDue, billDueCycle, dueSoonLabel, upcomingBills, monthKeyOf,
-  pctDeltaLabel, monthHasTransactions, unbudgetedSpend, unbudgetedSpendForYear, unbudgetedSpendForRange,
+  pctDeltaLabel, monthHasTransactions, monthTotal, unbudgetedSpend, unbudgetedSpendForYear, unbudgetedSpendForRange,
   computeBudgets, computeBudgetsForRange, checkBudgetAlert, computeBreakdown, computeBreakdownForRange,
-  mostUsedCategoryIds, filteredTxList, groupByDate, availableMonthKeys
+  mostUsedCategoryIds, filteredTxList, groupByDate, availableMonthKeys, computeBalance, defaultAccountId, computeSparklinePoints
 } from "../src/derived.js";
 
 // derived.js's bill-due functions read the wall clock via `new Date()`
@@ -118,6 +118,19 @@ test("monthHasTransactions: true only when a transaction of that type falls in t
   assert.equal(monthHasTransactions("2026-03", "expense"), false, "wrong type in that month");
   assert.equal(monthHasTransactions("2026-02", "income"), false, "no transactions that month at all");
   assert.equal(monthHasTransactions("2026-04"), true, "no type filter matches any type");
+});
+
+test("monthTotal/monthHasTransactions: an optional accountId scopes to just that account, stage 5 of docs/specs/multi-account-support.md -- omitted means every account combined, unchanged from before", () => {
+  setTransactions([
+    { id: "t1", type: "expense", date: "2026-03-05", accountId: "acc0", amount: 100 },
+    { id: "t2", type: "expense", date: "2026-03-06", accountId: "acc1", amount: 40 }
+  ]);
+  assert.equal(monthTotal("2026-03", "expense"), 140, "no accountId: combined across all accounts, unchanged behavior");
+  assert.equal(monthTotal("2026-03", "expense", "acc0"), 100);
+  assert.equal(monthTotal("2026-03", "expense", "acc1"), 40);
+  assert.equal(monthTotal("2026-03", "expense", "acc-nonexistent"), 0);
+  assert.equal(monthHasTransactions("2026-03", "expense", "acc0"), true);
+  assert.equal(monthHasTransactions("2026-03", "expense", "acc-nonexistent"), false);
 });
 
 test("pctDeltaLabel: no prior-period transactions at all -> no badge (null), not +100%", () => {
@@ -264,7 +277,7 @@ test("mostUsedCategoryIds: excludes deleted categories and other types", () => {
 // docs/specs/transactions-filters-rework.md
 function resetTxFilters() {
   state.txFilterType = "all"; state.txFilterMonthNum = "all"; state.txFilterYear = "all";
-  state.txFilterCategory = new Set(); state.txPeriodMode = "all"; state.txSearch = "";
+  state.txFilterCategory = new Set(); state.txFilterAccount = new Set(); state.txPeriodMode = "all"; state.txSearch = "";
   state.txFilterAmountMin = null; state.txFilterAmountMax = null;
   state.txFilterDateFrom = ""; state.txFilterDateTo = "";
 }
@@ -277,6 +290,25 @@ test("filteredTxList: multi-select category filter returns the union of every se
   ]);
   state.txFilterCategory = new Set(["c-food", "c-transport"]);
   assert.deepEqual(filteredTxList().map((t) => t.id).sort(), ["t1", "t2"]);
+  resetTxFilters();
+});
+test("filteredTxList: multi-select account filter returns the union of every selected account, stage 6 of docs/specs/multi-account-support.md -- mirrors the category filter's union behavior", () => {
+  resetTxFilters();
+  setTransactions([
+    { id: "t1", type: "expense", date: "2026-03-01", accountId: "acc0", amount: 100 },
+    { id: "t2", type: "expense", date: "2026-03-02", accountId: "acc1", amount: 50 },
+    { id: "t3", type: "expense", date: "2026-03-03", accountId: "acc2", amount: 20 }
+  ]);
+  state.txFilterAccount = new Set(["acc0", "acc1"]);
+  assert.deepEqual(filteredTxList().map((t) => t.id).sort(), ["t1", "t2"]);
+  resetTxFilters();
+});
+test("filteredTxList: a transaction under an archived account still matches the account filter -- archived only restricts new transactions (Add screen), never read paths like this one", () => {
+  resetTxFilters();
+  setAccounts([{ id: "acc-old", name: "Closed bank", icon: "landmark", openingBalance: 0, archived: true }]);
+  setTransactions([{ id: "t1", type: "expense", date: "2026-03-01", accountId: "acc-old", amount: 10 }]);
+  state.txFilterAccount = new Set(["acc-old"]);
+  assert.deepEqual(filteredTxList().map((t) => t.id), ["t1"]);
   resetTxFilters();
 });
 test("filteredTxList: amount range is inclusive at exact boundary values", () => {
@@ -443,4 +475,111 @@ test("availableMonthKeys: always includes the LOCAL current month, not UTC's", (
     setTransactions([]);
     assert.deepEqual(availableMonthKeys(), ["2026-09"]);
   });
+});
+
+test("computeBalance(null): with every account's opening balance at 0 (the migration's own default), matches plain income - expense exactly -- the actual regression check for the account-migration's balance math", () => {
+  setAccounts([
+    { id: "acc0", name: "Cash", icon: "wallet", openingBalance: 0, archived: false },
+    { id: "acc1", name: "Bank", icon: "landmark", openingBalance: 0, archived: false }
+  ]);
+  setTransactions([
+    { id: "t1", type: "income", date: "2026-03-01", accountId: "acc0", amount: 1000 },
+    { id: "t2", type: "expense", date: "2026-03-02", accountId: "acc1", amount: 300 },
+    { id: "t3", type: "expense", date: "2026-03-03", accountId: "acc0", amount: 150 }
+  ]);
+  assert.equal(computeBalance(null), 1000 - 300 - 150);
+});
+
+test("computeBalance(accountId): a specific account's balance is its own opening balance plus only its own transactions", () => {
+  setAccounts([
+    { id: "acc0", name: "Cash", icon: "wallet", openingBalance: 500, archived: false },
+    { id: "acc1", name: "Bank", icon: "landmark", openingBalance: 2000, archived: false }
+  ]);
+  setTransactions([
+    { id: "t1", type: "income", date: "2026-03-01", accountId: "acc0", amount: 1000 },
+    { id: "t2", type: "expense", date: "2026-03-02", accountId: "acc1", amount: 300 }
+  ]);
+  assert.equal(computeBalance("acc0"), 500 + 1000);
+  assert.equal(computeBalance("acc1"), 2000 - 300);
+});
+
+test("computeBalance(null): combined balance still includes an archived account's opening balance and transactions -- archiving restricts new transactions, not existing balance", () => {
+  setAccounts([
+    { id: "acc0", name: "Cash", icon: "wallet", openingBalance: 0, archived: false },
+    { id: "acc1", name: "Old bank", icon: "landmark", openingBalance: 1000, archived: true }
+  ]);
+  setTransactions([{ id: "t1", type: "expense", date: "2026-03-01", accountId: "acc1", amount: 200 }]);
+  assert.equal(computeBalance(null), 1000 - 200);
+});
+
+test("computeBalance(null): a transfer nets to exactly zero on the combined balance -- stage 1 of docs/specs/account-transfers.md's actual regression check (money moved, none left or entered)", () => {
+  setAccounts([
+    { id: "acc0", name: "Cash", icon: "wallet", openingBalance: 0, archived: false },
+    { id: "acc1", name: "Bank", icon: "landmark", openingBalance: 0, archived: false }
+  ]);
+  setTransactions([
+    { id: "t1", type: "income", date: "2026-03-01", accountId: "acc0", amount: 1000 },
+    { id: "t2", type: "transfer", date: "2026-03-02", accountId: "acc0", toAccountId: "acc1", amount: 300 }
+  ]);
+  assert.equal(computeBalance(null), 1000, "the transfer must not be silently subtracted just because its type isn't literally \"income\"");
+});
+
+test("computeBalance(accountId): a transfer moves the amount out of the source account and into the destination account", () => {
+  setAccounts([
+    { id: "acc0", name: "Cash", icon: "wallet", openingBalance: 1000, archived: false },
+    { id: "acc1", name: "Bank", icon: "landmark", openingBalance: 0, archived: false }
+  ]);
+  setTransactions([{ id: "t1", type: "transfer", date: "2026-03-01", accountId: "acc0", toAccountId: "acc1", amount: 300 }]);
+  assert.equal(computeBalance("acc0"), 1000 - 300, "source account loses the transfer amount");
+  assert.equal(computeBalance("acc1"), 0 + 300, "destination account gains the transfer amount");
+});
+
+test("computeSparklinePoints: excludes transfers entirely, in both the combined and per-account cases -- a decorative trend line, not a source of truth", () => {
+  setAccounts([{ id: "acc0", name: "Cash", icon: "wallet", openingBalance: 0, archived: false }]);
+  setTransactions([
+    { id: "t1", type: "income", date: "2026-03-01", accountId: "acc0", amount: 100 },
+    { id: "t2", type: "transfer", date: "2026-03-02", accountId: "acc0", toAccountId: "acc1", amount: 9999 }
+  ]);
+  assert.deepEqual(computeSparklinePoints(null), [100]);
+  assert.deepEqual(computeSparklinePoints("acc0"), [100]);
+});
+
+test("filteredTxList: the account filter matches a transfer via either its source or destination account", () => {
+  resetTxFilters();
+  setTransactions([
+    { id: "t1", type: "transfer", date: "2026-03-01", accountId: "acc0", toAccountId: "acc1", amount: 300 },
+    { id: "t2", type: "expense", date: "2026-03-02", accountId: "acc2", amount: 50 }
+  ]);
+  state.txFilterAccount = new Set(["acc1"]);
+  assert.deepEqual(filteredTxList().map((t) => t.id), ["t1"], "matching the destination account must not be missed");
+  state.txFilterAccount = new Set(["acc0"]);
+  assert.deepEqual(filteredTxList().map((t) => t.id), ["t1"], "matching the source account (still just .accountId) keeps working");
+  resetTxFilters();
+});
+
+test("defaultAccountId: returns the most recent transaction's account when it's still active", () => {
+  setAccounts([
+    { id: "acc0", name: "Cash", icon: "wallet", openingBalance: 0, archived: false },
+    { id: "acc1", name: "Bank", icon: "landmark", openingBalance: 0, archived: false }
+  ]);
+  setTransactions([
+    { id: "t1", type: "expense", date: "2026-03-01", accountId: "acc0", amount: 10, updatedAt: 1 },
+    { id: "t2", type: "expense", date: "2026-03-02", accountId: "acc1", amount: 10, updatedAt: 2 }
+  ]);
+  assert.equal(defaultAccountId(), "acc1");
+});
+
+test("defaultAccountId: falls back to the first active account when the last transaction's account was since archived", () => {
+  setAccounts([
+    { id: "acc0", name: "Cash", icon: "wallet", openingBalance: 0, archived: false },
+    { id: "acc1", name: "Old bank", icon: "landmark", openingBalance: 0, archived: true }
+  ]);
+  setTransactions([{ id: "t1", type: "expense", date: "2026-03-01", accountId: "acc1", amount: 10, updatedAt: 1 }]);
+  assert.equal(defaultAccountId(), "acc0");
+});
+
+test("defaultAccountId: returns null when there are zero active accounts", () => {
+  setAccounts([{ id: "acc0", name: "Old cash", icon: "wallet", openingBalance: 0, archived: true }]);
+  setTransactions([]);
+  assert.equal(defaultAccountId(), null);
 });
