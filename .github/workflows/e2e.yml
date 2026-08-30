@@ -1,0 +1,29 @@
+name: E2E tests
+
+# Separate from deploy.yml on purpose: deploy.yml only triggers on push to
+# main (it has no pull_request trigger at all), so without this workflow a
+# PR would never get E2E coverage before merge -- only unit tests + build,
+# gated at deploy time on main itself. This runs on every PR so a screen
+# regression is caught before merge, not after.
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
