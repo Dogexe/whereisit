@@ -1,14 +1,14 @@
 import { L } from "../i18n.js";
 import { state, categories } from "../state.js";
-import { $, escapeHtml, refreshIcons, icon, fmtMoney, monthLabel, dateLabel, createFocusTrap } from "../utils.js";
+import { $, escapeHtml, refreshIcons, icon, fmtMoney, monthLabel, dateLabel, createFocusTrap, localDateIso, localMonthKey } from "../utils.js";
 import { categoryDisplayName } from "../categories.js";
 import { availableYears, yearLabel, filteredTxList } from "../derived.js";
 import { groupedTxRowsHtml, wireTxRowActions } from "./tx-row.js";
 import { pillPickerHtml, wirePillPicker } from "./period-picker.js";
 
-function defaultMonthNum() { return new Date().toISOString().slice(5, 7); }
+function defaultMonthNum() { return localMonthKey().slice(5, 7); }
 function defaultYear() { return String(new Date().getFullYear()); }
-function todayIso() { return new Date().toISOString().slice(0, 10); }
+function todayIso() { return localDateIso(); }
 // Type and date now live inside the Filters sheet, not permanently
 // visible -- only Search + the Filters button sit in the always-visible
 // toolbar row. Date itself is two independently-rerendered pieces, both

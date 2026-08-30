@@ -1,6 +1,6 @@
 import { L } from "../i18n.js";
 import { state, transactions, categories, setTransactions } from "../state.js";
-import { $, uid, escapeHtml, dateLabel, formatDateTyping, parseDateText, optionsHtml, refreshIcons, icon, isDesktopShell, createFocusTrap } from "../utils.js";
+import { $, uid, escapeHtml, dateLabel, formatDateTyping, parseDateText, optionsHtml, refreshIcons, icon, isDesktopShell, createFocusTrap, localDateIso } from "../utils.js";
 import { guessCategory, categoryDisplayName } from "../categories.js";
 import { checkBudgetAlert, resolveCategoryId, mostUsedCategoryIds } from "../derived.js";
 import { saveToStorage } from "../storage.js";
@@ -17,7 +17,7 @@ import { setTab, renderScreen } from "./router.js";
 // stage 5).
 export function resetForm() {
   state.formType = "expense";
-  state.formDate = new Date().toISOString().slice(0, 10);
+  state.formDate = localDateIso();
   state.formCategoryId = (categories.find((c) => c.type === "expense") || {}).id || null;
   state.editingId = null;
   state.categoryManual = false;

@@ -1,7 +1,22 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { state } from "../src/state.js";
-import { dateLabel, parseDateText, displayYear, gregorianYearFromDisplay } from "../src/utils.js";
+import { dateLabel, parseDateText, displayYear, gregorianYearFromDisplay, localDateIso, localMonthKey, localIsoFromDate, monthKeyOf } from "../src/utils.js";
+
+// localDateIso/localMonthKey/monthKeyOf read the wall clock (or a supplied
+// Date object) via local getters (getFullYear/getMonth/getDate), not
+// .toISOString(), specifically so a user east of UTC (e.g. Bangkok, UTC+7)
+// sees their own local "today," not UTC's. node:test's mock timers pin the
+// underlying instant; process.env.TZ controls which timezone Date's local
+// getters resolve against for that instant -- both are needed to actually
+// exercise the bug this guards against (CI runs in UTC, where the bug is
+// invisible, so the test must force a non-UTC, UTC-ahead timezone).
+function withFakeNowInTZ(t, utcIsoDateTime, tz, fn) {
+  const originalTZ = process.env.TZ;
+  process.env.TZ = tz;
+  t.mock.timers.enable({ apis: ["Date"], now: new Date(utcIsoDateTime).getTime() });
+  try { fn(); } finally { t.mock.timers.reset(); process.env.TZ = originalTZ; }
+}
 
 // dateLabel (display) and parseDateText (typed-input parsing) are meant to
 // be exact inverses of each other, in whichever language is active --
@@ -68,4 +83,40 @@ test("parseDateText: still rejects an invalid date (Feb 30) in either language",
   assert.equal(parseDateText("30/02/2026"), null);
   state.lang = "th";
   assert.equal(parseDateText("30/02/2569"), null);
+});
+
+// --- timezone bug regression coverage ---
+
+test("localDateIso/localMonthKey: return the LOCAL date/month in a UTC-ahead timezone, not UTC's (which is still the previous day/month)", (t) => {
+  // 2026-08-31T19:00:00Z is already 2026-09-01 02:00 in Bangkok (UTC+7) --
+  // a new month locally, while UTC (and therefore .toISOString()) still
+  // reads 2026-08-31. This is exactly the window (local midnight to 7am
+  // Bangkok time) where the bug this guards against would show yesterday.
+  withFakeNowInTZ(t, "2026-08-31T19:00:00Z", "Asia/Bangkok", () => {
+    assert.equal(localDateIso(), "2026-09-01");
+    assert.equal(localMonthKey(), "2026-09");
+  });
+});
+
+test("localDateIso: reads correctly at exactly local midnight in a UTC-ahead timezone", (t) => {
+  // 2026-08-31T17:00:00Z is 2026-09-01 00:00:00 in Bangkok -- the exact
+  // instant local midnight rolls over, still 2026-08-31 in UTC.
+  withFakeNowInTZ(t, "2026-08-31T17:00:00Z", "Asia/Bangkok", () => {
+    assert.equal(localDateIso(), "2026-09-01");
+  });
+});
+
+test("localIsoFromDate/monthKeyOf: convert an explicit Date object using local (not UTC) getters", (t) => {
+  withFakeNowInTZ(t, "2026-01-01T00:00:00Z", "Asia/Bangkok", () => {
+    const d = new Date("2026-08-31T19:00:00Z");
+    assert.equal(localIsoFromDate(d), "2026-09-01");
+    assert.equal(monthKeyOf(d), "2026-09");
+  });
+});
+
+test("localDateIso/localMonthKey: a UTC-behind timezone (e.g. New York) is unaffected -- same instant, no rollover there", (t) => {
+  withFakeNowInTZ(t, "2026-08-31T19:00:00Z", "America/New_York", () => {
+    assert.equal(localDateIso(), "2026-08-31");
+    assert.equal(localMonthKey(), "2026-08");
+  });
 });

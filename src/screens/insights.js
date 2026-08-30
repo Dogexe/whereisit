@@ -1,6 +1,6 @@
 import { L } from "../i18n.js";
 import { state, categories } from "../state.js";
-import { $, escapeHtml, fmtMoney, icon, refreshIcons, monthNameFull, createFocusTrap } from "../utils.js";
+import { $, escapeHtml, fmtMoney, icon, refreshIcons, monthNameFull, createFocusTrap, localDateIso } from "../utils.js";
 import { categoryDisplayName } from "../categories.js";
 import {
   yearLabel, computeBudgets, computeBudgetsForYear,
@@ -10,7 +10,7 @@ import {
 import { pillPickerHtml, wirePillPicker } from "./period-picker.js";
 import { setTab } from "./router.js";
 
-function todayIso() { return new Date().toISOString().slice(0, 10); }
+function todayIso() { return localDateIso(); }
 function pad2(n) { return String(n).padStart(2, "0"); }
 
 export function renderInsights() {

@@ -1,5 +1,16 @@
 import { DEFAULT_CATEGORIES } from "./categories.js";
 
+// Local (not UTC) "today," used only to seed the initial default field
+// values below. new Date().toISOString() converts to UTC first, which
+// reads as the wrong calendar day for a user east of UTC (e.g. Bangkok,
+// UTC+7) for several hours after their local midnight -- see utils.js's
+// localDateIso/localMonthKey for the same logic used everywhere else in
+// the app. Duplicated here rather than imported, specifically to avoid a
+// circular import: utils.js itself imports `state` from this file.
+const now = new Date();
+const todayLocalIso = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0");
+const curMonthNumLocal = String(now.getMonth() + 1).padStart(2, "0");
+
 export const state = {
   lang: "th", dark: false,
   tab: "home", insightsTab: "budgets",
@@ -13,9 +24,9 @@ export const state = {
   // that Budgets never needs, layered on top of month/year rather than
   // being a third mode value -- stepping the pill or picking a month/year
   // clears it back to normal browsing.
-  insightsBudgetsMode: "month", insightsBudgetsMonthNum: new Date().toISOString().slice(5, 7), insightsBudgetsYear: String(new Date().getFullYear()),
+  insightsBudgetsMode: "month", insightsBudgetsMonthNum: curMonthNumLocal, insightsBudgetsYear: String(now.getFullYear()),
   insightsBudgetsPopoverOpen: false,
-  insightsBreakdownMode: "month", insightsBreakdownMonthNum: new Date().toISOString().slice(5, 7), insightsBreakdownYear: String(new Date().getFullYear()),
+  insightsBreakdownMode: "month", insightsBreakdownMonthNum: curMonthNumLocal, insightsBreakdownYear: String(now.getFullYear()),
   insightsBreakdownPopoverOpen: false, insightsBreakdownIsToday: false,
   txFilterType: "all", txFilterMonthNum: "all", txFilterYear: "all", txFilterCategory: new Set(), txSearch: "", txPeriodMode: "all",
   txFilterAmountMin: null, txFilterAmountMax: null, txFilterDateFrom: "", txFilterDateTo: "", txFilterSheetOpen: false,
@@ -31,7 +42,7 @@ export const state = {
   // pair with from === to rather than a separate field, since every
   // downstream consumer (computeBreakdownForRange) already takes a range.
   insightsCustomKind: "range", insightsFilterDateFrom: "", insightsFilterDateTo: "",
-  formType: "expense", formDate: new Date().toISOString().slice(0, 10),
+  formType: "expense", formDate: todayLocalIso,
   formCategoryId: (DEFAULT_CATEGORIES.find((c) => c.type === "expense") || {}).id || null, editingId: null, categoryManual: false,
   // addSheetOpen: UI-only, not persisted -- same treatment as
   // txFilterSheetOpen/insightsFilterSheetOpen. Mobile-only (docs/specs/

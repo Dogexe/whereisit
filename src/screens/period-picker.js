@@ -1,5 +1,5 @@
 import { L } from "../i18n.js";
-import { escapeHtml, monthLabel, monthNameShort, monthNameFull, icon, dateLabel } from "../utils.js";
+import { escapeHtml, monthLabel, monthNameShort, monthNameFull, icon, dateLabel, localDateIso } from "../utils.js";
 import { availableYears, availableMonthKeys, yearLabel } from "../derived.js";
 
 // Shared by Insights (modes ["today","month","year","custom"]) and
@@ -70,7 +70,7 @@ function shortcutPillLabel(key, label) {
   // Transactions' "all") just shows its own label verbatim once active,
   // since there's no secondary value ("all" isn't a specific day) to
   // append.
-  return key === "today" ? `${label} · ${dateLabel(new Date().toISOString().slice(0, 10))}` : label;
+  return key === "today" ? `${label} · ${dateLabel(localDateIso())}` : label;
 }
 export function pillPickerHtml(id, mode, monthNum, year, popoverOpen, activeShortcut, opts) {
   const l = L();

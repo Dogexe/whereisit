@@ -1,5 +1,5 @@
 import { state, transactions, budgets, bills, categories } from "./state.js";
-import { monthKey, fmtMoney, monthLabel, dateLabel, displayYear } from "./utils.js";
+import { monthKey, fmtMoney, monthLabel, dateLabel, displayYear, monthKeyOf, localDateIso, localMonthKey, localIsoFromDate } from "./utils.js";
 import { findCategoryId, categoryDisplayName } from "./categories.js";
 import { L } from "./i18n.js";
 
@@ -75,7 +75,7 @@ function budgetRowsFor(txPredicate, limitMultiplier) {
   });
 }
 export function computeBudgets(forMonth) {
-  const targetMonth = forMonth || new Date().toISOString().slice(0, 7);
+  const targetMonth = forMonth || localMonthKey();
   return budgetRowsFor((t) => monthKey(t.date) === targetMonth, 1);
 }
 // Same shape as computeBudgets, but sums a whole year's spend per category
@@ -108,7 +108,7 @@ function unbudgetedSpendFor(txPredicate) {
     .reduce((a, t) => a + t.amount, 0);
 }
 export function unbudgetedSpend(forMonth) {
-  const targetMonth = forMonth || new Date().toISOString().slice(0, 7);
+  const targetMonth = forMonth || localMonthKey();
   return unbudgetedSpendFor((t) => monthKey(t.date) === targetMonth);
 }
 export function unbudgetedSpendForYear(forYear) {
@@ -122,7 +122,7 @@ export function unbudgetedSpendForRange(fromDate, toDate) {
 // to 80%+ of its monthly limit, or null if no budget applies / still under.
 export function checkBudgetAlert(tx) {
   if (!tx || tx.type !== "expense") return null;
-  const curMonthKey = new Date().toISOString().slice(0, 7);
+  const curMonthKey = localMonthKey();
   if (monthKey(tx.date) !== curMonthKey) return null;
   const txCid = resolveCategoryId(tx, "expense");
   const budget = budgets.find((b) => resolveCategoryId(b, "expense") === txCid);
@@ -191,7 +191,7 @@ export function filteredTxList() {
   let rows = transactions.slice();
   if (state.txFilterType !== "all") rows = rows.filter((t) => t.type === state.txFilterType);
   if (state.txPeriodMode === "today") {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateIso();
     rows = rows.filter((t) => t.date === today);
   } else if (state.txPeriodMode === "custom") {
     if (state.txFilterDateFrom) rows = rows.filter((t) => t.date >= state.txFilterDateFrom);
@@ -215,10 +215,10 @@ export function filteredTxList() {
 // not itself sort or filter -- callers pass in whatever order they want
 // preserved within and across groups.
 export function groupByDate(txs) {
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = localDateIso();
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayIso = yesterday.toISOString().slice(0, 10);
+  const yesterdayIso = localIsoFromDate(yesterday);
   const groups = [];
   let current = null;
   for (const t of txs) {
@@ -231,7 +231,7 @@ export function groupByDate(txs) {
   }
   return groups;
 }
-export function monthKeyOf(date) { return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0"); }
+export { monthKeyOf };
 export function billDueCycle(bill) { return monthKeyOf(nextBillDueDate(bill)); }
 export function dueSoonLabel(n) {
   if (n < 0) {
@@ -285,7 +285,7 @@ function breakdownEntries(txs, categoryIds) {
   }));
 }
 export function computeBreakdown(forMonth, categoryIds) {
-  const targetMonth = forMonth || new Date().toISOString().slice(0, 7);
+  const targetMonth = forMonth || localMonthKey();
   return breakdownEntries(transactions.filter((t) => t.type === "expense" && monthKey(t.date) === targetMonth), categoryIds);
 }
 // Same shape as computeBreakdown, but sums a whole year's spend per category.
@@ -324,7 +324,7 @@ export function availableYears() {
 // starts empty on a fresh install.
 export function availableMonthKeys() {
   const keys = new Set(transactions.map((t) => monthKey(t.date)));
-  keys.add(monthKey(new Date().toISOString()));
+  keys.add(localMonthKey());
   return Array.from(keys).sort().reverse();
 }
 export function computeTrend() {

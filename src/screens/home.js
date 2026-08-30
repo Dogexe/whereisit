@@ -1,6 +1,6 @@
 import { L } from "../i18n.js";
 import { state, transactions, bills } from "../state.js";
-import { $, uid, escapeHtml, icon, iconAvatar, fmtMoney, refreshIcons, isDesktopShell } from "../utils.js";
+import { $, uid, escapeHtml, icon, iconAvatar, fmtMoney, refreshIcons, isDesktopShell, localDateIso, localMonthKey } from "../utils.js";
 import { CATEGORIES } from "../categories.js";
 import {
   byRecency, computeBudgets, upcomingBills, monthTotal, monthHasTransactions, pctDeltaLabel, prevMonthKey,
@@ -32,7 +32,7 @@ export function markBillPaid(id) {
   const bill = bills.find((b) => b.id === id);
   if (!bill) return;
   const savedTx = {
-    id: uid(), type: "expense", date: new Date().toISOString().slice(0, 10),
+    id: uid(), type: "expense", date: localDateIso(),
     category: bill.category || CATEGORIES.expense[CATEGORIES.expense.length - 1], categoryId: bill.categoryId || null,
     amount: bill.amount, note: bill.name, updatedAt: Date.now()
   };
@@ -55,7 +55,7 @@ export function renderHome() {
   const dueSoon = upcomingBills();
   const today = new Date().toLocaleDateString(state.lang === "en" ? "en-US" : "th-TH", { month: "long", year: "numeric" });
 
-  const curM = new Date().toISOString().slice(0, 7);
+  const curM = localMonthKey();
   const prevM = prevMonthKey();
   const curIncome = monthTotal(curM, "income"), prevIncome = monthTotal(prevM, "income");
   const curExpense = monthTotal(curM, "expense"), prevExpense = monthTotal(prevM, "expense");
@@ -63,7 +63,7 @@ export function renderHome() {
   const incomeDelta = pctDeltaLabel(curIncome, prevIncome, monthHasTransactions(prevM, "income"));
   const expenseDelta = pctDeltaLabel(curExpense, prevExpense, monthHasTransactions(prevM, "expense"));
   const sparkline = sparklineSvg(computeSparklinePoints(), "#ffffff", 150, 34, 2.5);
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = localDateIso();
   const spentToday = transactions.filter((t) => t.type === "expense" && t.date === todayIso).reduce((a, t) => a + t.amount, 0);
 
   $("screen").innerHTML = `

@@ -1,6 +1,7 @@
 import { transactions, budgets, bills, goals } from "./state.js";
 import { L } from "./i18n.js";
 import { showToast } from "./toast.js";
+import { localDateIso } from "./utils.js";
 
 // Public browser OAuth client ID -- not a secret, same treatment as
 // SUPABASE_ANON_KEY in sync.js. Replace with the real Client ID from
@@ -96,7 +97,7 @@ export async function exportToGoogleSheets() {
   showToast(l.toastSheetsExporting);
   try {
     const token = await getAccessToken();
-    const title = "whereisit export " + new Date().toISOString().slice(0, 10);
+    const title = "whereisit export " + localDateIso();
     const createRes = await fetchWithTimeout("https://sheets.googleapis.com/v4/spreadsheets", {
       method: "POST",
       headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },

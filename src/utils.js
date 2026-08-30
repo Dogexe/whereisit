@@ -10,6 +10,22 @@ export const uid = () => Date.now().toString(36) + Math.random().toString(36).sl
 // the breakpoint value independently.
 export const isDesktopShell = () => window.matchMedia("(min-width: 1024px)").matches;
 export const monthKey = (iso) => iso.slice(0, 7);
+// The canonical "what is today/this month, for this user" building block.
+// `new Date().toISOString()` converts to UTC first -- for anyone east of
+// UTC (e.g. Bangkok, UTC+7) that reads as the wrong calendar day for
+// several hours after their local midnight, since UTC hasn't rolled over
+// yet. Every "now" computation in this app (today's date, this month's
+// key, a bill's due-today check, etc.) must go through localDateIso/
+// localMonthKey (or monthKeyOf, for an arbitrary already-in-hand Date
+// object) instead of `.toISOString().slice(...)`. Sync/conflict-resolution
+// timestamps (sync.js's/push.js's `updated_at`) are a deliberate exception
+// -- those are UTC by design, not user-facing "today," and stay as-is.
+export function localIsoFromDate(date) {
+  return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
+}
+export function monthKeyOf(date) { return localIsoFromDate(date).slice(0, 7); }
+export function localDateIso() { return localIsoFromDate(new Date()); }
+export function localMonthKey() { return monthKeyOf(new Date()); }
 export function fmtMoney(n) { return "฿" + Number(n).toLocaleString(state.lang === "en" ? "en-US" : "th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 const BE_YEAR_OFFSET = 543;
 // The single place both display (dateLabel) and input parsing

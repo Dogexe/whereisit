@@ -5,7 +5,7 @@ import {
   nextBillDueDate, daysUntilBillDue, billDueCycle, dueSoonLabel, upcomingBills, monthKeyOf,
   pctDeltaLabel, monthHasTransactions, unbudgetedSpend, unbudgetedSpendForYear, unbudgetedSpendForRange,
   computeBudgets, computeBudgetsForRange, checkBudgetAlert, computeBreakdown, computeBreakdownForRange,
-  mostUsedCategoryIds, filteredTxList
+  mostUsedCategoryIds, filteredTxList, groupByDate, availableMonthKeys
 } from "../src/derived.js";
 
 // derived.js's bill-due functions read the wall clock via `new Date()`
@@ -17,6 +17,19 @@ import {
 function withFakeNow(t, isoDateTime, fn) {
   t.mock.timers.enable({ apis: ["Date"], now: new Date(isoDateTime).getTime() });
   try { fn(); } finally { t.mock.timers.reset(); }
+}
+
+// Same idea, but also pins process.env.TZ so Date's local getters (which
+// every "now" computation in this app must go through -- see utils.js's
+// localDateIso/localMonthKey) resolve against a real, UTC-ahead timezone
+// instead of whatever timezone the test runner happens to be in. CI runs
+// in UTC, where the timezone bug these tests guard against is invisible,
+// so exercising it for real requires forcing a non-UTC, UTC-ahead zone.
+function withFakeNowInTZ(t, utcIsoDateTime, tz, fn) {
+  const originalTZ = process.env.TZ;
+  process.env.TZ = tz;
+  t.mock.timers.enable({ apis: ["Date"], now: new Date(utcIsoDateTime).getTime() });
+  try { fn(); } finally { t.mock.timers.reset(); process.env.TZ = originalTZ; }
 }
 
 test("nextBillDueDate/daysUntilBillDue: unpaid bill one day past due -> negative daysUntil", (t) => {
@@ -356,4 +369,78 @@ test("computeBreakdownForRange: sums only transactions within the date range, sa
   ]);
   const [result] = computeBreakdownForRange("2026-03-01", "2026-03-15");
   assert.equal(result.total, 150);
+});
+
+// --- timezone bug regression coverage ---
+// 2026-08-31T19:00:00Z is already 2026-09-01 02:00 in Bangkok (UTC+7) --
+// a new day AND a new month locally, while UTC (and therefore the old
+// `.toISOString()`-based code) still reads 2026-08-31. This is exactly the
+// window (local midnight to 7am Bangkok time) that let the bug ship
+// undetected, since CI runs in UTC where it's invisible.
+
+test("computeBudgets: with no explicit month, falls back to the LOCAL current month, not UTC's", (t) => {
+  withFakeNowInTZ(t, "2026-08-31T19:00:00Z", "Asia/Bangkok", () => {
+    setCategories([{ id: "cat-food", type: "expense", name: "Food" }]);
+    setBudgets([{ id: "b1", category: "Food", categoryId: "cat-food", limit: 1000 }]);
+    setTransactions([{ id: "t1", type: "expense", date: "2026-09-01", categoryId: "cat-food", amount: 300 }]);
+    const [result] = computeBudgets();
+    assert.equal(result.spentFmt, "฿300.00", "a transaction dated in the LOCAL current month (Sept 1 Bangkok time) must count, even though UTC still reads Aug 31");
+  });
+});
+
+test("unbudgetedSpend: with no explicit month, falls back to the LOCAL current month, not UTC's", (t) => {
+  withFakeNowInTZ(t, "2026-08-31T19:00:00Z", "Asia/Bangkok", () => {
+    setBudgets([]);
+    setTransactions([{ id: "t1", type: "expense", date: "2026-09-01", category: "Health", amount: 150 }]);
+    assert.equal(unbudgetedSpend(), 150);
+  });
+});
+
+test("checkBudgetAlert: its current-month check falls back to the LOCAL current month, not UTC's", (t) => {
+  withFakeNowInTZ(t, "2026-08-31T19:00:00Z", "Asia/Bangkok", () => {
+    setCategories([{ id: "cat-food", type: "expense", name: "Food" }]);
+    setBudgets([{ id: "b1", category: "Food", categoryId: "cat-food", limit: 100 }]);
+    // Already-saved spend for today (local), dated in the LOCAL current
+    // month (Sept 1 Bangkok time) -- if curMonthKey fell back to UTC's
+    // "2026-08" instead, monthKey(newTx.date) ("2026-09") would never
+    // match it and this would wrongly return null before even looking
+    // at the budget.
+    setTransactions([{ id: "t0", type: "expense", date: "2026-09-01", category: "Food", categoryId: "cat-food", amount: 90 }]);
+    const newTx = { type: "expense", date: "2026-09-01", category: "Food", categoryId: "cat-food", amount: 5 };
+    const msg = checkBudgetAlert(newTx);
+    assert.ok(msg, "a transaction dated today (local) must be recognized as this month's spend, not silently ignored because UTC still reads last month");
+  });
+});
+
+test("filteredTxList: \"today\" period mode uses the LOCAL date, not UTC's", (t) => {
+  withFakeNowInTZ(t, "2026-08-31T19:00:00Z", "Asia/Bangkok", () => {
+    resetTxFilters();
+    setTransactions([
+      { id: "t1", type: "expense", date: "2026-08-31", amount: 10 }, // "today" in UTC -- must NOT match
+      { id: "t2", type: "expense", date: "2026-09-01", amount: 10 } // "today" in Bangkok -- must match
+    ]);
+    state.txPeriodMode = "today";
+    assert.deepEqual(filteredTxList().map((row) => row.id), ["t2"]);
+    resetTxFilters();
+  });
+});
+
+test("groupByDate: labels today's/yesterday's rows using the LOCAL date, not UTC's", (t) => {
+  withFakeNowInTZ(t, "2026-08-31T19:00:00Z", "Asia/Bangkok", () => {
+    state.lang = "en";
+    const txs = [
+      { id: "t1", date: "2026-09-01", updatedAt: 2 }, // today, Bangkok time
+      { id: "t2", date: "2026-08-31", updatedAt: 1 } // yesterday, Bangkok time (still "today" in UTC)
+    ];
+    const groups = groupByDate(txs);
+    assert.equal(groups[0].label, "Today");
+    assert.equal(groups[1].label, "Yesterday");
+  });
+});
+
+test("availableMonthKeys: always includes the LOCAL current month, not UTC's", (t) => {
+  withFakeNowInTZ(t, "2026-08-31T19:00:00Z", "Asia/Bangkok", () => {
+    setTransactions([]);
+    assert.deepEqual(availableMonthKeys(), ["2026-09"]);
+  });
 });
