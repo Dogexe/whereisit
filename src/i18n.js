@@ -149,6 +149,7 @@ export const STRINGS = {
   toastInvalidAccountName: ["กรุณาระบุชื่อบัญชี", "Please enter an account name"],
   accountLabel: ["บัญชี", "Account"], allAccountsOption: ["ทุกบัญชี", "All accounts"],
   transferLabel: ["โอนเงิน", "Transfer"], transferFromLabel: ["จากบัญชี", "From account"], transferToLabel: ["ไปยังบัญชี", "To account"],
+  transferSwapAria: ["สลับทิศทาง", "Swap direction"],
   toastInvalidTransferAccounts: ["กรุณาเลือกบัญชีต้นทางและปลายทางที่แตกต่างกัน", "Please choose two different accounts"],
   transferToRowLabel: ["โอนไปยัง {name}", "Transfer to {name}"], transferFromRowLabel: ["โอนจาก {name}", "Transfer from {name}"],
   vsLastMonth: ["จากเดือนที่แล้ว", "vs last month"], ofLabel: ["จาก", "of"], spentToday: ["ใช้จ่ายวันนี้", "Spent today"],

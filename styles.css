@@ -393,6 +393,8 @@
 
   /* — add form — */
   .add-form { display: flex; flex-direction: column; gap: 16px; }
+  .transfer-swap-row:not(.form-field-hidden) { display: flex; justify-content: center; margin: -8px 0; }
+  .transfer-swap-row .btn-icon { transform: rotate(90deg); }
 
   /* — CSV import sheet (docs/specs/csv-import.md) — */
   .import-step { display: flex; flex-direction: column; gap: 16px; }

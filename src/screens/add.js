@@ -215,6 +215,9 @@ function addFormFieldsHtml(l, isEditing) {
         <div class="account-chip-row" id="accountChipRow"></div>
         <select class="input account-select-collapsed" id="txAccount" required></select>
       </div>
+      <div class="transfer-swap-row${state.formType === "transfer" ? "" : " form-field-hidden"}" id="transferSwapRow">
+        <button type="button" class="btn btn-secondary btn-icon" id="transferSwapBtn" aria-label="${escapeHtml(l.transferSwapAria)}">${icon("arrow-right-left")}</button>
+      </div>
       <div class="field${state.formType === "transfer" ? "" : " form-field-hidden"}" id="transferToField">
         <label>${escapeHtml(l.transferToLabel)}</label>
         <div class="account-chip-row" id="transferToChipRow"></div>
@@ -249,6 +252,7 @@ function updateFormTypeVisibility() {
   const isTransfer = state.formType === "transfer";
   $("categoryField").classList.toggle("form-field-hidden", isTransfer);
   $("accountFieldLabel").textContent = isTransfer ? l.transferFromLabel : l.accountLabel;
+  $("transferSwapRow").classList.toggle("form-field-hidden", !isTransfer);
   $("transferToField").classList.toggle("form-field-hidden", !isTransfer);
 }
 // Real bug found live while testing docs/specs/csv-import.md's account
@@ -293,6 +297,22 @@ function wireAddForm({ onSaved, onCancelled }) {
   $("txCategory").addEventListener("change", (e) => { state.formCategoryId = e.target.value; state.categoryManual = true; renderCategoryChips(); });
   $("txAccount").addEventListener("change", (e) => { state.formAccountId = e.target.value; });
   $("txTransferTo").addEventListener("change", (e) => { state.formToAccountId = e.target.value; });
+  // Bug report: with exactly 2 accounts, the From/To chip pickers' own
+  // same-account exclusion (docs/specs earlier pass) made reversing a
+  // transfer's direction literally impossible -- whichever account isn't
+  // currently picked on one side is, with only 2 accounts total, always
+  // the other side's current value, so it's always the disabled option in
+  // both pickers at once. A dedicated swap control sidesteps the picker
+  // entirely by exchanging both state fields directly, rather than trying
+  // to special-case the exclusion logic for the 2-account case.
+  $("transferSwapBtn").addEventListener("click", () => {
+    const from = state.formAccountId, to = state.formToAccountId;
+    state.formAccountId = to;
+    state.formToAccountId = from;
+    $("txAccount").value = state.formAccountId;
+    $("txTransferTo").value = state.formToAccountId;
+    renderTransferAccountChips();
+  });
   $("txDateText").addEventListener("input", function () { this.value = formatDateTyping(this.value); });
   $("txDateText").addEventListener("change", function () {
     const iso = parseDateText(this.value);
