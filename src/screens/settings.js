@@ -2,7 +2,7 @@ import { L } from "../i18n.js";
 import { state, transactions, budgets, bills, goals, categories, accounts, setBudgets, setBills, setGoals, setCategories, setAccounts } from "../state.js";
 import {
   $, uid, icon, iconAvatar, escapeHtml, fmtMoney, optionsHtml, refreshIcons, createFocusTrap, isDesktopShell,
-  EDIT_ICON, DELETE_ICON, PLUS_ICON
+  EDIT_ICON, DELETE_ICON, PLUS_ICON, sheetGrabberHtml, wireSheetDrag
 } from "../utils.js";
 import { manageSwipeWrapHtml, wireManageRowSwipe } from "./manage-row-swipe.js";
 import { CATEGORY_ICON_CHOICES, GOAL_TONES, GOAL_ICONS, iconFor, rowTone, categoryDisplayName } from "../categories.js";
@@ -155,8 +155,9 @@ function renderManageSheet() {
   const dismiss = () => { state[active.key] = null; renderSettings(); };
   container.innerHTML = `
     <div class="filter-sheet-backdrop" id="manageSheetBackdrop">
-      <div class="filter-sheet" role="dialog" aria-label="${escapeHtml(active.title)}">
+      <div class="filter-sheet" role="dialog" aria-modal="true" aria-label="${escapeHtml(active.title)}">
         <div class="filter-sheet-header">
+          ${sheetGrabberHtml()}
           <h3>${escapeHtml(active.title)}</h3>
           <button type="button" class="filter-sheet-close-btn" id="manageSheetClose" aria-label="${escapeHtml(l.closeAria)}">&times;</button>
         </div>
@@ -165,6 +166,10 @@ function renderManageSheet() {
     </div>`;
   $("manageSheetClose").addEventListener("click", dismiss);
   $("manageSheetBackdrop").addEventListener("click", (e) => { if (e.target === $("manageSheetBackdrop")) dismiss(); });
+  // Re-wired on every call, not just once: this sheet's markup is fully
+  // regenerated on every renderManageSheet() call (a fresh grabber element
+  // each time), same reasoning as insights.js's Breakdown filter sheet.
+  wireSheetDrag($("manageSheetContainer").querySelector(".sheet-grabber"), $("manageSheetContainer").querySelector(".filter-sheet"), dismiss);
   // The form's own Save button does exactly what it already does on
   // desktop (mutate state, toast, call renderSettings()) -- that
   // renderSettings() call reaches this same function again afterward and
@@ -659,8 +664,9 @@ function exportSheetHtml() {
   const l = L();
   return `
     <div class="filter-sheet-backdrop" id="exportSheetBackdrop" ${state.exportSheetOpen ? "" : "hidden"}>
-      <div class="filter-sheet" role="dialog" aria-label="${escapeHtml(l.exportBtn)}">
+      <div class="filter-sheet" role="dialog" aria-modal="true" aria-label="${escapeHtml(l.exportBtn)}">
         <div class="filter-sheet-header">
+          ${sheetGrabberHtml()}
           <h3>${escapeHtml(l.exportBtn)}</h3>
           <button type="button" class="filter-sheet-close-btn" id="exportSheetClose" aria-label="${escapeHtml(l.closeAria)}">&times;</button>
         </div>
@@ -701,6 +707,7 @@ function wireExportSheet() {
   const closeBtn = document.getElementById("exportSheetClose");
   openBtn.addEventListener("click", () => { state.exportSheetOpen = true; backdrop.hidden = false; exportSheetFocusTrap.activate(); });
   closeBtn.addEventListener("click", closeExportSheet);
+  wireSheetDrag(backdrop.querySelector(".sheet-grabber"), backdrop.querySelector(".filter-sheet"), closeExportSheet);
   backdrop.addEventListener("click", (e) => { if (e.target === backdrop) closeExportSheet(); });
 }
 

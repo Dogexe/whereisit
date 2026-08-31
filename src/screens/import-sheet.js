@@ -7,7 +7,7 @@
 // already sit.
 import { L } from "../i18n.js";
 import { state, transactions, categories, accounts } from "../state.js";
-import { $, uid, icon, escapeHtml, createFocusTrap, refreshIcons, optionsHtml } from "../utils.js";
+import { $, uid, icon, escapeHtml, createFocusTrap, refreshIcons, optionsHtml, sheetGrabberHtml, wireSheetDrag } from "../utils.js";
 import { findCategoryId, guessCategory, categoryDisplayName } from "../categories.js";
 import { defaultAccountId } from "../derived.js";
 import { saveToStorage } from "../storage.js";
@@ -62,8 +62,9 @@ export function importSheetHtml() {
   const l = L();
   return `
     <div class="filter-sheet-backdrop" id="importSheetBackdrop" ${state.importSheetOpen ? "" : "hidden"}>
-      <div class="filter-sheet" role="dialog" aria-label="${escapeHtml(l.importBtn)}">
+      <div class="filter-sheet" role="dialog" aria-modal="true" aria-label="${escapeHtml(l.importBtn)}">
         <div class="filter-sheet-header">
+          ${sheetGrabberHtml()}
           <h3>${escapeHtml(l.importBtn)}</h3>
           <button type="button" class="filter-sheet-close-btn" id="importSheetClose" aria-label="${escapeHtml(l.closeAria)}">&times;</button>
         </div>
@@ -79,6 +80,7 @@ export function wireImportSheet() {
   openBtn.addEventListener("click", openImportSheet);
   closeBtn.addEventListener("click", closeImportSheet);
   backdrop.addEventListener("click", (e) => { if (e.target === backdrop) closeImportSheet(); });
+  wireSheetDrag(backdrop.querySelector(".sheet-grabber"), backdrop.querySelector(".filter-sheet"), closeImportSheet);
   renderImportStepBody();
 }
 

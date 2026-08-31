@@ -391,23 +391,49 @@
   .filter-sheet {
     width: 100%; max-width: 480px; margin: 0 auto; max-height: 80vh; overflow-y: auto;
     background: var(--color-card); border-radius: 20px 20px 0 0; padding: 20px;
+    padding-top: 8px;
     padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
     box-shadow: var(--shadow-lg); animation: sheet-slide-up var(--duration-normal) var(--ease-standard);
     display: flex; flex-direction: column; gap: 16px;
   }
   @keyframes sheet-slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  /* A drag that doesn't clear wireSheetDrag()'s dismiss threshold animates
+     back to translateY(0) via this class (added right before the reset,
+     removed on transitionend) -- deliberately not a permanent transition on
+     .filter-sheet itself, which would fight the live 1:1 tracking during an
+     active drag (utils.js sets .style.transform directly, no transition,
+     while dragging is true). */
+  .filter-sheet.snap-back { transition: transform var(--duration-fast) var(--ease-standard); }
   /* Sticky so the header (and, on the Add sheet, its Save/Cancel actions --
      see .sheet-header-btn below) stays reachable while a tall sheet's body
      scrolls underneath it, instead of scrolling away with the rest of the
      panel. Applies to every .filter-sheet-header (Filters/Export/Import/
      Manage too, not just Add) since a pinned title+close is a strict
      improvement for any of them -- verified this doesn't shift any
-     existing header's layout, just keeps it in place on scroll. */
+     existing header's layout, just keeps it in place on scroll. padding-top
+     (paired with .filter-sheet's own reduced padding-top above) makes room
+     for .sheet-grabber below, absolutely positioned within this element's
+     own box since position:sticky already establishes a containing block
+     for it -- .sheet-grabber is a sibling in DOM order, not nested inside
+     this rule's own selector, but every sheet renders it as this element's
+     first child (see sheetGrabberHtml()/utils.js). */
   .filter-sheet-header {
     display: flex; align-items: center; justify-content: space-between; gap: 8px;
     position: sticky; top: 0; z-index: 2; background: var(--color-card);
-    padding-bottom: 10px; border-bottom: 1px solid var(--color-border);
+    padding-top: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--color-border);
   }
+  /* The drag handle every sheet renders as its header's first child
+     (sheetGrabberHtml()/wireSheetDrag(), utils.js) -- position:absolute so
+     it overlays the header's own padding-top space without affecting the
+     title/buttons row's flex layout at all. A generous invisible hit area
+     (64x16) around the small visible bar (36x4), matching this app's other
+     touch targets. */
+  .sheet-grabber {
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 64px; height: 16px; display: flex; align-items: center; justify-content: center;
+    cursor: grab; touch-action: none;
+  }
+  .sheet-grabber::after { content: ""; width: 36px; height: 4px; border-radius: 999px; background: var(--color-border); }
   .filter-sheet-header h3 { font-size: 16px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .filter-sheet-header h3.sheet-title-center { text-align: center; }
   .filter-sheet-close-btn { background: none; border: none; font-size: 22px; line-height: 1; color: var(--color-muted); cursor: pointer; padding: 4px 8px; }

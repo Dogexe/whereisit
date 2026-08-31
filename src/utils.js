@@ -101,13 +101,43 @@ const FOCUSABLE_SELECTOR = 'button:not([disabled]), a[href], input:not([disabled
 function trapFocusableElements(container) {
   return Array.from(container.querySelectorAll(FOCUSABLE_SELECTOR)).filter((el) => el.offsetParent !== null);
 }
-// Shared focus trap for the app's dialog/sheet overlays (Transactions' and
-// Insights' Filters sheets, the Add/Edit bottom sheet) -- keeps Tab/Shift+Tab
-// cycling within the open sheet instead of leaking focus into the page
-// content it's covering. `getContainer` is a function, not an element,
-// because some of these sheets fully replace their own inner HTML while
-// still open (e.g. insights.js's renderBreakdownFilterSheet on every field
-// change) -- looking the container up fresh on every keydown, the same
+// Background-scroll lock for the app's dialog/sheet overlays -- neither
+// body nor html was ever scroll-locked while a sheet was open (this app has
+// no separate scrolling container of its own; the whole document scrolls),
+// so a real drag/wheel gesture over the dimmed backdrop could move the page
+// underneath a still-open sheet. Reference-counted (not a plain boolean) in
+// case two sheets are ever activated without the first deactivating first --
+// doesn't happen today, but costs nothing to guard against. Piggybacks on
+// createFocusTrap's activate()/deactivate() below rather than being its own
+// separate call site: every sheet already calls exactly those two methods at
+// exactly the moments scroll should lock/unlock, so no sheet needs a second,
+// easy-to-forget call added alongside its focus-trap wiring.
+let scrollLockCount = 0;
+let savedOverflow = null;
+function lockPageScroll() {
+  if (scrollLockCount === 0) {
+    savedOverflow = { body: document.body.style.overflow, html: document.documentElement.style.overflow };
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+  }
+  scrollLockCount++;
+}
+function unlockPageScroll() {
+  scrollLockCount = Math.max(0, scrollLockCount - 1);
+  if (scrollLockCount === 0 && savedOverflow) {
+    document.body.style.overflow = savedOverflow.body;
+    document.documentElement.style.overflow = savedOverflow.html;
+    savedOverflow = null;
+  }
+}
+// Shared focus trap (and, see above, scroll lock) for the app's dialog/sheet
+// overlays (Transactions' and Insights' Filters sheets, the Add/Edit bottom
+// sheet, Settings' Manage/Export sheets, the Import sheet) -- keeps
+// Tab/Shift+Tab cycling within the open sheet instead of leaking focus into
+// the page content it's covering. `getContainer` is a function, not an
+// element, because some of these sheets fully replace their own inner HTML
+// while still open (e.g. insights.js's renderBreakdownFilterSheet on every
+// field change) -- looking the container up fresh on every keydown, the same
 // pattern this codebase already uses for its module-level Escape listeners,
 // means the trap keeps working across those re-renders without needing to
 // be re-armed each time. It should return the current dialog element (not
@@ -130,13 +160,15 @@ export function createFocusTrap(getContainer) {
   }
   document.addEventListener("keydown", onKeydown);
   return {
-    // Call once, right after the sheet becomes visible in the DOM. Saves
-    // whatever had focus (the button that opened the sheet) so it can be
-    // restored on deactivate(), then moves focus to the first focusable
-    // element inside the sheet -- in every one of this app's sheets that's
-    // the close button, since it's the first thing in DOM order, so no
-    // separate "or the close button" fallback branch is needed.
+    // Call once, right after the sheet becomes visible in the DOM. Locks
+    // background scroll, saves whatever had focus (the button that opened
+    // the sheet) so it can be restored on deactivate(), then moves focus to
+    // the first focusable element inside the sheet -- in every one of this
+    // app's sheets that's the grabber handle or close/cancel button, since
+    // it's the first thing in DOM order, so no separate fallback branch is
+    // needed.
     activate() {
+      lockPageScroll();
       previouslyFocused = document.activeElement;
       const container = getContainer();
       if (!container) return;
@@ -147,8 +179,64 @@ export function createFocusTrap(getContainer) {
     // backdrop tap -- every dismissal path already converges on one
     // close*Sheet() function per sheet, so this only needs one call site).
     deactivate() {
+      unlockPageScroll();
       if (previouslyFocused && document.body.contains(previouslyFocused)) previouslyFocused.focus();
       previouslyFocused = null;
     }
   };
+}
+// A drag handle at the top of every bottom sheet (styles.css's
+// .sheet-grabber), visually signaling the sheet is draggable/dismissable --
+// Mobbin's own bottom-sheet glossary lists this as the standard affordance,
+// alongside or instead of a close button. Paired with wireSheetDrag() below,
+// it's also the actual drag target for a real swipe-down-to-dismiss gesture.
+// Deliberately its own small element rather than making the whole header
+// row draggable: starting a drag from a Cancel/Save/close button would
+// otherwise have to be carefully distinguished from a plain click on it.
+export function sheetGrabberHtml() {
+  return '<div class="sheet-grabber" aria-hidden="true"></div>';
+}
+const SHEET_DISMISS_DISTANCE = 120; // px dragged down before releasing dismisses the sheet
+const SHEET_DISMISS_VELOCITY = 0.5; // px/ms -- a fast-enough flick dismisses even short of the distance above
+// Swipe-down-to-dismiss for a bottom sheet, wired to its grabber handle
+// (sheetGrabberHtml() above). Mirrors tx-row.js's swipe mechanics --
+// pointer capture, a rubber-band clamp against dragging past the resting
+// position, a distance-or-velocity decision on release -- adapted from that
+// file's horizontal reveal to one vertical dismiss gesture. `onDismiss` is
+// each sheet's own existing dismiss()/close*Sheet() function; a drag that
+// doesn't clear the threshold animates back to resting instead.
+export function wireSheetDrag(handle, sheetEl, onDismiss) {
+  let dragging = false, startY = 0, startTime = 0;
+  handle.addEventListener("pointerdown", (e) => {
+    dragging = true;
+    startY = e.clientY;
+    startTime = performance.now();
+    sheetEl.classList.remove("snap-back");
+    handle.setPointerCapture(e.pointerId);
+  });
+  handle.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    const delta = e.clientY - startY;
+    const clamped = delta < 0 ? -Math.sqrt(-delta) * 2 : delta;
+    sheetEl.style.transform = `translateY(${clamped}px)`;
+  });
+  function endDrag(e) {
+    if (!dragging) return;
+    dragging = false;
+    const delta = (e.clientY ?? startY) - startY;
+    const elapsed = Math.max(1, performance.now() - startTime);
+    const velocity = delta / elapsed;
+    if (delta > SHEET_DISMISS_DISTANCE || (delta > 20 && velocity > SHEET_DISMISS_VELOCITY)) {
+      onDismiss();
+      return;
+    }
+    sheetEl.classList.add("snap-back");
+    sheetEl.style.transform = "";
+    sheetEl.addEventListener("transitionend", function onEnd() {
+      sheetEl.classList.remove("snap-back");
+      sheetEl.removeEventListener("transitionend", onEnd);
+    }, { once: true });
+  }
+  handle.addEventListener("pointerup", endDrag);
+  handle.addEventListener("pointercancel", endDrag);
 }

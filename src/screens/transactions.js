@@ -1,6 +1,6 @@
 import { L } from "../i18n.js";
 import { state, categories, accounts } from "../state.js";
-import { $, escapeHtml, refreshIcons, icon, fmtMoney, monthLabel, dateLabel, createFocusTrap, localDateIso, localMonthKey } from "../utils.js";
+import { $, escapeHtml, refreshIcons, icon, fmtMoney, monthLabel, dateLabel, createFocusTrap, localDateIso, localMonthKey, sheetGrabberHtml, wireSheetDrag } from "../utils.js";
 import { categoryDisplayName } from "../categories.js";
 import { accountNameById } from "../accounts.js";
 import { availableYears, yearLabel, filteredTxList } from "../derived.js";
@@ -243,8 +243,9 @@ function filterSheetHtml() {
     </label>`).join("");
   return `
     <div class="filter-sheet-backdrop" id="txFilterSheetBackdrop" ${state.txFilterSheetOpen ? "" : "hidden"}>
-      <div class="filter-sheet" role="dialog" aria-label="${escapeHtml(l.filtersBtn)}">
+      <div class="filter-sheet" role="dialog" aria-modal="true" aria-label="${escapeHtml(l.filtersBtn)}">
         <div class="filter-sheet-header">
+          ${sheetGrabberHtml()}
           <h3>${escapeHtml(l.filtersBtn)}</h3>
           <button type="button" class="filter-sheet-close-btn" id="txFilterSheetClose" aria-label="${escapeHtml(l.closeAria)}">&times;</button>
         </div>
@@ -306,6 +307,7 @@ function wireFilterSheet() {
   openBtn.addEventListener("click", () => { state.txFilterSheetOpen = true; backdrop.hidden = false; txFilterFocusTrap.activate(); });
   closeBtn.addEventListener("click", closeTxFilterSheet);
   backdrop.addEventListener("click", (e) => { if (e.target === backdrop) closeTxFilterSheet(); });
+  wireSheetDrag(backdrop.querySelector(".sheet-grabber"), backdrop.querySelector(".filter-sheet"), closeTxFilterSheet);
   document.querySelectorAll('input[name="tx-type-filter"]').forEach((r) => r.addEventListener("change", (e) => { state.txFilterType = e.target.value; refreshFilteredResults(); }));
   document.querySelectorAll("[data-filter-cat]").forEach((cb) => cb.addEventListener("change", () => {
     const id = cb.getAttribute("data-filter-cat");

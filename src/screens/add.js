@@ -1,6 +1,6 @@
 import { L } from "../i18n.js";
 import { state, transactions, categories, accounts, setTransactions } from "../state.js";
-import { $, uid, escapeHtml, dateLabel, formatDateTyping, parseDateText, optionsHtml, refreshIcons, icon, isDesktopShell, createFocusTrap, localDateIso } from "../utils.js";
+import { $, uid, escapeHtml, dateLabel, formatDateTyping, parseDateText, optionsHtml, refreshIcons, icon, isDesktopShell, createFocusTrap, localDateIso, sheetGrabberHtml, wireSheetDrag } from "../utils.js";
 import { guessCategory, categoryDisplayName } from "../categories.js";
 import { accountNameById } from "../accounts.js";
 import { checkBudgetAlert, resolveCategoryId, mostUsedCategoryIds, defaultAccountId } from "../derived.js";
@@ -448,8 +448,9 @@ function renderAddSheet() {
   // keep in sync.
   container.innerHTML = `
     <div class="filter-sheet-backdrop" id="addSheetBackdrop" ${state.addSheetOpen ? "" : "hidden"}>
-      <div class="filter-sheet" role="dialog" aria-label="${escapeHtml(isEditing ? l.editTitle : l.addTitle)}">
+      <div class="filter-sheet" role="dialog" aria-modal="true" aria-label="${escapeHtml(isEditing ? l.editTitle : l.addTitle)}">
         <div class="filter-sheet-header">
+          ${sheetGrabberHtml()}
           <button type="button" class="sheet-header-btn" id="addSheetCancel">${escapeHtml(l.cancelBtn)}</button>
           <h3 class="sheet-title-center">${escapeHtml(isEditing ? l.editTitle : l.addTitle)}</h3>
           <button type="submit" form="addForm" class="sheet-header-btn sheet-header-btn-primary" id="addSheetSaveTop">${escapeHtml(l.saveShortBtn)}</button>
@@ -458,13 +459,14 @@ function renderAddSheet() {
       </div>
     </div>
   `;
-  // Backdrop tap, the header's Cancel button, and Escape (below) all
-  // converge on this same silent-discard dismissal -- matching the Filters
-  // sheet, there's no "unsaved changes" confirmation.
+  // Backdrop tap, the header's Cancel button, a swipe-down on the grabber,
+  // and Escape (below) all converge on this same silent-discard dismissal --
+  // matching the Filters sheet, there's no "unsaved changes" confirmation.
   const dismiss = () => { resetForm(); closeAddSheet(); };
   $("addSheetCancel").addEventListener("click", dismiss);
   const backdrop = $("addSheetBackdrop");
   backdrop.addEventListener("click", (e) => { if (e.target === backdrop) dismiss(); });
+  wireSheetDrag(backdrop.querySelector(".sheet-grabber"), backdrop.querySelector(".filter-sheet"), dismiss);
   wireAddForm({
     onSaved: () => { resetForm(); closeAddSheet(); renderScreen(); },
     onCancelled: dismiss

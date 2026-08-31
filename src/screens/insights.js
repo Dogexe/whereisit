@@ -1,6 +1,6 @@
 import { L } from "../i18n.js";
 import { state, categories } from "../state.js";
-import { $, escapeHtml, fmtMoney, icon, refreshIcons, monthNameFull, createFocusTrap, localDateIso } from "../utils.js";
+import { $, escapeHtml, fmtMoney, icon, refreshIcons, monthNameFull, createFocusTrap, localDateIso, sheetGrabberHtml, wireSheetDrag } from "../utils.js";
 import { categoryDisplayName } from "../categories.js";
 import {
   yearLabel, computeBudgets, computeBudgetsForYear,
@@ -189,8 +189,9 @@ function insightsFilterSheetHtml() {
   const kind = state.insightsCustomKind;
   return `
     <div class="filter-sheet-backdrop" id="insightsFilterSheetBackdrop" ${state.insightsFilterSheetOpen ? "" : "hidden"}>
-      <div class="filter-sheet" role="dialog" aria-label="${escapeHtml(l.filtersBtn)}">
+      <div class="filter-sheet" role="dialog" aria-modal="true" aria-label="${escapeHtml(l.filtersBtn)}">
         <div class="filter-sheet-header">
+          ${sheetGrabberHtml()}
           <h3>${escapeHtml(l.filtersBtn)}</h3>
           <button type="button" class="filter-sheet-close-btn" id="insightsFilterSheetClose" aria-label="${escapeHtml(l.closeAria)}">&times;</button>
         </div>
@@ -241,8 +242,13 @@ function renderBreakdownFilterSheet() {
   container.innerHTML = insightsFilterSheetHtml();
   const backdrop = document.getElementById("insightsFilterSheetBackdrop");
   const closeBtn = document.getElementById("insightsFilterSheetClose");
-  closeBtn.addEventListener("click", () => { closeInsightsFilterSheet(); renderBreakdownFilterSheet(); });
-  backdrop.addEventListener("click", (e) => { if (e.target === backdrop) { closeInsightsFilterSheet(); renderBreakdownFilterSheet(); } });
+  const dismiss = () => { closeInsightsFilterSheet(); renderBreakdownFilterSheet(); };
+  closeBtn.addEventListener("click", dismiss);
+  backdrop.addEventListener("click", (e) => { if (e.target === backdrop) dismiss(); });
+  // Re-wired on every call, not just once: this whole sheet re-renders its
+  // markup (a fresh backdrop/grabber element) on almost every field change
+  // while open -- see this function's own doc comment above.
+  wireSheetDrag(backdrop.querySelector(".sheet-grabber"), backdrop.querySelector(".filter-sheet"), dismiss);
   const clearBtn = document.getElementById("insightsClearRangeBtn");
   if (clearBtn) clearBtn.addEventListener("click", () => { clearCustomRange(); renderBreakdownFilterSheet(); renderBreakdownToolbar(); renderBreakdownContent(); });
   document.querySelectorAll("[data-insights-custom-kind]").forEach((b) => b.addEventListener("click", () => {
