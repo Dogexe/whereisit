@@ -107,6 +107,14 @@
   a { color: var(--color-accent); }
   svg { display: block; }
   .icon { width: 18px; height: 18px; flex-shrink: 0; }
+  /* Nav icons carry both a Lucide (.icon-lucide) and a Radix (.icon-linear)
+     <use> in the same <svg>, per docs/specs/linear-theme.md Stage 3 -- only
+     one is ever shown, toggled by the data-theme-style attribute theme.js
+     sets on <html>. Defaults to showing Lucide so a pre-JS/first-paint icon
+     never shows blank or the wrong set. */
+  .icon-linear { display: none; }
+  html[data-theme-style="linear"] .icon-lucide { display: none; }
+  html[data-theme-style="linear"] .icon-linear { display: inline; }
 
   .app { display: flex; flex-direction: column; min-height: 100vh; }
 
