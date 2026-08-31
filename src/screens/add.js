@@ -251,6 +251,15 @@ function updateFormTypeVisibility() {
   const l = L();
   const isTransfer = state.formType === "transfer";
   $("categoryField").classList.toggle("form-field-hidden", isTransfer);
+  // Real bug found live: no category has type "transfer", so
+  // renderFormCategoryOptions() always leaves #txCategory with zero
+  // <option>s on this tab. Chrome does NOT exclude a required select from
+  // constraint validation just because an ancestor is display:none, so a
+  // required-but-optionless #txCategory silently blocked the native
+  // "submit" event on every Transfer save -- the click never even reached
+  // this file's own submit handler, hence zero console output and no
+  // visible error (the validation bubble can't anchor to a hidden field).
+  $("txCategory").required = !isTransfer;
   $("accountFieldLabel").textContent = isTransfer ? l.transferFromLabel : l.accountLabel;
   $("transferSwapRow").classList.toggle("form-field-hidden", !isTransfer);
   $("transferToField").classList.toggle("form-field-hidden", !isTransfer);
