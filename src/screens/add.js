@@ -184,7 +184,12 @@ export function renderCategoryChips() {
 // once, not twice in slow drift. Only the surrounding chrome (a
 // screen-title vs. a sheet header+close button) and what happens after
 // save/cancel differ between the two callers.
-function addFormFieldsHtml(l, isEditing) {
+// opts.hideBottomButtons: the mobile sheet (renderAddSheet) puts Save/Cancel
+// in a sticky header instead (see below) -- easier to reach one-handed and
+// never gets covered by the on-screen keypad the way a bottom-of-form button
+// can. Desktop's full-page renderAdd() has no such button and keeps the
+// original bottom buttons.
+function addFormFieldsHtml(l, isEditing, opts = {}) {
   return `
     <form class="add-form" id="addForm">
       <div class="field">
@@ -231,8 +236,9 @@ function addFormFieldsHtml(l, isEditing) {
         <label for="txNote">${escapeHtml(l.noteLabel)}</label>
         <div class="input-wrap"><input type="text" id="txNote" placeholder="${escapeHtml(l.notePlaceholder)}"></div>
       </div>
+      ${opts.hideBottomButtons ? "" : `
       <button type="submit" class="btn btn-primary btn-block">${escapeHtml(isEditing ? l.saveEditBtn : l.saveBtn)}</button>
-      ${isEditing ? `<button type="button" class="btn btn-secondary btn-block" id="cancelEditBtn">${escapeHtml(l.cancelEditBtn)}</button>` : ""}
+      ${isEditing ? `<button type="button" class="btn btn-secondary btn-block" id="cancelEditBtn">${escapeHtml(l.cancelEditBtn)}</button>` : ""}`}
     </form>
   `;
 }
@@ -340,7 +346,10 @@ function wireAddForm({ onSaved, onCancelled }) {
     const guess = guessCategory(this.value, state.formType);
     if (guess) { state.formCategoryId = guess; $("txCategory").value = guess; renderCategoryChips(); }
   });
-  if (isEditing) $("cancelEditBtn").addEventListener("click", onCancelled);
+  // Nullish-safe: the sheet variant (opts.hideBottomButtons) never renders
+  // #cancelEditBtn at all -- its Cancel action lives in the sticky header
+  // instead (see renderAddSheet()'s own #addSheetCancel wiring).
+  if (isEditing) $("cancelEditBtn")?.addEventListener("click", onCancelled);
   $("addForm").addEventListener("submit", function (e) {
     e.preventDefault();
     const date = state.formDate;
@@ -426,22 +435,34 @@ function renderAddSheet() {
   const l = L();
   const isEditing = !!state.editingId;
   const container = $("addSheetContainer");
+  // Save/Cancel live in the header, not just at the end of the form: on a
+  // real phone with the keypad up (entering the amount), the bottom of a
+  // tall form can sit behind the keyboard entirely, making a bottom-only
+  // Save button unreachable without dismissing the keypad first. The header
+  // is `position: sticky` (styles.css) so both stay visible while scrolling
+  // the form, mirroring the Cancel/Save pattern from Apple's own Sheets HIG.
+  // Save is a plain `form="addForm"` button, not a JS click handler -- it
+  // triggers the exact same native submit (and thus the exact same
+  // validation/submit-handler code path in wireAddForm below) as pressing
+  // Enter in a field would, so there's no second copy of the save logic to
+  // keep in sync.
   container.innerHTML = `
     <div class="filter-sheet-backdrop" id="addSheetBackdrop" ${state.addSheetOpen ? "" : "hidden"}>
       <div class="filter-sheet" role="dialog" aria-label="${escapeHtml(isEditing ? l.editTitle : l.addTitle)}">
         <div class="filter-sheet-header">
-          <h3>${escapeHtml(isEditing ? l.editTitle : l.addTitle)}</h3>
-          <button type="button" class="filter-sheet-close-btn" id="addSheetClose" aria-label="${escapeHtml(l.closeAria)}">&times;</button>
+          <button type="button" class="sheet-header-btn" id="addSheetCancel">${escapeHtml(l.cancelBtn)}</button>
+          <h3 class="sheet-title-center">${escapeHtml(isEditing ? l.editTitle : l.addTitle)}</h3>
+          <button type="submit" form="addForm" class="sheet-header-btn sheet-header-btn-primary" id="addSheetSaveTop">${escapeHtml(l.saveShortBtn)}</button>
         </div>
-        ${addFormFieldsHtml(l, isEditing)}
+        ${addFormFieldsHtml(l, isEditing, { hideBottomButtons: true })}
       </div>
     </div>
   `;
-  // Backdrop tap, the close button, and Escape (below) all converge on
-  // this same silent-discard dismissal -- matching the Filters sheet,
-  // there's no "unsaved changes" confirmation.
+  // Backdrop tap, the header's Cancel button, and Escape (below) all
+  // converge on this same silent-discard dismissal -- matching the Filters
+  // sheet, there's no "unsaved changes" confirmation.
   const dismiss = () => { resetForm(); closeAddSheet(); };
-  $("addSheetClose").addEventListener("click", dismiss);
+  $("addSheetCancel").addEventListener("click", dismiss);
   const backdrop = $("addSheetBackdrop");
   backdrop.addEventListener("click", (e) => { if (e.target === backdrop) dismiss(); });
   wireAddForm({

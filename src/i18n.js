@@ -30,6 +30,7 @@ export const STRINGS = {
   editAria: ["แก้ไข", "Edit"], deleteAria: ["ลบ", "Delete"],
   addTitle: ["เพิ่มรายการ", "Add transaction"], editTitle: ["แก้ไขรายการ", "Edit transaction"],
   saveBtn: ["บันทึกรายการ", "Save transaction"], saveEditBtn: ["บันทึกการแก้ไข", "Save changes"],
+  saveShortBtn: ["บันทึก", "Save"],
   typeLabel: ["ประเภท", "Type"], dateLabel: ["วันที่", "Date"], categoryLabel: ["หมวดหมู่", "Category"],
   moreCategoriesBtn: ["เพิ่มเติม", "More"],
   amountLabel: ["จำนวนเงิน (บาท)", "Amount (THB)"],
