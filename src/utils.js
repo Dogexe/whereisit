@@ -130,6 +130,40 @@ function unlockPageScroll() {
     savedOverflow = null;
   }
 }
+// Keeps an open bottom sheet's backdrop sized to the actually-visible
+// viewport, not the full layout viewport. Real bug reported directly by the
+// user ("keypad push entire bottom page up"): most mobile browsers handle
+// the on-screen keyboard by shrinking only the *visual* viewport, leaving
+// the *layout* viewport (what position:fixed/inset:0 and plain vh units are
+// relative to) exactly as tall as before -- so .filter-sheet-backdrop's
+// `inset: 0` still claimed the pre-keyboard full height, and the browser's
+// own "scroll the focused input into view" behavior had to scroll the
+// *whole* fixed-position sheet (sticky header, Save button, and all) up and
+// off-screen to bring a bottom-of-form field above the keyboard, instead of
+// just scrolling that field within the sheet's own small remaining space.
+// The visualViewport API (broad support: Safari 13+, Chrome 62+) reports
+// the real, keyboard-adjusted visible height directly; syncing the backdrop
+// (and the sheet's own max-height, proportionally) to it means the
+// browser's native scroll-into-view only ever has to move the input within
+// a backdrop that's already the correct, smaller size -- the sticky header
+// stays inside that same visible area throughout, never pushed off top.
+function syncSheetToViewport(backdrop) {
+  if (!backdrop || !window.visualViewport) return;
+  const vv = window.visualViewport;
+  backdrop.style.height = vv.height + "px";
+  backdrop.style.top = vv.offsetTop + "px";
+  const sheet = backdrop.querySelector(".filter-sheet");
+  // 0.8 matches styles.css's own default 80vh -- when the keyboard is
+  // closed, vv.height already equals the layout viewport's height, so this
+  // computes the same max-height the plain CSS rule would; it only differs
+  // (shrinks further) once vv.height itself has shrunk for the keyboard.
+  if (sheet) sheet.style.maxHeight = Math.round(vv.height * 0.8) + "px";
+}
+if (typeof window !== "undefined" && window.visualViewport) {
+  const syncOpenSheet = () => syncSheetToViewport(document.querySelector(".filter-sheet-backdrop:not([hidden])"));
+  window.visualViewport.addEventListener("resize", syncOpenSheet);
+  window.visualViewport.addEventListener("scroll", syncOpenSheet);
+}
 // Shared focus trap (and, see above, scroll lock) for the app's dialog/sheet
 // overlays (Transactions' and Insights' Filters sheets, the Add/Edit bottom
 // sheet, Settings' Manage/Export sheets, the Import sheet) -- keeps
@@ -172,6 +206,7 @@ export function createFocusTrap(getContainer) {
       previouslyFocused = document.activeElement;
       const container = getContainer();
       if (!container) return;
+      syncSheetToViewport(container.closest(".filter-sheet-backdrop"));
       const first = trapFocusableElements(container)[0];
       if (first) first.focus();
     },
