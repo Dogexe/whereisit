@@ -1,0 +1,59 @@
+# Spec: a selectable "Linear" theme in Settings
+
+Status: **Stage 1 done and live-verified. Stages 2-3 not yet built.** Reached through a live design exploration this session — a monochrome-accent Artifact prototype grounded in real pixels pulled from linear.app (not memory or a generic "Linear-inspired" guess) — then an interview to scope bringing it into the real app. Requested directly: bring the exploration into the real app, and add a way to choose it in Settings.
+
+## Goal
+
+The app has one fixed visual identity today (indigo accent, 16-24px rounded cards, Lucide stroke icons, bold headings). The goal is to offer a second, real alternative — not a color swap, a genuinely different look modeled on Linear's own design language — that a user can switch to from Settings, the same way they already switch dark mode on and off. The two most valuable outputs of the interview: this is a **bundled theme choice** (accent + structure + icons together), not an independent accent-color picker layered on top of the existing look; and the existing `--radius-*`/`--shadow-*` token system already used by most components means this is cheaper to build than it first looked, since most of the work is redefining tokens in one place rather than touching every screen.
+
+## Reference (grounded, not assumed)
+
+Three passes of live inspection of linear.app fed this spec, each verified against real computed styles rather than eyeballed:
+- **Color**: page background `rgb(8,9,10)`, body text `rgb(247,248,248)`, Inter Variable at weight `510`. Linear's own signature purple (`#5E6AD2`-family) appears only a handful of times across the whole rendered DOM — even their primary "Sign up" button is a plain light pill on dark, not a colored fill.
+- **Icons**: sampled 159 real rendered icons — 84% filled solid shapes (not outlines), 96% on a 14-16px grid. [Radix Icons](https://www.radix-ui.com/icons) (MIT) is the closest free match: 330/330 icons on an identical 15×15 grid, 100% filled.
+- **Structure**: inspected a real UI panel in Linear's product screenshot — 12px corner radius (not the pill shape its own small buttons use, and not this app's own 16-20px), a near-invisible 0.8px hairline border, one soft large-blur low-opacity shadow (not flat, not a hard drop shadow), card background barely lighter than the page behind it, headings at weight 600 (not 700).
+
+## Decisions (confirmed via interview)
+
+1. **A bundled theme, not an independent accent picker.** Settings gains one new toggle, `Theme: Current / Linear`, that changes accent color, panel radius/border/shadow, heading weight, and nav icons together. There's no separate "pick your own hue" control — accent is one property of the theme you pick, not a free choice on top of it.
+2. **Two options now, but store it as a string, not a boolean.** `state.themeStyle` is `"current" | "linear"`, not `state.linearMode: boolean` — so a third preset can be added later without changing the persisted data shape or touching every read site.
+3. **Local-device-only persistence**, same treatment as `state.dark`/`state.lang` today: saved to `localStorage` via `saveSettings()`, never synced through Supabase, never touched by `wipeLocalAccountData()` on sign-out/account-switch. A theme is a device preference, not account data.
+4. **Fully independent of Dark Mode.** Theme and Mode are two separate switches in Settings; all four combinations (Current+Light, Current+Dark, Linear+Light, Linear+Dark) are valid and each needs its own token set, mirroring the prototype exactly.
+5. **Icon mixing is accepted, not a gap to close.** Under the Linear theme, the 5 nav icons (Home, Transactions, Add, Insights, Settings — tab bar *and* sidebar, both `.nav-btn` instances per `CLAUDE.md`'s architecture notes) switch to real Radix Icons SVG path data. The ~40 category icons stay Lucide (`icons/sprite.svg`) regardless of theme, since Radix has no equivalent for "food," "rent," or "briefcase." Documented here as deliberate so a future session doesn't "fix" it.
+6. **The hero balance card drops its gradient entirely under the Linear theme** — solid near-black (light mode) / near-white (dark mode) fill, matching the prototype exactly, not just a re-tinted version of today's `linear-gradient(135deg, var(--color-accent), var(--color-accent-700))`. This needs one theme-scoped override on `.hero-card`, not just new token values, since the gradient itself (not just its color inputs) needs to go away.
+7. **"Filled buttons go monochrome" ships too, not just the hero card** — this was the prototype's single biggest, most visible move, and the interview treated it as implied by "bring the whole exploration in," not optional. `.btn-primary`, the tab bar's raised Add button, and the active period-pill all switch from an accent fill to the same solid monochrome fill as the hero card under the Linear theme. The accent hue itself (tuned to `#5333d6` light / `#9a8dff` dark per the prototype's contrast-checked values) is reserved for small text/links and focus states only — filled surfaces never carry it under this theme.
+8. **Radius and shadow changes ride the existing token system.** `--radius-lg` (currently `18px`, used by `.card`, `.hero-card`, popovers, and others per a direct grep of `styles.css`) redefines to `12px` under the Linear theme; `--shadow-sm`/`--shadow-lg`/`--shadow-accent` redefine to soft, large-blur, low-opacity values. This is the same mechanism `theme.js`'s `applyTheme()` already uses for dark/light color tokens — a new `applyThemeStyle()` (or an extension of `applyTheme()`) sets these as CSS custom properties on `:root`, and every component already written against `var(--radius-lg)` etc. picks up the new values with no per-component changes. A few components hardcode raw pixel radii instead of the token (`.filter-sheet`'s `20px 20px 0 0`, `.sheet-grabber::after`'s `999px`, `.import-preview-row`'s `8px`) — these are out of scope for this pass unless they visually clash badly enough to need a follow-up; see "Explicitly out of scope."
+9. **Heading weight needs a new token.** No `--weight-heading`-equivalent exists today (headings are hardcoded `font-weight: 700` at their own call sites). The Linear theme introduces one, defaulting to `700` under the Current theme (no visual change) and `600` under Linear, applied to `h1`-`h4`, `.screen-title`, and the other heading-weight call sites already identified in the microinteraction/UI-fundamentals passes' own letter-spacing work.
+
+## Staged build plan
+
+### Stage 1 — Theme infrastructure, no visible change yet — done
+- `src/state.js`: `themeStyle: "current"` default.
+- `src/storage.js`: loaded from/saved to `localStorage` (`SETTINGS_KEY`) alongside `state.dark`/`state.lang`, same validation-then-assign pattern (`s.themeStyle === "current" || s.themeStyle === "linear"`).
+- `src/theme.js`: a new `applyThemeStyle()`, called from `main.js`'s boot alongside the existing `applyTheme()`. **Simpler than originally planned**: rather than immediately defining `linearLight`/`linearDark` token objects (which would have made Stage 1 visually live before Stage 2's actual values were designed), it currently only sets `document.documentElement.dataset.themeStyle` — a marker attribute nothing reads yet. Stage 2 adds the real token overrides here, following `applyTheme()`'s existing `light`/`dark` object pattern.
+- `src/screens/settings.js`: a new toggle row in the Display card, directly under Dark Mode — a `.tabs`/`.tab-opt` radiogroup (matching the Language row's shape, not Dark Mode's boolean `.switch`, since this is a *named* 2-way choice, not on/off) with a new `palette` icon (fetched from the same pinned `lucide-static@1.35.0` every other icon in `icons/sprite.svg` comes from, inserted alphabetically between `more-horizontal` and `pencil`, re-verified with a real XML parser per this repo's own standing warning about that file). `change` listener sets `state.themeStyle`, calls `saveSettings()` + `applyThemeStyle()` + `renderScreen()`.
+- New `themeSection`/`themeCurrentOpt`/`themeLinearOpt` i18n strings, Thai and English.
+
+**Verify (done)**: `npm run build`, `npm test` (136/136), `npm run test:e2e` (9/9). Live-verified: the toggle switches and its selected state renders correctly; `document.documentElement.dataset.themeStyle` and the persisted `localStorage` value both update correctly on click; reloading the page keeps the choice; confirmed **zero visual change anywhere in the app** (Home, Settings, tab bar, sidebar all pixel-identical with Linear selected) since nothing reads the new attribute yet, exactly as planned. Dark mode confirmed working independently and unaffected. Reset back to "current" after verification to leave the tested build in its default state.
+
+### Stage 2 — Linear theme visual tokens and component overrides
+- `styles.css`: `.hero-card` background rule becomes `var(--hero-fill)` (a new token, gradient under Current, solid under Linear) instead of a hardcoded `linear-gradient(...)`. `.btn-primary`, the tab bar's `[data-tab="add"]` circle, and the active period-pill's filled state switch from `var(--color-accent)` to the same `--hero-fill`-style monochrome token.
+- Apply `var(--weight-heading)` to `h1, h2, h3, h4, .screen-title` (auditing the exact call sites the UI/UX-fundamentals pass already touched for letter-spacing, so this doesn't miss one).
+- Contrast-check the tuned accent values (`#5333d6` light / `#9a8dff` dark, already validated at 7.5:1/7.1:1 against the prototype's own mono card colors) against this app's *real* card/background colors, not the prototype's approximated ones — the numbers may shift slightly since the real app's tokens aren't identical to the prototype's hand-picked mono palette.
+
+**Verify**: Live-verify all four Theme×Mode combinations on Home (hero card, stat cards, tab bar), Add sheet (Save button, active type tab), and Settings itself (the very toggle being tested). Confirm Current theme is pixel-unchanged from before this stage in both light and dark.
+
+### Stage 3 — Radix icon swap for the 5 nav icons
+- Fetch the real Radix Icons SVG path data (already sourced once this session: home, list-bullet, plus, pie-chart, gear) and add them to `icons/sprite.svg` as new symbols (re-verify with a real XML parser afterward, per this file's own standing warning about silent corruption from a `--` inside a comment).
+- `index.html`'s 5 `.nav-btn` icon references (tab bar + sidebar, 10 `<use>` elements total per the existing dual-nav architecture) need theme-conditional `href` swapping — most likely two `<use>` elements per icon (Lucide + Radix) with CSS visibility toggling on `[data-theme-style]`, mirroring the prototype's `.icon-current`/`.icon-mono` pattern, rather than a JS-driven href rewrite on every theme toggle.
+
+**Verify**: Live-verify all 5 nav icons render correctly in both nav surfaces (mobile tab bar, desktop sidebar) under the Linear theme, and that switching back to Current restores the exact original Lucide icons with no leftover Radix symbol visible.
+
+## Explicitly out of scope
+
+- A free-form color picker, or any accent choice independent of the bundled theme.
+- Syncing the theme choice across devices.
+- A third theme preset (the string-typed `themeStyle` field makes this possible later, but only two ship now).
+- Changing category icons away from Lucide under any theme.
+- Fixing the handful of components that hardcode a raw pixel radius instead of `var(--radius-lg)` (`.filter-sheet`, `.sheet-grabber::after`, `.import-preview-row`) — flagged in decision 8, not addressed here unless Stage 2's live verification finds one of them visually clashing badly enough to need it.
+- Any change to layout, spacing, or information density — this spec is a re-skin (color, radius, shadow, weight, nav icons), not a layout redesign.

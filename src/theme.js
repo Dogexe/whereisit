@@ -28,3 +28,15 @@ export function applyTheme() {
   const themeColorMeta = $("themeColorMeta");
   if (themeColorMeta) themeColorMeta.setAttribute("content", t.bg);
 }
+// Stage 1 of docs/specs/linear-theme.md: infrastructure only, no visible
+// change yet. Sets a data attribute for Stage 2's CSS/JS to key off of --
+// nothing reads it yet, so toggling state.themeStyle today is a no-op
+// visually, verified by checking there's genuinely no rule anywhere
+// selecting on [data-theme-style]. Stage 2 will add the actual token
+// overrides (radius/shadow/weight/accent) here, following the exact same
+// light/dark object pattern applyTheme() already uses above, just with two
+// more variants (linear-light/linear-dark) selected by state.themeStyle
+// as well as state.dark.
+export function applyThemeStyle() {
+  document.documentElement.setAttribute("data-theme-style", state.themeStyle);
+}

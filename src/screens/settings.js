@@ -10,7 +10,7 @@ import { ACCOUNT_ICON_CHOICES, accountNameById } from "../accounts.js";
 import { accountDisplayName } from "../account.js";
 import { daysUntilBillDue, dueSoonLabel, resolveCategoryId, computeBalance } from "../derived.js";
 import { saveSettings } from "../storage.js";
-import { applyTheme } from "../theme.js";
+import { applyTheme, applyThemeStyle } from "../theme.js";
 import {
   currentUser, lastSyncStatus, signInWithGoogle, signOutUser, syncNow,
   budgetToRow, billToRow, goalToRow, categoryToRow, accountToRow, pushRows
@@ -760,6 +760,14 @@ export function renderSettings() {
             <span class="label">${escapeHtml(l.darkModeBtn)}</span>
             <button type="button" class="switch ${state.dark ? "on" : ""}" id="darkSwitch"><span class="thumb"></span></button>
           </div>
+          <div class="toggle-row">
+            ${iconAvatar("palette", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+            <span class="label">${escapeHtml(l.themeSection)}</span>
+            <div class="tabs" role="radiogroup" style="flex-shrink:0">
+              <label class="tab-opt"><input type="radio" name="theme-style-switch" value="current" ${state.themeStyle === "current" ? "checked" : ""}>${escapeHtml(l.themeCurrentOpt)}</label>
+              <label class="tab-opt"><input type="radio" name="theme-style-switch" value="linear" ${state.themeStyle === "linear" ? "checked" : ""}>${escapeHtml(l.themeLinearOpt)}</label>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -897,6 +905,9 @@ export function renderSettings() {
   $("authBtn").addEventListener("click", () => { currentUser ? signOutUser() : signInWithGoogle(); });
   document.querySelectorAll('input[name="lang-switch"]').forEach((r) => r.addEventListener("change", (e) => { state.lang = e.target.value; saveSettings(); renderChrome(); renderScreen(); }));
   $("darkSwitch").addEventListener("click", () => { state.dark = !state.dark; saveSettings(); applyTheme(); renderScreen(); });
+  document.querySelectorAll('input[name="theme-style-switch"]').forEach((r) => r.addEventListener("change", (e) => {
+    state.themeStyle = e.target.value; saveSettings(); applyThemeStyle(); renderScreen();
+  }));
   $("syncNowBtn").addEventListener("click", syncNow);
   if ($("pushReminderSwitch")) $("pushReminderSwitch").addEventListener("click", async () => {
     if (pushReminderState() === "enabled") await disableBillReminders();

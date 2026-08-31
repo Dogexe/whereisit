@@ -44,6 +44,7 @@ export const STRINGS = {
   noExpensesPeriod: ["ยังไม่มีรายจ่ายในช่วงนี้", "No expenses yet in this period"], settingsTitle: ["ตั้งค่า", "Settings"],
   personalAccount: ["บัญชีส่วนตัว", "Personal account"], languageSection: ["ภาษา", "Language"],
   displaySection: ["การแสดงผล", "Display"],
+  themeSection: ["ธีม", "Theme"], themeCurrentOpt: ["ปกติ", "Current"], themeLinearOpt: ["Linear", "Linear"],
   syncSection: ["ซิงค์ข้ามอุปกรณ์", "Cross-device sync"], dataSection: ["ข้อมูล", "Data"],
   manageSection: ["จัดการ", "Manage"],
   exportBtn: ["ส่งออกข้อมูล", "Export"],

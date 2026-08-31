@@ -31,6 +31,7 @@ export function loadFromStorage() {
       const s = JSON.parse(raw);
       if (s.lang === "th" || s.lang === "en") state.lang = s.lang;
       if (typeof s.dark === "boolean") state.dark = s.dark;
+      if (s.themeStyle === "current" || s.themeStyle === "linear") state.themeStyle = s.themeStyle;
       // A saved *empty* array must win over the hardcoded defaults -- the
       // user deleted their last budget/bill/goal on purpose. Only a
       // missing key (no prior save) falls back to state.js's defaults; see
@@ -65,6 +66,6 @@ export function saveToStorage() {
 }
 export function saveSettings() {
   if (!storageAvailable) { warnUnavailable(); return; }
-  try { window.localStorage.setItem(SETTINGS_KEY, JSON.stringify({ lang: state.lang, dark: state.dark, budgets, bills, goals, categories, accounts })); }
+  try { window.localStorage.setItem(SETTINGS_KEY, JSON.stringify({ lang: state.lang, dark: state.dark, themeStyle: state.themeStyle, budgets, bills, goals, categories, accounts })); }
   catch (e) { queueMicrotask(() => showToast(L().toastSaveFailed)); }
 }

@@ -14,6 +14,12 @@ const curMonthNumLocal = String(now.getMonth() + 1).padStart(2, "0");
 
 export const state = {
   lang: "th", dark: false,
+  // "current" | "linear" -- a bundled visual theme (accent + panel radius/
+  // border/shadow + heading weight + nav icons), not an independent accent
+  // picker. Device-local only, same treatment as lang/dark immediately
+  // above: never synced via Supabase, never touched by
+  // wipeLocalAccountData(). See docs/specs/linear-theme.md.
+  themeStyle: "current",
   tab: "home", insightsTab: "budgets",
   // Budgets and Breakdown ("Categories") tabs each get their own instance
   // of the same pill component (period-picker.js's pillPickerHtml/
