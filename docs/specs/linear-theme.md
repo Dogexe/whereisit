@@ -1,6 +1,6 @@
 # Spec: a selectable "Linear" theme in Settings
 
-Status: **Stage 1 done and live-verified. Stages 2-3 not yet built.** Reached through a live design exploration this session — a monochrome-accent Artifact prototype grounded in real pixels pulled from linear.app (not memory or a generic "Linear-inspired" guess) — then an interview to scope bringing it into the real app. Requested directly: bring the exploration into the real app, and add a way to choose it in Settings.
+Status: **Stages 1-2 done and live-verified. Stage 3 not yet built.** Reached through a live design exploration this session — a monochrome-accent Artifact prototype grounded in real pixels pulled from linear.app (not memory or a generic "Linear-inspired" guess) — then an interview to scope bringing it into the real app. Requested directly: bring the exploration into the real app, and add a way to choose it in Settings.
 
 ## Goal
 
@@ -41,7 +41,17 @@ Three passes of live inspection of linear.app fed this spec, each verified again
 - Apply `var(--weight-heading)` to `h1, h2, h3, h4, .screen-title` (auditing the exact call sites the UI/UX-fundamentals pass already touched for letter-spacing, so this doesn't miss one).
 - Contrast-check the tuned accent values (`#5333d6` light / `#9a8dff` dark, already validated at 7.5:1/7.1:1 against the prototype's own mono card colors) against this app's *real* card/background colors, not the prototype's approximated ones — the numbers may shift slightly since the real app's tokens aren't identical to the prototype's hand-picked mono palette.
 
-**Verify**: Live-verify all four Theme×Mode combinations on Home (hero card, stat cards, tab bar), Add sheet (Save button, active type tab), and Settings itself (the very toggle being tested). Confirm Current theme is pixel-unchanged from before this stage in both light and dark.
+**Verify (done)**: `npm run build`, `npm test` (136/136), `npm run test:e2e` (9/9). Live-verified all four Theme×Mode combinations against a freshly built `dist/`, via computed-style checks (not just screenshots) and a real transaction save:
+- **Current+Dark** (baseline): confirmed pixel-unchanged — red gradient hero for a negative balance, `#6247ea` accent, 18px radius, weight 800 headings.
+- **Linear+Dark**: `--radius-lg:12px`, `--weight-heading:600`, `--color-accent:#9a8dff`, `--color-primary-fill:#f4f4f5` confirmed via `getComputedStyle`. Visually: "Overview" heading visibly lighter weight, the account-switcher chip and budget progress bar in the brighter tuned lavender, tighter card corners, "Save transaction" a solid near-white fill with dark text.
+- **Linear+Light**: deepened indigo `#5333d6` accent on chips, "Save transaction" solid near-black fill with light text, same tighter radius.
+- Saved a real transaction under the Linear theme (dispatched a form submit) — confirmed correct `localStorage` persistence, then removed the test row.
+- Zero console errors across all four combinations. Reset `state.themeStyle` back to `"current"` after verification.
+
+Two corrections found during the build, worth recording since they diverge from what this doc originally said:
+- The Reference section above says headings should go "700 → 600." The real app's actual `h1-h4` rule is `font-weight: 800`, not 700 — `current.weightHeading` is `"800"` (matching the real pre-existing value), and only the Linear variant drops to `600`.
+- Decision 7 names "the active period-pill" as a component that should switch from an accent fill to the monochrome fill. Direct grep of `styles.css` found no such state exists — the period-pill only ever uses `var(--color-accent)` for text/icon color (`.period-pill .trigger[aria-expanded="true"] { color: var(--color-accent); }`), never as a filled background. There is nothing to convert; it already correctly belongs in the "whisper of accent" category the spec's own Decision 7 describes for non-primary surfaces.
+- Broader scoping decision applied but not originally itemized: roughly 30 other components use `var(--color-accent)` as a filled background (`.category-chip.active`, `.account-chip.active`, `.switch.on`, `.picker-year-heading.selected`, `.picker-month-cell.selected`, `.badge-brand`, `.filter-chip`, etc.). These intentionally keep using accent color (now tuned to `#5333d6`/`#9a8dff`) rather than going monochrome — only the 3 components Decision 7 actually names as "primary CTA" surfaces (hero card, `.btn-primary`, the tab bar's raised Add circle) convert to `--color-primary-fill`.
 
 ### Stage 3 — Radix icon swap for the 5 nav icons
 - Fetch the real Radix Icons SVG path data (already sourced once this session: home, list-bullet, plus, pie-chart, gear) and add them to `icons/sprite.svg` as new symbols (re-verify with a real XML parser afterward, per this file's own standing warning about silent corruption from a `--` inside a comment).

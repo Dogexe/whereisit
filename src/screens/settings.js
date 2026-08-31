@@ -904,7 +904,11 @@ export function renderSettings() {
   }));
   $("authBtn").addEventListener("click", () => { currentUser ? signOutUser() : signInWithGoogle(); });
   document.querySelectorAll('input[name="lang-switch"]').forEach((r) => r.addEventListener("change", (e) => { state.lang = e.target.value; saveSettings(); renderChrome(); renderScreen(); }));
-  $("darkSwitch").addEventListener("click", () => { state.dark = !state.dark; saveSettings(); applyTheme(); renderScreen(); });
+  // applyThemeStyle() runs here too, not just from the Theme switch below:
+  // the Linear theme's own tokens (accent, shadow) differ by light/dark,
+  // so a dark-mode toggle while Linear is active needs to refresh them,
+  // the same reason applyTheme() itself always runs on this click.
+  $("darkSwitch").addEventListener("click", () => { state.dark = !state.dark; saveSettings(); applyTheme(); applyThemeStyle(); renderScreen(); });
   document.querySelectorAll('input[name="theme-style-switch"]').forEach((r) => r.addEventListener("change", (e) => {
     state.themeStyle = e.target.value; saveSettings(); applyThemeStyle(); renderScreen();
   }));
