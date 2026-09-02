@@ -1,13 +1,14 @@
 import { L } from "../i18n.js";
 import { state, transactions, bills, accounts } from "../state.js";
-import { $, uid, escapeHtml, icon, iconAvatar, fmtMoney, refreshIcons, isDesktopShell, localDateIso, localMonthKey } from "../utils.js";
+import { $, uid, escapeHtml, icon, iconAvatar, fmtMoney, refreshIcons, isDesktopShell, localDateIso, localMonthKey, PLUS_ICON } from "../utils.js";
 import { CATEGORIES } from "../categories.js";
 import {
   byRecency, computeBudgets, upcomingBills, monthTotal, monthHasTransactions, pctDeltaLabel, prevMonthKey,
   sparklineSvg, computeSparklinePoints, dueSoonLabel, billDueCycle, checkBudgetAlert, defaultAccountId, computeBalance
 } from "../derived.js";
 import { saveToStorage, saveSettings } from "../storage.js";
-import { pushTx, pushRows, syncNow, billToRow } from "../sync.js";
+import { pushTx, pushRows, syncNow, billToRow, currentUser } from "../sync.js";
+import { accountDisplayName } from "../account.js";
 import { showToast } from "../toast.js";
 import { setTab, renderScreen } from "./router.js";
 import { resetForm, openAddSheet } from "./add.js";
@@ -85,8 +86,6 @@ export function renderHome() {
   const scopedTx = selectedId
     ? transactions.filter((t) => t.type === "transfer" ? (t.accountId === selectedId || t.toAccountId === selectedId) : t.accountId === selectedId)
     : transactions.filter((t) => t.type !== "transfer");
-  const income = scopedTx.filter((t) => t.type === "income").reduce((a, t) => a + t.amount, 0);
-  const expense = scopedTx.filter((t) => t.type === "expense").reduce((a, t) => a + t.amount, 0);
   const balance = computeBalance(selectedId);
   const recent = scopedTx.slice().sort(byRecency).slice(0, 5);
   const budgetsPreview = computeBudgets();
@@ -104,9 +103,21 @@ export function renderHome() {
   const todayIso = localDateIso();
   const spentToday = scopedTx.filter((t) => t.type === "expense" && t.date === todayIso).reduce((a, t) => a + t.amount, 0);
 
+  const profileMeta = currentUser ? (currentUser.user_metadata || {}) : {};
+  const profileAvatarUrl = profileMeta.avatar_url || profileMeta.picture || "";
+  const profileName = accountDisplayName(currentUser, l.notSignedIn);
+  const profileInner = profileAvatarUrl
+    ? `<img src="${escapeHtml(profileAvatarUrl)}" alt="">`
+    : (currentUser ? escapeHtml((profileName || "?").slice(0, 1).toUpperCase()) : icon("user"));
+
   $("screen").innerHTML = `
-    <div class="today-label">${escapeHtml(today)}</div>
-    <h2 class="screen-title" style="margin:2px 0 var(--space-sm)">${escapeHtml(l.overview)}</h2>
+    <div class="home-header-row">
+      <div>
+        <div class="today-label">${escapeHtml(today)}</div>
+        <h2 class="screen-title" style="margin:2px 0 var(--space-sm)">${escapeHtml(l.overview)}</h2>
+      </div>
+      <button type="button" class="home-profile-btn" id="homeProfileBtn" aria-label="${escapeHtml(l.profileAria)}">${profileInner}</button>
+    </div>
     <div class="home-columns">
       <div class="home-col-main">
         ${accountSwitcherHtml()}
@@ -124,13 +135,13 @@ export function renderHome() {
         <div class="stat-row">
           <div class="stat-card">
             <div class="head">${icon("arrow-down-left")}<span>${escapeHtml(l.incomeLabel)}</span></div>
-            <div class="value">${fmtMoney(income)}</div>
-            <div class="delta" style="color:var(--color-income-700)">${incomeDelta !== null ? escapeHtml(incomeDelta) + " " + escapeHtml(l.vsLastMonth) : "—"}</div>
+            <div class="value">${fmtMoney(curIncome)}</div>
+            <div class="delta" style="color:var(--color-income-700)">${incomeDelta !== null ? escapeHtml(incomeDelta) : "—"}</div>
           </div>
           <div class="stat-card">
             <div class="head">${icon("arrow-up-right")}<span>${escapeHtml(l.expenseLabel)}</span></div>
-            <div class="value">${fmtMoney(expense)}</div>
-            <div class="delta" style="color:var(--color-expense-700)">${expenseDelta !== null ? escapeHtml(expenseDelta) + " " + escapeHtml(l.vsLastMonth) : "—"}</div>
+            <div class="value">${fmtMoney(curExpense)}</div>
+            <div class="delta" style="color:var(--color-expense-700)">${expenseDelta !== null ? escapeHtml(expenseDelta) : "—"}</div>
           </div>
         </div>
 
@@ -142,7 +153,8 @@ export function renderHome() {
 
         <div class="section-head">
           <h3>${escapeHtml(l.recentTx)}</h3>
-          <button type="button" class="btn btn-ghost" id="goAddBtn">${escapeHtml(l.addShort)}</button>
+          <button type="button" class="btn btn-ghost home-add-link" id="goAddBtnDesktop">${escapeHtml(l.addShort)}</button>
+          <button type="button" class="home-add-btn" id="goAddBtn" aria-label="${escapeHtml(l.addTransactionAria)}">${PLUS_ICON}</button>
         </div>
         <div class="list-card">
           ${recent.length ? groupedTxRowsHtml(recent, selectedId) : `<div class="empty-note empty-note-search">${icon("receipt")}<div>${escapeHtml(l.noTransactionsYet)}</div><button type="button" class="btn btn-primary btn-sm" id="emptyAddBtn">${escapeHtml(l.addShort)}</button></div>`}
@@ -188,7 +200,9 @@ export function renderHome() {
     renderHome();
   }));
   $("hideAmountsBtn").addEventListener("click", () => { state.hideAmounts = !state.hideAmounts; saveSettings(); renderScreen(); });
+  $("homeProfileBtn").addEventListener("click", () => setTab("settings"));
   $("goAddBtn").addEventListener("click", goAdd);
+  $("goAddBtnDesktop").addEventListener("click", goAdd);
   $("goBudgetsBtn").addEventListener("click", () => { state.insightsTab = "budgets"; setTab("insights"); });
   const emptyAddBtn = document.getElementById("emptyAddBtn");
   if (emptyAddBtn) emptyAddBtn.addEventListener("click", goAdd);

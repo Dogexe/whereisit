@@ -7,6 +7,7 @@ export const STRINGS = {
   darkModeBtn: ["โหมดมืด", "Dark mode"], overview: ["ภาพรวม", "Overview"], balanceLabel: ["คงเหลือ", "Balance"],
   incomeLabel: ["รายรับ", "Income"], expenseLabel: ["รายจ่าย", "Expense"],
   recentTx: ["รายการล่าสุด", "Recent activity"], addShort: ["+ เพิ่มรายการ", "+ Add transaction"],
+  addTransactionAria: ["เพิ่มรายการ", "Add transaction"], profileAria: ["โปรไฟล์และการตั้งค่า", "Profile & settings"],
   budgetsThisMonth: ["งบประมาณเดือนนี้", "This month's budgets"], seeAll: ["ดูทั้งหมด", "See all"],
   allTransactions: ["รายการทั้งหมด", "All Transactions"], filterAll: ["ทั้งหมด", "All"],
   allCategories: ["ทุกหมวดหมู่", "All categories"],
@@ -175,7 +176,7 @@ export const STRINGS = {
   transferSwapAria: ["สลับทิศทาง", "Swap direction"],
   toastInvalidTransferAccounts: ["กรุณาเลือกบัญชีต้นทางและปลายทางที่แตกต่างกัน", "Please choose two different accounts"],
   transferToRowLabel: ["โอนไปยัง {name}", "Transfer to {name}"], transferFromRowLabel: ["โอนจาก {name}", "Transfer from {name}"],
-  vsLastMonth: ["จากเดือนที่แล้ว", "vs last month"], ofLabel: ["จาก", "of"], spentToday: ["ใช้จ่ายวันนี้", "Spent today"],
+  ofLabel: ["จาก", "of"], spentToday: ["ใช้จ่ายวันนี้", "Spent today"],
   csvDate: ["วันที่", "Date"], csvType: ["ประเภท", "Type"], csvCategory: ["หมวดหมู่", "Category"],
   csvNote: ["รายละเอียด", "Note"], csvAmount: ["จำนวนเงิน", "Amount"]
 };
