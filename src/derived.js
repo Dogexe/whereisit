@@ -1,6 +1,6 @@
 import { state, transactions, budgets, bills, categories, accounts } from "./state.js";
 import { monthKey, fmtMoney, monthLabel, dateLabel, displayYear, monthKeyOf, localDateIso, localMonthKey, localIsoFromDate } from "./utils.js";
-import { findCategoryId, categoryDisplayName } from "./categories.js";
+import { findCategoryId, categoryDisplayName, ancestorId } from "./categories.js";
 import { L } from "./i18n.js";
 
 // Budgets/transactions are moving from being matched by plain category
@@ -327,14 +327,27 @@ export const CHART_COLORS = ["var(--color-accent)", "var(--color-income)", "var(
 // categoryIds (optional Set) filters *before* aggregation, not after --
 // see docs/specs/transactions-filters-rework.md: entries are already
 // capped to the top 6 by spend below, so a post-filter could silently hide
-// a selected category that isn't in the unfiltered top 6.
+// a selected category that isn't in the unfiltered top 6. Filtering uses
+// the transaction's OWN resolved category id, not its rolled-up ancestor
+// -- picking a specific subcategory in the filter still shows only that
+// subcategory's own transactions, even though the unfiltered donut below
+// would show it merged into its parent's slice (docs/specs/
+// category-nesting.md stage 5's decision on this).
 function breakdownEntries(txs, categoryIds) {
   const filtered = categoryIds && categoryIds.size
     ? txs.filter((t) => categoryIds.has(resolveCategoryId(t, "expense") || t.category))
     : txs;
   const totals = {}, names = {};
+  // docs/specs/category-nesting.md stage 5: a subcategory's spend rolls
+  // up into its parent's slice -- ancestorId resolves a resolved id to
+  // its top-level ancestor (itself, if it's already top-level, or if its
+  // parent can't be resolved -- see that helper's own fallback). A row
+  // that has no resolvable id at all (pre-backfill/pre-categoryId data)
+  // keeps grouping by its raw stored .category text, same as before this
+  // stage -- there's no id to roll up in that case.
   filtered.forEach((t) => {
-    const cid = resolveCategoryId(t, "expense") || t.category;
+    const resolvedId = resolveCategoryId(t, "expense");
+    const cid = resolvedId ? ancestorId(categories, resolvedId) : t.category;
     totals[cid] = (totals[cid] || 0) + t.amount;
     names[cid] = t.category;
   });

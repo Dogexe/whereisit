@@ -84,10 +84,11 @@ export function goalToRow(g, deleted) {
     deleted: !!deleted, updated_at: new Date(g.updatedAt || Date.now()).toISOString()
   };
 }
-function rowToCategory(r) { return { id: r.id, type: r.type, name: r.name, icon: r.icon, sortOrder: r.sort_order, updatedAt: new Date(r.updated_at).getTime() }; }
+function rowToCategory(r) { return { id: r.id, type: r.type, name: r.name, icon: r.icon, sortOrder: r.sort_order, parentId: r.parent_id || null, updatedAt: new Date(r.updated_at).getTime() }; }
 export function categoryToRow(c, deleted) {
   return {
     id: c.id, user_id: currentUser ? currentUser.id : null, type: c.type, name: c.name, icon: c.icon, sort_order: c.sortOrder || 0,
+    parent_id: c.parentId || null,
     deleted: !!deleted, updated_at: new Date(c.updatedAt || Date.now()).toISOString()
   };
 }

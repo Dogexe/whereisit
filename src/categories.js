@@ -100,6 +100,91 @@ export function categoryDisplayName(categoriesList, id, fallback) {
   const c = categoriesList.find((x) => x.id === id);
   return c ? c.name : fallback;
 }
+// docs/specs/category-nesting.md stage 1: pure helpers over a category's
+// new optional parentId, following findCategoryId/categoryDisplayName's
+// own shape above (take the list as a parameter, no state.js import) so
+// they're usable from both UI code and derived.js's read path without a
+// circular import.
+export function topLevelCategories(categoriesList) {
+  return categoriesList.filter((c) => !c.parentId);
+}
+export function childrenOf(categoriesList, parentId) {
+  return categoriesList.filter((c) => c.parentId === parentId && !c.deleted);
+}
+export function isParentCategory(categoriesList, id) {
+  return childrenOf(categoriesList, id).length > 0;
+}
+// "Roll up to depth 1": a top-level category resolves to itself. A
+// category with a parentId resolves to that parent, UNLESS the parent
+// doesn't resolve to a live (present, non-deleted) category -- a
+// concurrent-edit race (the parent soft-deleted on another device while
+// this device was mid-edit adding a child to it, see the spec's decisions
+// section) can leave a dangling parentId, and this is the one place that
+// fallback is applied: a category whose parent no longer exists behaves
+// as top-level rather than vanishing from every rollup that calls this,
+// matching resolveCategoryId/categoryDisplayName's existing "never worse
+// than before" fallback pattern elsewhere in this codebase.
+export function ancestorId(categoriesList, id) {
+  const c = categoriesList.find((x) => x.id === id);
+  if (!c || !c.parentId) return id;
+  const parent = categoriesList.find((x) => x.id === c.parentId);
+  return (parent && !parent.deleted) ? parent.id : id;
+}
+// docs/specs/category-nesting.md stage 2: candidate parent options for the
+// Settings category-edit form's parent picker. Three filters, all needed
+// to keep nesting capped at one level: (a) same type as the category
+// being edited (a cross-type parent/child pair isn't offered at all, see
+// the spec's decision on this), (b) not the category being edited itself
+// (no self-parenting), (c) doesn't already have a parentId of its own
+// (picking an existing child as a new parent would make a 3-level chain).
+// Deliberately does NOT also check "does editingId itself have children" --
+// that's a different question (can THIS category be nested under
+// something, not "is this OTHER category a valid parent"), answered by
+// isParentCategory above and enforced by disabling the whole field at the
+// call site (categoryFormHtml, stage 3), not by filtering this list.
+// This function alone is what closes the gap a first-draft two-check
+// version of this filter missed: (a)+(b) alone would have still allowed
+// picking a childless top-level category as a NEW parent for a category
+// that itself already has children, producing a 3-level chain -- see this
+// spec's "Decisions made without a direct question" section for the
+// worked example. That specific case is blocked by isParentCategory
+// locking the field, not by anything in this function's own filter.
+export function eligibleParentOptions(categoriesList, editingId, type) {
+  return categoriesList.filter((c) =>
+    c.type === type && c.id !== editingId && !c.parentId && !c.deleted);
+}
+// docs/specs/category-nesting.md stages 3+4: a stable sort that groups
+// every child immediately after its parent, otherwise preserving the
+// list's existing order (categories are never actually sorted by
+// sortOrder despite the field's name -- mostUsedCategoryIds in derived.js
+// is the one place that IS read, for the Add screen's chip ordering, not
+// list order in general). A top-level category keeps its original
+// relative position, and each of its children (in their own original
+// relative order) is spliced in right after it. A category whose
+// parentId doesn't resolve to a live category (the same dangling-parent
+// race ancestorId's fallback handles) is treated as top-level here too,
+// so it's never silently dropped from the list. A category that's itself
+// marked deleted is excluded entirely (defensive -- this codebase's local
+// state never actually keeps a deleted:true category around, deletion
+// removes it from the array outright, but every other helper in this file
+// checks the flag defensively too, so this one does the same rather than
+// being the one inconsistent exception). Shared by Settings' category
+// list (stage 3) and the Add screen's category <select> (stage 4) rather
+// than each screen keeping its own copy.
+export function groupedCategories(categoriesList) {
+  const byParent = new Map();
+  const topLevel = [];
+  categoriesList.filter((c) => !c.deleted).forEach((c) => {
+    const parent = c.parentId && categoriesList.find((p) => p.id === c.parentId && !p.deleted);
+    if (parent) {
+      if (!byParent.has(parent.id)) byParent.set(parent.id, []);
+      byParent.get(parent.id).push(c);
+    } else {
+      topLevel.push(c);
+    }
+  });
+  return topLevel.flatMap((c) => [c, ...(byParent.get(c.id) || [])]);
+}
 export const GOAL_ICONS = ["flag", "piggy-bank", "plane", "shield", "gift", "target"];
 export const GOAL_TONES = [
   { bg: "var(--color-accent-tint)", color: "var(--color-accent)" },

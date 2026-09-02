@@ -739,6 +739,11 @@
      color, since "archived" isn't a problem state the way an overdue bill
      is. */
   .manage-row-archived { opacity: 0.6; }
+  /* Subcategory rows in Settings' Categories list (docs/specs/
+     category-nesting.md stage 3) -- indented so a parent immediately
+     followed by its children reads visually as a tree, without an actual
+     collapsible widget (see that spec's decision on why). */
+  .manage-row-child { padding-left: 28px; }
   .row-actions { display: flex; gap: 4px; flex-shrink: 0; }
   .section-add-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
   .inline-form { display: flex; flex-direction: column; gap: 12px; padding: 16px; margin-bottom: 12px; }

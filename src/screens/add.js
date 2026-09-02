@@ -1,7 +1,7 @@
 import { L } from "../i18n.js";
 import { state, transactions, categories, accounts, setTransactions } from "../state.js";
 import { $, uid, escapeHtml, dateLabel, formatDateTyping, parseDateText, optionsHtml, refreshIcons, icon, isDesktopShell, createFocusTrap, localDateIso, sheetGrabberHtml, wireSheetDrag } from "../utils.js";
-import { guessCategory, categoryDisplayName } from "../categories.js";
+import { guessCategory, categoryDisplayName, groupedCategories } from "../categories.js";
 import { accountNameById } from "../accounts.js";
 import { checkBudgetAlert, resolveCategoryId, mostUsedCategoryIds, defaultAccountId } from "../derived.js";
 import { saveToStorage } from "../storage.js";
@@ -68,9 +68,24 @@ export function deleteTx(id) {
     pushTx(restored).then(() => syncNow());
   });
 }
+// docs/specs/category-nesting.md stage 4, decision 3: flat list,
+// subcategories indented under their parent -- not a two-step
+// parent-then-child picker. A native <select> only ever shows one flat
+// option list regardless (no nested <optgroup> support that would also
+// keep a parent's own option independently selectable, which decision 2
+// requires), so the indentation has to come from the label text itself:
+// two non-breaking spaces prefixed onto a child's display name. Grouping
+// order comes from groupedCategories (shared with Settings' list, stages
+// 3+4 of that spec) rather than the plain type-filtered order this used
+// before.
 export function renderFormCategoryOptions(select) {
-  const opts = categories.filter((c) => c.type === state.formType);
-  select.innerHTML = optionsHtml(opts.map((c) => c.id), state.formCategoryId, (id) => categoryDisplayName(categories, id, id));
+  const opts = groupedCategories(categories.filter((c) => c.type === state.formType));
+  select.innerHTML = optionsHtml(opts.map((c) => c.id), state.formCategoryId,
+    (id) => {
+      const c = categories.find((x) => x.id === id);
+      const label = categoryDisplayName(categories, id, id);
+      return (c && c.parentId) ? "  " + label : label;
+    });
 }
 // Stage 4 of docs/specs/multi-account-support.md. Excludes archived
 // accounts as a target for *new* transactions, except the one currently

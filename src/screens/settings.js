@@ -5,7 +5,7 @@ import {
   EDIT_ICON, DELETE_ICON, PLUS_ICON, sheetGrabberHtml, wireSheetDrag
 } from "../utils.js";
 import { manageSwipeWrapHtml, wireManageRowSwipe } from "./manage-row-swipe.js";
-import { CATEGORY_ICON_CHOICES, GOAL_TONES, GOAL_ICONS, iconFor, rowTone, categoryDisplayName } from "../categories.js";
+import { CATEGORY_ICON_CHOICES, GOAL_TONES, GOAL_ICONS, iconFor, rowTone, categoryDisplayName, childrenOf, isParentCategory, eligibleParentOptions, groupedCategories } from "../categories.js";
 import { ACCOUNT_ICON_CHOICES, accountNameById } from "../accounts.js";
 import { accountDisplayName } from "../account.js";
 import { daysUntilBillDue, dueSoonLabel, resolveCategoryId, computeBalance } from "../derived.js";
@@ -188,6 +188,7 @@ function renderManageSheet() {
     btn.parentElement.querySelectorAll(".icon-picker-option").forEach((b) => b.classList.remove("selected"));
     btn.classList.add("selected");
   }));
+  wireCategoryTypeRadios(container);
   refreshIcons();
   if (!state.manageSheetOpen) { state.manageSheetOpen = true; manageSheetFocusTrap.activate(); }
 }
@@ -336,7 +337,7 @@ export function categoryRowHtml(c) {
   const tone = rowTone(c.type);
   const iconHtml = iconAvatar(c.icon, tone.bg, tone.color, "sm", 'width="15" height="15"');
   const sub = c.type === "income" ? L().incomeLabel : L().expenseLabel;
-  return manageRowHtml(iconHtml, c.name, sub, null, `data-edit-category="${c.id}"`, `data-delete-category="${c.id}"`);
+  return manageRowHtml(iconHtml, c.name, sub, null, `data-edit-category="${c.id}"`, `data-delete-category="${c.id}"`, c.parentId ? "manage-row-child" : null);
 }
 // Type is only choosable when creating a new category, never when editing
 // an existing one -- changing a category's type out from under
@@ -351,6 +352,26 @@ export function categoryRowHtml(c) {
 // into `state`, matching how every other field in this form already
 // works -- simpler than adding transient state fields for a value that's
 // only ever needed once, at save.
+// docs/specs/category-nesting.md stage 3: parent-category <select>, built
+// from eligibleParentOptions (stage 2) so it can never offer a choice that
+// would violate the one-level cap. Standalone function (not inlined into
+// categoryFormHtml) because it also needs to be re-rendered on its own
+// when a new category's type radio changes -- see wireCategoryTypeRadios
+// below, matching this app's existing "standalone refresh" precedent
+// (renderCategoryChips, renderFormCategoryOptions) rather than
+// re-rendering the whole form and losing focus/other field values.
+function categoryParentFieldHtml(type, editingId, curParentId) {
+  const l = L();
+  const locked = editingId && isParentCategory(categories, editingId);
+  if (locked) {
+    return `<div class="field"><label>${escapeHtml(l.parentCategoryLabel)}</label>`
+      + `<div style="font-size:13px;color:var(--color-muted)">${escapeHtml(l.parentLockedHasChildrenNote)}</div></div>`;
+  }
+  const options = eligibleParentOptions(categories, editingId, type);
+  const optHtml = optionsHtml(["", ...options.map((c) => c.id)], curParentId || "",
+    (id) => id ? categoryDisplayName(categories, id, id) : l.noParentCategoryOption);
+  return `<div class="field"><label>${escapeHtml(l.parentCategoryLabel)}</label><select class="input" id="categoryParentSelect">${optHtml}</select></div>`;
+}
 export function categoryFormHtml() {
   const l = L();
   if (!state.categoryEditId) return "";
@@ -363,10 +384,32 @@ export function categoryFormHtml() {
     ? `<div class="field"><label>${escapeHtml(l.typeLabel)}</label><div class="tabs block" role="radiogroup"><label class="tab-opt"><input type="radio" name="category-type" value="expense" checked>${escapeHtml(l.expenseLabel)}</label><label class="tab-opt"><input type="radio" name="category-type" value="income">${escapeHtml(l.incomeLabel)}</label></div></div>`
     : `<div class="field"><label>${escapeHtml(l.typeLabel)}</label><div style="font-size:14px;font-weight:600">${escapeHtml(curType === "income" ? l.incomeLabel : l.expenseLabel)}</div></div>`;
   const iconPicker = `<div class="field"><label>${escapeHtml(l.iconLabel)}</label><div class="icon-picker">${CATEGORY_ICON_CHOICES.map((name) => `<button type="button" class="icon-picker-option${name === curIcon ? " selected" : ""}" data-icon="${name}" aria-label="${escapeHtml(name)}">${icon(name)}</button>`).join("")}</div></div>`;
+  const parentField = categoryParentFieldHtml(curType, isNew ? null : editing.id, isNew ? null : editing.parentId);
   const fields = typeField
     + `<div class="field"><label>${escapeHtml(l.categoryNameLabel)}</label><input class="input" type="text" id="categoryNameInput" value="${isNew ? "" : escapeHtml(editing.name)}"></div>`
-    + iconPicker;
+    + iconPicker
+    + parentField;
   return inlineForm(fields, "saveCategoryFormBtn", l.saveCategoryBtn, "cancelCategoryFormBtn");
+}
+// A new category has no children yet, so its parent field is always the
+// live <select> (never the locked note) -- but its type isn't fixed until
+// save time, and eligibleParentOptions needs to filter by type. Rather
+// than re-rendering the whole form (losing the name input's typed value
+// and the icon picker's selection) on every type-radio click, this
+// refreshes just the parent select's own options in place, the same
+// "standalone refresh" shape as renderCategoryChips/
+// renderFormCategoryOptions elsewhere in this app. Wired from both
+// desktop's inline form and the mobile manage sheet (renderManageSheet),
+// same as the icon-picker click wiring right next to each call site.
+function wireCategoryTypeRadios(container) {
+  const select = (container || document).querySelector("#categoryParentSelect");
+  if (!select) return;
+  (container || document).querySelectorAll('input[name="category-type"]').forEach((radio) => {
+    radio.addEventListener("change", () => {
+      select.innerHTML = optionsHtml(["", ...eligibleParentOptions(categories, null, radio.value).map((c) => c.id)], "",
+        (id) => id ? categoryDisplayName(categories, id, id) : L().noParentCategoryOption);
+    });
+  });
 }
 export function saveCategoryForm() {
   const isNew = state.categoryEditId === "new";
@@ -374,16 +417,24 @@ export function saveCategoryForm() {
   if (!name) { showToast(L().toastInvalidCategoryName); return; }
   const selectedIconBtn = document.querySelector(".icon-picker-option.selected");
   const iconName = selectedIconBtn ? selectedIconBtn.getAttribute("data-icon") : CATEGORY_ICON_CHOICES[0];
+  // docs/specs/category-nesting.md stage 3: #categoryParentSelect doesn't
+  // exist when categoryParentFieldHtml rendered the locked note instead
+  // (the category being edited already has children) -- that's exactly
+  // the case where parentId must stay null (a category with children is
+  // never allowed a parent of its own), so a missing select and "keep it
+  // null" agree here, no special-casing needed.
+  const parentSelect = $("categoryParentSelect");
+  const parentId = parentSelect ? (parentSelect.value || null) : null;
   let saved;
   if (isNew) {
     const typeInput = document.querySelector('input[name="category-type"]:checked');
     const type = typeInput ? typeInput.value : "expense";
-    saved = { id: uid(), type, name, icon: iconName, sortOrder: categories.length, updatedAt: Date.now() };
+    saved = { id: uid(), type, name, icon: iconName, parentId, sortOrder: categories.length, updatedAt: Date.now() };
     categories.push(saved);
   } else {
     const c = categories.find((x) => x.id === state.categoryEditId);
     if (!c) return;
-    c.name = name; c.icon = iconName; c.updatedAt = Date.now();
+    c.name = name; c.icon = iconName; c.parentId = parentId; c.updatedAt = Date.now();
     saved = c;
   }
   saveSettings();
@@ -410,6 +461,14 @@ function categoryUsageCount(categoryId) {
 export function deleteCategory(id) {
   const c = categories.find((x) => x.id === id);
   if (!c) return;
+  // docs/specs/category-nesting.md stage 2: a category with children can't
+  // be deleted either, same blocking mechanism (toast naming a count) as
+  // the in-use guard right below -- not auto-detached to top-level, per
+  // that spec's decision. Checked before the in-use count since a parent
+  // category is very likely also in scope for both guards at once and
+  // this ordering gives the more structurally specific message.
+  const childCount = childrenOf(categories, id).length;
+  if (childCount > 0) { showToast(L().toastCategoryHasChildren.replace("{n}", childCount)); return; }
   const usage = categoryUsageCount(id);
   if (usage > 0) { showToast(L().toastCategoryInUse.replace("{n}", usage)); return; }
   setCategories(categories.filter((x) => x.id !== id));
@@ -854,7 +913,7 @@ export function renderSettings() {
             </summary>
             <div class="settings-group-body">
               <div id="categoryFormSlot">${isDesktopShell() ? categoryFormHtml() : ""}</div>
-              ${categories.map(categoryRowHtml).join("") || `<div class="empty-note">${escapeHtml(l.noCategories)}</div>`}
+              ${groupedCategories(categories).map(categoryRowHtml).join("") || `<div class="empty-note">${escapeHtml(l.noCategories)}</div>`}
             </div>
           </details>
           <details class="settings-group" data-group="accounts" ${state.settingsGroupOpen.accounts ? "open" : ""}>
@@ -980,6 +1039,7 @@ export function renderSettings() {
     btn.parentElement.querySelectorAll(".icon-picker-option").forEach((b) => b.classList.remove("selected"));
     btn.classList.add("selected");
   }));
+  wireCategoryTypeRadios(document);
   refreshIcons();
   if (!isDesktopShell()) wireManageRowSwipe($("screen"));
   renderManageSheet();

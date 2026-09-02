@@ -226,6 +226,38 @@ test("computeBreakdown: groups two transactions with different .category text bu
   assert.equal(entries[0].total, 150);
 });
 
+// docs/specs/category-nesting.md stage 5: a subcategory's spend rolls up
+// into its parent's slice in the breakdown donut.
+test("computeBreakdown: a subcategory's spend rolls up into its parent's slice, using the parent's name", () => {
+  setCategories([
+    { id: "cat-food", type: "expense", name: "Food", icon: "utensils", parentId: null },
+    { id: "cat-groceries", type: "expense", name: "Groceries", icon: "briefcase", parentId: "cat-food" }
+  ]);
+  setTransactions([
+    { id: "t1", type: "expense", date: "2026-03-05", category: "Food", categoryId: "cat-food", amount: 100 },
+    { id: "t2", type: "expense", date: "2026-03-10", category: "Groceries", categoryId: "cat-groceries", amount: 40 }
+  ]);
+  const entries = computeBreakdown("2026-03");
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].category, "Food");
+  assert.equal(entries[0].total, 140);
+});
+
+test("computeBreakdown: a category with no parent behaves exactly as before this stage (regression check)", () => {
+  setCategories([
+    { id: "cat-food", type: "expense", name: "Food", icon: "utensils", parentId: null },
+    { id: "cat-transport", type: "expense", name: "Transport", icon: "car", parentId: null }
+  ]);
+  setTransactions([
+    { id: "t1", type: "expense", date: "2026-03-05", category: "Food", categoryId: "cat-food", amount: 100 },
+    { id: "t2", type: "expense", date: "2026-03-10", category: "Transport", categoryId: "cat-transport", amount: 40 }
+  ]);
+  const entries = computeBreakdown("2026-03");
+  assert.equal(entries.length, 2);
+  const byCategory = Object.fromEntries(entries.map((e) => [e.category, e.total]));
+  assert.deepEqual(byCategory, { Food: 100, Transport: 40 });
+});
+
 test("mostUsedCategoryIds: ranks by usage count, most-used first", () => {
   setCategories([
     { id: "c-food", type: "expense", name: "Food", sortOrder: 0 },
