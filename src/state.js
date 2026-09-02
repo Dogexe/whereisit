@@ -14,6 +14,12 @@ const curMonthNumLocal = String(now.getMonth() + 1).padStart(2, "0");
 
 export const state = {
   lang: "th", dark: false,
+  // "hide financial status" -- masks every fmtMoney() result behind a
+  // fixed placeholder instead of the real figure, for a quick glance-proof
+  // toggle while already inside the app (separate from app-lock, which
+  // gates entry). Device-local only, same treatment as lang/dark: never
+  // synced via Supabase, never touched by wipeLocalAccountData().
+  hideAmounts: false,
   // "current" | "linear" -- a bundled visual theme (accent + panel radius/
   // border/shadow + heading weight + nav icons), not an independent accent
   // picker. Device-local only, same treatment as lang/dark immediately

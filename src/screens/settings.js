@@ -883,6 +883,11 @@ export function renderSettings() {
               <label class="tab-opt"><input type="radio" name="theme-style-switch" value="linear" ${state.themeStyle === "linear" ? "checked" : ""}>${escapeHtml(l.themeLinearOpt)}</label>
             </div>
           </div>
+          <div class="toggle-row">
+            ${iconAvatar(state.hideAmounts ? "eye-off" : "eye", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+            <span class="label">${escapeHtml(l.hideAmountsLabel)}</span>
+            <button type="button" class="switch ${state.hideAmounts ? "on" : ""}" id="hideAmountsSwitch"><span class="thumb"></span></button>
+          </div>
         </div>
       </div>
 
@@ -1040,6 +1045,7 @@ export function renderSettings() {
   document.querySelectorAll('input[name="theme-style-switch"]').forEach((r) => r.addEventListener("change", (e) => {
     state.themeStyle = e.target.value; saveSettings(); applyThemeStyle(); renderScreen();
   }));
+  $("hideAmountsSwitch").addEventListener("click", () => { state.hideAmounts = !state.hideAmounts; saveSettings(); renderScreen(); });
   $("syncNowBtn").addEventListener("click", syncNow);
   if ($("pushReminderSwitch")) $("pushReminderSwitch").addEventListener("click", async () => {
     if (pushReminderState() === "enabled") await disableBillReminders();

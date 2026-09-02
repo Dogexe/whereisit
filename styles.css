@@ -295,6 +295,14 @@
   .hero-card { border-radius: var(--radius-lg); padding: 22px; color: var(--color-primary-fill-text); background: var(--hero-fill); box-shadow: var(--shadow-accent); margin-top: 16px; }
   .hero-card.hero-card-negative { background: linear-gradient(135deg, var(--color-expense) 0%, var(--color-expense-700) 100%); box-shadow: 0 12px 28px color-mix(in srgb, var(--color-expense) 30%, transparent); }
   .hero-card .kicker { font-size: 13px; opacity: 0.85; font-weight: 500; }
+  /* "Hide financial status" quick toggle, top corner of the hero card next
+     to the Balance label -- kicker moves into a row alongside it rather
+     than the row being a new sibling, so the button stays vertically
+     centered with the label regardless of font metrics. */
+  .hero-card .kicker-row { display: flex; align-items: center; justify-content: space-between; }
+  .hero-hide-btn { background: none; border: none; color: inherit; opacity: 0.85; cursor: pointer; padding: 2px; display: flex; }
+  .hero-hide-btn:hover { opacity: 1; }
+  .hero-hide-btn:focus-visible { outline: 2px solid rgba(255,255,255,0.8); outline-offset: 2px; border-radius: 4px; }
   .hero-card .amount { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; margin-top: 4px; }
   .hero-card .foot-row { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; }
   .hero-card .delta-pill { font-size: 13px; font-weight: 600; background: rgba(255,255,255,0.18); border-radius: var(--radius-pill); padding: 6px 12px; white-space: nowrap; }

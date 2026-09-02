@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { state } from "../src/state.js";
-import { dateLabel, parseDateText, displayYear, gregorianYearFromDisplay, localDateIso, localMonthKey, localIsoFromDate, monthKeyOf } from "../src/utils.js";
+import { dateLabel, parseDateText, displayYear, gregorianYearFromDisplay, localDateIso, localMonthKey, localIsoFromDate, monthKeyOf, fmtMoney } from "../src/utils.js";
 
 // localDateIso/localMonthKey/monthKeyOf read the wall clock (or a supplied
 // Date object) via local getters (getFullYear/getMonth/getDate), not
@@ -119,4 +119,22 @@ test("localDateIso/localMonthKey: a UTC-behind timezone (e.g. New York) is unaff
     assert.equal(localDateIso(), "2026-08-31");
     assert.equal(localMonthKey(), "2026-08");
   });
+});
+
+test("fmtMoney: renders the real formatted amount when hideAmounts is off", () => {
+  const original = state.hideAmounts;
+  state.hideAmounts = false;
+  try {
+    assert.equal(fmtMoney(1234.5), "฿1,234.50");
+  } finally { state.hideAmounts = original; }
+});
+
+test("fmtMoney: renders a fixed masked placeholder when hideAmounts is on, regardless of the real value", () => {
+  const original = state.hideAmounts;
+  state.hideAmounts = true;
+  try {
+    assert.equal(fmtMoney(1234.5), "฿•••••");
+    assert.equal(fmtMoney(0), "฿•••••");
+    assert.equal(fmtMoney(-99999), "฿•••••");
+  } finally { state.hideAmounts = original; }
 });

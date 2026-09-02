@@ -111,7 +111,10 @@ export function renderHome() {
       <div class="home-col-main">
         ${accountSwitcherHtml()}
         <div class="hero-card${balance < 0 ? " hero-card-negative" : ""}">
-          <div class="kicker">${escapeHtml(l.balanceLabel)}</div>
+          <div class="kicker-row">
+            <div class="kicker">${escapeHtml(l.balanceLabel)}</div>
+            <button type="button" class="hero-hide-btn" id="hideAmountsBtn" aria-label="${escapeHtml(state.hideAmounts ? l.showAmountsAria : l.hideAmountsAria)}">${icon(state.hideAmounts ? "eye-off" : "eye", 'width="16" height="16"')}</button>
+          </div>
           <div class="amount">${fmtMoney(balance)}</div>
           <div class="foot-row">
             ${sparkline}
@@ -184,6 +187,7 @@ export function renderHome() {
     state.homeSelectedAccountId = v === "" ? null : v;
     renderHome();
   }));
+  $("hideAmountsBtn").addEventListener("click", () => { state.hideAmounts = !state.hideAmounts; saveSettings(); renderScreen(); });
   $("goAddBtn").addEventListener("click", goAdd);
   $("goBudgetsBtn").addEventListener("click", () => { state.insightsTab = "budgets"; setTab("insights"); });
   const emptyAddBtn = document.getElementById("emptyAddBtn");

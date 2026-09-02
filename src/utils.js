@@ -26,7 +26,19 @@ export function localIsoFromDate(date) {
 export function monthKeyOf(date) { return localIsoFromDate(date).slice(0, 7); }
 export function localDateIso() { return localIsoFromDate(new Date()); }
 export function localMonthKey() { return monthKeyOf(new Date()); }
-export function fmtMoney(n) { return "฿" + Number(n).toLocaleString(state.lang === "en" ? "en-US" : "th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+// "Hide financial status": every money figure in the app renders through
+// this one chokepoint (home.js, transactions.js, insights.js, tx-row.js,
+// and the budgets/bills/goals rows in settings.js all call it, and
+// derived.js's own *Fmt fields are themselves built by calling this), so
+// checking state.hideAmounts here masks every one of them for free rather
+// than needing a second check at each of those call sites. A fixed-width
+// placeholder (not e.g. a same-length run of digits) -- the point is that
+// no information about the real figure, including its rough magnitude, is
+// visible while masked.
+export function fmtMoney(n) {
+  if (state.hideAmounts) return "฿•••••";
+  return "฿" + Number(n).toLocaleString(state.lang === "en" ? "en-US" : "th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
 const BE_YEAR_OFFSET = 543;
 // The single place both display (dateLabel) and input parsing
 // (parseDateText) go through to convert between the year stored/computed

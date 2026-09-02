@@ -166,7 +166,7 @@ function renderBreakdownContent() {
   const periodLbl = breakdownPeriodLabel();
   const listHtml = rows.map((d) => `
       <div class="breakdown-row">
-        <div class="row1"><span><span class="legend-dot" style="background:${d.color}"></span>${escapeHtml(d.category)}</span><span class="right">${d.totalFmt} · ${Math.round(d.sharePct)}%</span></div>
+        <div class="row1"><span><span class="legend-dot" style="background:${d.color}"></span>${escapeHtml(d.category)}</span><span class="right">${d.totalFmt} · ${state.hideAmounts ? "••" : Math.round(d.sharePct)}%</span></div>
         <div class="bar-track"><div class="bar-fill" style="width:${d.pct}%;background:${d.color}"></div></div>
       </div>`).join("") || `<div class="empty-note">${escapeHtml(l.noExpensesPeriod)}</div>`;
   $("breakdownContent").innerHTML = `
