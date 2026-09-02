@@ -32,6 +32,7 @@ export function loadFromStorage() {
       if (s.lang === "th" || s.lang === "en") state.lang = s.lang;
       if (typeof s.dark === "boolean") state.dark = s.dark;
       if (typeof s.hideAmounts === "boolean") state.hideAmounts = s.hideAmounts;
+      if (s.accentColor === "coral" || s.accentColor === "purple") state.accentColor = s.accentColor;
       // docs/specs/app-lock.md stage 1: pinHash/pinSalt only mean anything
       // together with pinEnabled, so all three are restored as one unit --
       // a corrupt/partial write (e.g. pinHash present but pinEnabled
@@ -78,7 +79,7 @@ export function saveSettings() {
   if (!storageAvailable) { warnUnavailable(); return; }
   try {
     window.localStorage.setItem(SETTINGS_KEY, JSON.stringify({
-      lang: state.lang, dark: state.dark, hideAmounts: state.hideAmounts,
+      lang: state.lang, dark: state.dark, hideAmounts: state.hideAmounts, accentColor: state.accentColor,
       pinEnabled: state.pinEnabled, pinHash: state.pinHash, pinSalt: state.pinSalt,
       budgets, bills, goals, categories, accounts
     }));

@@ -12,11 +12,15 @@
 // unstyled app with empty-circle icons. Precaching them here during
 // install (which always runs, regardless of fetch-handler timing) closes
 // that gap.
-const CACHE_NAME = "rrrj-v3";
+// v4: docs/specs/coral-rebrand-and-logo.md -- icon-192/512.png regenerated
+// (new mark + color), manifest.json's theme_color changed, and the new
+// self-hosted Poppins font (sidebar wordmark) added to APP_SHELL for the
+// same first-load-not-yet-controlled reason v3's comment already covers.
+const CACHE_NAME = "rrrj-v4";
 const APP_SHELL = [
   "./", "./index.html", "./manifest.json", "./styles.css", "./main.js",
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/sprite.svg",
-  "./fonts/inter-latin.woff2", "./fonts/notosansthai-thai.woff2"
+  "./fonts/inter-latin.woff2", "./fonts/notosansthai-thai.woff2", "./fonts/poppins-latin-700.woff2"
 ];
 
 self.addEventListener("install", (event) => {

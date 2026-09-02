@@ -871,6 +871,14 @@ export function renderSettings() {
             </div>
           </div>
           <div class="toggle-row">
+            ${iconAvatar("palette", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+            <span class="label">${escapeHtml(l.accentColorLabel)}</span>
+            <div class="tabs" role="radiogroup" style="flex-shrink:0">
+              <label class="tab-opt"><input type="radio" name="accent-color-switch" value="coral" ${state.accentColor === "coral" ? "checked" : ""}>${escapeHtml(l.accentColorCoralOpt)}</label>
+              <label class="tab-opt"><input type="radio" name="accent-color-switch" value="purple" ${state.accentColor === "purple" ? "checked" : ""}>${escapeHtml(l.accentColorPurpleOpt)}</label>
+            </div>
+          </div>
+          <div class="toggle-row">
             ${iconAvatar("moon", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
             <span class="label">${escapeHtml(l.darkModeBtn)}</span>
             <button type="button" class="switch ${state.dark ? "on" : ""}" id="darkSwitch"><span class="thumb"></span></button>
@@ -1029,6 +1037,7 @@ export function renderSettings() {
   }));
   $("authBtn").addEventListener("click", () => { currentUser ? signOutUser() : signInWithGoogle(); });
   document.querySelectorAll('input[name="lang-switch"]').forEach((r) => r.addEventListener("change", (e) => { state.lang = e.target.value; saveSettings(); renderChrome(); renderScreen(); }));
+  document.querySelectorAll('input[name="accent-color-switch"]').forEach((r) => r.addEventListener("change", (e) => { state.accentColor = e.target.value; saveSettings(); applyTheme(); }));
   $("darkSwitch").addEventListener("click", () => { state.dark = !state.dark; saveSettings(); applyTheme(); renderScreen(); });
   $("hideAmountsSwitch").addEventListener("click", () => { state.hideAmounts = !state.hideAmounts; saveSettings(); renderScreen(); });
   // ui-ux-pro-max skill audit (Touch & Interaction, priority 2, "Loading

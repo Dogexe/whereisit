@@ -14,6 +14,12 @@ const curMonthNumLocal = String(now.getMonth() + 1).padStart(2, "0");
 
 export const state = {
   lang: "th", dark: false,
+  // docs/specs/coral-rebrand-and-logo.md: "coral" (new default brand) or
+  // "purple" (the app's original accent, kept as an opt-in preference).
+  // Device-local only, same treatment as lang/dark -- never synced via
+  // Supabase, never touched by wipeLocalAccountData(). Independent of Dark
+  // Mode, same as that spec's predecessor (the since-removed Linear theme).
+  accentColor: "coral",
   // "hide financial status" -- masks every fmtMoney() result behind a
   // fixed placeholder instead of the real figure, for a quick glance-proof
   // toggle while already inside the app (separate from app-lock, which

@@ -35,16 +35,42 @@
     src: url("./fonts/notosansthai-thai.woff2") format("woff2");
     unicode-range: U+02D7, U+0303, U+0331, U+0E01-0E5B, U+200C-200D, U+25CC;
   }
+  /* Self-hosted, same reasoning as Inter/Noto Sans Thai above -- sw.js
+     never caches cross-origin requests, so a Google Fonts CDN load would
+     never work offline. Weight 700 only, latin subset only: this is
+     docs/specs/coral-rebrand-and-logo.md's sidebar wordmark lockup, the
+     one spot in the app that uses Poppins -- "whereisit" is the same
+     Latin brand name in both languages (i18n.js's appTitle), so no other
+     subset is ever needed. Not the app's general UI font -- that stays
+     Inter/Noto Sans Thai everywhere else. */
+  @font-face {
+    font-family: "Poppins";
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url("./fonts/poppins-latin-700.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
   :root {
     /* neutrals */
     --gray-0:#ffffff; --gray-50:#f6f6f8; --gray-100:#eeeef1; --gray-150:#e4e4e9; --gray-200:#d9dae0;
     --gray-300:#bdbfc8; --gray-400:#9497a3; --gray-500:#71747f; --gray-600:#565964; --gray-900:#15161a;
-    /* brand accent */
-    --color-accent: #6247ea;
-    --color-accent-600: #4f34d6;
-    --color-accent-700: #3f28ab;
+    /* brand accent -- coral is the default (docs/specs/coral-rebrand-and-logo.md);
+       these are just the pre-JS first-paint fallback, theme.js's ACCENT
+       map overrides all three per state.accentColor ("coral" | "purple"). */
+    --color-accent: #cd4805;
+    --color-accent-600: #b12c00;
+    --color-accent-700: #960200;
     --color-accent-tint: color-mix(in srgb, var(--color-accent) 12%, white);
     --shadow-accent: 0 12px 28px color-mix(in srgb, var(--color-accent) 30%, transparent);
+    /* Sidebar lockup icon only (see .sidebar-logo below) -- deliberately
+       not promoted to a general system color, same reasoning as when the
+       coral rebrand spec first considered and rejected that. --logo-ring-color
+       is set by theme.js (light: var(--color-accent), so it still follows
+       the Coral/Purple preference; dark: solid white, pre-JS fallback here
+       matches). */
+    --color-logo-amber: #f2a618;
+    --logo-ring-color: var(--color-accent);
     /* semantic */
     /* -700 pair is the AA-contrast-safe variant for small/bold text on
        --color-card -- see theme.js, which overrides both per-theme (these
@@ -912,8 +938,18 @@
     padding: 20px 12px; box-sizing: border-box;
   }
   .sidebar-header { display: flex; align-items: center; gap: 10px; padding: 4px 10px 18px; }
-  .sidebar-logo { width: 28px; height: 28px; border-radius: var(--radius-sm); flex-shrink: 0; }
-  .sidebar-title { font-weight: 800; font-size: 15px; letter-spacing: -0.01em; color: var(--color-text); }
+  /* Two-tone lockup icon (docs/specs/coral-rebrand-and-logo.md's follow-up):
+     ring uses --logo-ring-color (theme.js -- var(--color-accent) in light,
+     so it still follows the Coral/Purple preference; solid white in dark,
+     matching the design's own "dark lockup" reference exactly, which uses
+     white regardless of hue). Handle+dot use --color-logo-amber always,
+     in both themes, also matching the reference. No background box here --
+     unlike the standalone app icon PNG, the lockup's icon is bare. */
+  .sidebar-logo { width: 26px; height: 26px; flex-shrink: 0; }
+  .sidebar-logo .ring { fill: none; stroke: var(--logo-ring-color); stroke-width: 8; }
+  .sidebar-logo .handle { stroke: var(--color-logo-amber); stroke-width: 8; stroke-linecap: round; }
+  .sidebar-logo .dot { fill: var(--color-logo-amber); }
+  .sidebar-title { font-family: "Poppins", var(--font-sans); font-weight: 700; font-size: 18px; letter-spacing: -0.01em; color: var(--color-text); }
   .sidebar .nav-btn {
     display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 12px;
     width: 100%; padding: 10px 12px; border-radius: var(--radius-md);

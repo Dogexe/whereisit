@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<meta name="theme-color" content="#6247ea" id="themeColorMeta">
+<meta name="theme-color" content="#cd4805" id="themeColorMeta">
 <!-- Font is self-hosted (fonts/*.woff2, @font-face in styles.css), not
      loaded from Google Fonts -- sw.js never caches cross-origin requests,
      so a CDN font never loads offline before its first successful online
@@ -47,7 +47,11 @@
        both identically without duplicating click/active-state logic. -->
   <nav class="sidebar" id="sidebar">
     <div class="sidebar-header">
-      <img src="./icons/icon-192.png" alt="" class="sidebar-logo">
+      <svg class="sidebar-logo" viewBox="0 0 64 64" aria-hidden="true">
+        <circle class="ring" cx="28" cy="28" r="19"/>
+        <line class="handle" x1="42" y1="42" x2="52" y2="52"/>
+        <circle class="dot" cx="28" cy="28" r="7"/>
+      </svg>
       <span class="sidebar-title" data-l="appTitle"></span>
     </div>
     <button type="button" class="nav-btn" data-tab="home">

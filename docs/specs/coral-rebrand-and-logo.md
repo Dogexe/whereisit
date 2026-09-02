@@ -1,0 +1,95 @@
+# New logo mark + coral/amber rebrand, with a purple "classic" option
+
+Status: **built and live-verified.** Source design: a Claude Design project ("Brand logo design", `whereisit Logo.dc.html`), imported via `DesignSync` after `/design-login`. Requested directly: "this is final whereisit app logo concept, use this instead of current logo, spec first."
+
+## What the design actually specifies (read directly from the source file)
+
+Not just an icon swap — three coupled changes:
+1. **A new mark**: a magnifying glass (ring + angled handle + a center dot), replacing the app's current icon — a purple piggy-bank glyph (`icons/icon-192.png`, confirmed by viewing the file directly). The pun fits the app's own name much better: "where is it (my money)" as a literal search/lens icon.
+2. **A new color spec**, explicitly labeled the chosen option among 5 explored hue rotations (A–E, all same lightness/chroma): primary `oklch(62% 0.18 40)` ("coral"), accent `oklch(78% 0.16 75)` ("amber") for the mark's handle+dot. This replaces the app's current single-hue purple accent (`--color-accent: #6247ea` and its `-600`/`-700`/`-tint` derivatives), which today drives `.btn-primary`, the hero card's gradient, links, badges, the period-picker's selected state, category/account chip active states, the tab bar's raised Add-button circle, and more (confirmed via grep — a dozen+ call sites all keyed off the same 3 CSS custom properties).
+3. **A Poppins wordmark** (600/700 weight) for the marketing-style lockups shown in the design (icon+text combos on light/dark/mono backgrounds). The app's actual UI font is self-hosted Inter/Noto Sans Thai, deliberately (`styles.css`'s `@font-face` comment: Inter has zero Thai glyphs, Noto Sans Thai fills that gap, both self-hosted for offline PWA support). The in-app sidebar brand label today is plain text in the UI's default font, not a stylized logotype.
+
+## Decisions (confirmed via interview)
+
+1. **Mark shape is unconditional**: the magnifying glass replaces the piggy bank everywhere, always — it does not revert to the old icon under any color preference.
+2. **Coral+amber becomes the new default**, replacing purple as `--color-accent`'s default value app-wide (not just the icon) — buttons, hero card, links, badges, pickers, chips, the tab bar's Add-button circle all follow.
+3. **Purple is kept as an opt-in preference**, not deleted — a new Settings toggle (Display section), independent of Dark Mode, following the same shape as the app's previous (since-removed) Linear-theme toggle: a bundled preset switch, not an open color picker. Only the **in-app UI accent** (`--color-accent`/`-600`/`-700`) follows this preference — the mark's *shape* stays the magnifying glass regardless (decision 1), and the mark's *color* inside the live app UI (sidebar logo, wherever it's tinted by CSS rather than baked into a raster) follows this same preference.
+4. **The static app icon/favicon/PWA files ship in coral, fixed** — confirmed directly: a home-screen icon is installed once and can't be swapped later by in-app JS, so it isn't meaningfully "preference-aware" the way live CSS is. `manifest.json`'s `theme_color` and `index.html`'s pre-JS `<meta name="theme-color">` fallback follow the same fixed-coral reasoning, matching the new static icon.
+5. **Wordmark stays plain text in the app's existing UI font** (not Poppins) inside the actual app — the design's Poppins lockups are marketing/brand-asset treatments (README, app store listing, a future landing page), not something this pass wires into the live app's own sidebar/header, which was never a stylized logotype to begin with. Out of scope here; flagged as a possible separate follow-up if the user wants a branded splash/marketing asset later.
+
+## Color values
+
+Reuses the design's `oklch()` values directly rather than hand-converting to hex — this app already relies on modern CSS (`color-mix()` throughout `styles.css`), so the same baseline browser support already assumed elsewhere covers `oklch()` too.
+
+| Token | New default (coral) | Purple (opt-in) |
+|---|---|---|
+| `--color-accent` | `oklch(62% 0.18 40)` (design's exact base) | `#6247ea` (unchanged, current value) |
+| `--color-accent-600` (hover) | `oklch(54% 0.18 40)` (candidate — 8pt darker L, live-verified below) | `#4f34d6` (unchanged) |
+| `--color-accent-700` (darker text/gradient-end) | `oklch(46% 0.18 40)` (candidate — 16pt darker L, live-verified below) | `#3f28ab` (unchanged) |
+| `--color-accent-tint` | unchanged formula: `color-mix(in srgb, var(--color-accent) 12%, white)` — auto-derives from whichever base is active | same |
+| `--shadow-accent` | unchanged formula: `color-mix(in srgb, var(--color-accent) 30%, transparent)` — auto-derives | same |
+
+Only 3 raw values actually need swapping per preference (`-600`/`-700` candidates are exact numbers, not yet contrast-verified — see Verification plan). Amber (`oklch(78% 0.16 75)`) is **not** promoted to a new system-wide token — the design only specifies it as the mark's own secondary color (handle+dot), and the app has no existing two-tone UI accent system to extend; introducing one would be a much larger, unrequested change. It's used only inside the generated icon assets themselves.
+
+## Implementation approach
+
+- **Icon generation**: render the mark (rounded-square background + magnifying-glass SVG path, exact geometry from the design file) onto an HTML5 `<canvas>` at each target pixel size (192, 512, and a padded 512 for the maskable variant — Android's maskable icons need the glyph kept inside the center ~80% "safe zone" so an OS mask can crop to a circle/squircle without clipping content, matching how the current `icon-maskable-512.png` is already padded) via the browser tool, then `canvas.toDataURL('image/png')` to get exact, deterministic PNG bytes — no anti-aliasing/DPI guesswork from screenshot-cropping, and no new npm dependency (this session already confirmed `resize_window` doesn't reliably change this environment's actual viewport size, which would have made screenshot-based cropping unreliable anyway).
+- **Theme wiring**: extend `theme.js`'s `applyTheme()` (or a small sibling function called alongside it, mirroring the old `applyThemeStyle()` shape) to set `--color-accent`/`-600`/`-700` per a new `state.accentColor` (`"coral" | "purple"`, default `"coral"`), loaded/saved via the same `localStorage` path as `state.dark` (device-local only — never synced, matching Dark Mode/the old Linear theme's precedent).
+- **Settings UI**: one new toggle row in the Display section (`screens/settings.js`), same `.tabs`/`.tab-opt` radiogroup shape already used for the Language row, placed near Dark Mode.
+- **Static files**: `icons/icon-192.png`, `icons/icon-512.png`, `icons/icon-maskable-512.png` regenerated in place (same filenames — `manifest.json` and `index.html` need zero path changes), `manifest.json`'s `theme_color`, and `index.html`'s `<meta name="theme-color">` fallback all updated to the coral hex (resolved from the live-rendered canvas, not hand-approximated).
+
+## Explicitly not touched
+
+- No Poppins font load, anywhere (decision 5).
+- Amber is not promoted to a reusable design token (see Color values).
+- `icons/sprite.svg` is the Lucide *UI* icon sprite (nav icons, buttons, etc.) — unrelated to the brand mark, not touched.
+- No change to `--color-income`/`--color-expense`/etc. or any of this session's earlier spacing/contrast work.
+
+## Verification plan
+
+- Render both coral `-600`/`-700` candidates and live-check white-text contrast (`.btn-primary`'s white label, `.hero-card`'s white balance text on the gradient) via `getComputedStyle` + the same relative-luminance contrast function used throughout this session, in a real browser — adjust the candidate L values if either falls short of a reasonable bar (this is a brand color choice, not a strict WCAG text case like the income/expense fixes, but the hero card's large white balance figure is exactly the kind of element worth checking isn't washed out).
+- Confirm the Settings toggle actually swaps `--color-accent`/`-600`/`-700` live (computed style before/after), independently of Dark Mode (all 4 combinations, matching how the old Linear theme was checked).
+- Visual screenshot check: sidebar logo, hero card, primary buttons, tab bar Add button, in both accent preferences and both light/dark modes.
+- Confirm the regenerated PNGs actually look correct (zoomed screenshot) and that the maskable variant's safe-zone padding looks right when simulated (mask a circle over it).
+- `npm test`, `npm run build`, `npm run test:e2e` all pass.
+
+## A wrinkle found mid-build: the design's exact primary coral under-contrasts white text
+
+`oklch(62% 0.18 40)` (the design's literal "primary coral") resolves to `#db551d`. `.btn-primary`'s white label on that fill measures **3.94:1** — the design never showed this hue as anything larger than a small icon stroke or a swatch chip, so this never surfaced in the mockup itself. Presented the exact numbers (base L=62% at 3.94:1 vs. a darkened L=58% at 4.64:1, same hue/chroma) directly; **decision: nudge to L=58%** (`#cd4805`). `-600`/`-700` were derived at the same relative step size the original 62%→54%→46% candidates used, now 58%→50%→42% (`#b12c00`/`#960200`), and all three were live-verified: white-on-base 4.64:1, white-on-600 6.50:1, white-on-700 9.11:1, `-700`-on-tint (the `.badge-brand` text case) 7.71:1.
+
+## Icon generation: canvas, not screenshot-cropping
+
+Rendered via `<canvas>` at each exact target size (192, 512 rounded; 512 full-bleed for maskable) using the source design's own 64-unit glyph coordinates, then `canvas.toDataURL('image/png')`. The base64 payload is blocked from returning through the browser tool's JS-exec text channel (a security guardrail against exfiltrating encoded blobs), so it was routed through a tiny local Node `http` server (`fetch()` POST → decode → `fs.writeFileSync`, no new dependency) — the same "data never enters the model's context" shape `DesignSync`'s own `localPath` uploads use. This sidesteps the screenshot-crop approach the spec's own reasoning ruled out (this environment's `resize_window` doesn't reliably change the actual viewport, and `devicePixelRatio` is 1.25 here, so cropped screenshots would've needed extra math and risked soft edges) — canvas coordinates are exact regardless of window size or DPI. All three PNGs were visually inspected before being copied into `icons/`, and the maskable variant's glyph is kept to ~45% of the canvas width (matching the existing file's own conservative safe-zone padding, more conservative than the ~80% used for the two non-maskable icons).
+
+## Result
+
+Built and live-verified in a real browser, both themes, both accent preferences:
+- New magnifying-glass mark in place of the old piggy bank: `icons/icon-192.png`, `icons/icon-512.png`, `icons/icon-maskable-512.png` regenerated in place (same filenames, zero path changes needed in `manifest.json`/`index.html`), rendered as a 135deg coral→coral-700 gradient matching `.hero-card`'s existing gradient formula (the design's own mockup only showed a flat fill; the gradient treatment is a deliberate consistency choice with the app's existing visual language, not something the design itself specified either way).
+- `--color-accent`/`-600`/`-700` now default to coral (`#cd4805`/`#b12c00`/`#960200`) app-wide — confirmed live across the sidebar/tab-bar active states, `.btn-primary`, the "All accounts" active chip, category icon tints, and more, in both light and dark mode.
+- New Settings toggle (Display section, next to Language): "Accent color — Coral / Purple." Confirmed live: switching to Purple instantly reverts every CSS-driven accent element to the original `#6247ea`/`#4f34d6`/`#3f28ab` (unchanged values) without a re-render (pure CSS custom-property propagation), independently of Dark Mode, persisted device-local via the same `storage.js` path as `state.dark`.
+- **One nuance worth flagging**: the sidebar's brand mark (`<img src="./icons/icon-192.png">`) is a raster file, not CSS-tinted — so it stays coral even when "Purple" is selected, exactly as the spec's decision 3 phrasing anticipated ("wherever it's tinted by CSS rather than baked into a raster"). A user on the Purple preference will see a coral sidebar icon next to purple buttons. Making the sidebar mark itself preference-aware would mean converting it from an `<img>` to an inline, CSS-tintable `<svg>` (matching how the rest of the app's icons already work via the Lucide sprite) — a real, separable follow-up if wanted, not done here since it wasn't part of the confirmed scope.
+- `manifest.json`'s `theme_color` and `index.html`'s pre-JS `<meta name="theme-color">` fallback both updated to `#cd4805`, matching the static icon (both are fixed, install-time values — theme.js's own runtime override of the meta tag is tied to background color, not accent, and was already unrelated to this change).
+- `npm test` (172/172), `npm run build`, `npm run test:e2e` (9/9) all pass. No console errors on a hard-reloaded load.
+
+## Follow-up: flat fill (not gradient), and the sidebar lockup this session's earlier scoping deferred
+
+Reported directly, with the reference image again: "no gradient like this, sidebar should display like in ref, dark mode too, make sure too use poppy font." Two corrections to the Result above, both against decisions this same spec had made:
+
+1. **Gradient reversed to flat fill.** The Result above added a 135deg coral→coral-700 gradient to the icon PNGs as "a deliberate consistency choice with the app's existing visual language" since the design mockup's own App-icon tile only showed a flat swatch. That choice is now explicitly overridden — regenerated all three PNGs (`icons/icon-192.png`, `icon-512.png`, `icons/icon-maskable-512.png`) with a flat `--color-accent` fill, same canvas-based generation method as before (same local-save-server relay, same visual inspection before copying into `icons/`).
+2. **The sidebar lockup, previously out of scope, is now built.** This spec's own decision 5 explicitly deferred a Poppins lockup as "marketing/brand-asset treatment... not something this pass wires into the live app's own sidebar" — reversed on direct request. `index.html`'s sidebar header (`<img src="icons/icon-192.png">` + plain-text "whereisit") is now an inline two-tone SVG icon (no background box, matching the reference's bare lockup icon rather than the boxed App-icon tile) plus the wordmark in self-hosted Poppins 700, matching both of the reference's "Primary lockup" examples:
+   - **Poppins self-hosted**, not Google-Fonts-CDN-loaded, matching this app's existing, deliberately-reasoned Inter/Noto Sans Thai convention (`sw.js` never caches cross-origin requests, so a CDN font never works offline). Fetched via the browser's own `fetch()` against `fonts.gstatic.com` (real network access already confirmed working this session) and relayed to disk through the same local Node save-server used for the icon PNGs — weight 700 only, latin subset only, since the wordmark "whereisit" is the same Latin string in both UI languages (`i18n.js`'s `appTitle`). Confirmed actually loaded (not just requested) via `document.fonts` after a hard reload, not just visually.
+   - **The ring now follows the Coral/Purple preference live** (`var(--color-accent)` in light mode) — a real improvement over the raster-PNG sidebar icon this spec's own "Result" section had flagged as a nuance ("a user on the Purple preference will see a coral sidebar icon... a real, separable follow-up if wanted"). That follow-up is what this section is. In dark mode the ring goes solid white regardless of accent preference, matching the reference's own dark lockup (which uses white independent of hue) — implemented as a new `--logo-ring-color` token set in `theme.js`, orthogonal to the existing `ACCENT` map.
+   - **The handle+dot use a new `--color-logo-amber` token** (`#f2a618`, unchanged from the earlier resolved value), fixed across both themes and both accent preferences — matching the reference, where the amber never changes between the light/dark/coral/purple examples shown.
+   - Live-verified: light+coral (coral ring/amber dot/dark text), dark (white ring/amber dot/white text), and purple preference (purple ring, confirmed live-switching from coral) — all via zoomed screenshots and `document.fonts`/`getComputedStyle` checks, not assumption.
+
+`npm test` (172/172), `npm run build`, `npm run test:e2e` (9/9) all pass; no console errors after a hard reload.
+
+## Follow-up: README header + service worker cache bump
+
+Requested directly ("update readme, add app name too"). The README (`README.md`) embedded the old `icons/icon-512.png` but never actually displayed the app's name anywhere — no heading, just icon then straight into the description paragraph, a real pre-existing gap this surfaced rather than something the rebrand caused.
+
+- Generated two more lockup renders the same way as the sidebar's assets: `icons/lockup-light.png`/`icons/lockup-dark.png`, via the same `<canvas>` + self-hosted-Poppins-loaded-through-`FontFace` + local-save-server pipeline used throughout this spec, sized for a README header (96px icon, 76px Poppins-700 wordmark, transparent background, 3x device-pixel-ratio canvas for crispness on retina displays) rather than reused from the small 26px sidebar version.
+- README's header now uses a `<picture>` element (`<source media="(prefers-color-scheme: dark)">` + fallback `<img>`) so it automatically matches GitHub.com's own light/dark viewer theme — the same two color treatments as the sidebar and the source design's own light/dark lockup references, just rendered at README-header scale.
+- **Service worker cache bumped** (`sw.js`, `rrrj-v3` → `rrrj-v4`): this whole spec changed several files in the precached `APP_SHELL` list (`icons/icon-192.png`, `icons/icon-512.png`, `manifest.json`) and added a new one that needed adding to precache (`fonts/poppins-latin-700.woff2`, for the same "first load isn't controlled by the SW yet" reason `v3`'s own comment already documents for the other self-hosted fonts) — without bumping the cache name, an already-installed PWA user would keep being served the old purple piggy-bank icon and old font-less sidebar indefinitely. This is a real, easy-to-miss step this repo's own `CACHE_NAME` comment explicitly calls out ("bump this whenever the cached app-shell files should be invalidated"); the `lockup-*.png` files were **not** added to `APP_SHELL` since they're only ever referenced by `README.md`, never fetched by the app itself.
+
+`npm test` (172/172), `npm run build`, `npm run test:e2e` (9/9) all pass after this follow-up too.

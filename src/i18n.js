@@ -45,6 +45,8 @@ export const STRINGS = {
   personalAccount: ["บัญชีส่วนตัว", "Personal account"], languageSection: ["ภาษา", "Language"],
   displaySection: ["การแสดงผล", "Display"],
   hideAmountsLabel: ["ซ่อนยอดเงิน", "Hide financial status"],
+  accentColorLabel: ["สีธีม", "Accent color"],
+  accentColorCoralOpt: ["ส้ม", "Coral"], accentColorPurpleOpt: ["ม่วง", "Purple"],
   hideAmountsAria: ["ซ่อนยอดเงิน", "Hide amounts"], showAmountsAria: ["แสดงยอดเงิน", "Show amounts"],
   syncSection: ["ซิงค์ข้ามอุปกรณ์", "Cross-device sync"], dataSection: ["ข้อมูล", "Data"],
   securitySection: ["ความปลอดภัย", "Security"],

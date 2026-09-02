@@ -1,6 +1,9 @@
 <div align="center">
 
-<img src="icons/icon-512.png" width="84" height="84" alt="App icon" />
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="icons/lockup-dark.png">
+  <img src="icons/lockup-light.png" height="64" alt="whereisit" />
+</picture>
 
 Personal income & expense tracker with Google sign-in, cross-device sync, budgets, recurring bills, and savings goals — installable as a PWA.
 

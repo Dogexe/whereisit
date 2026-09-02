@@ -1,6 +1,20 @@
 import { state } from "./state.js";
 import { $ } from "./utils.js";
 
+// docs/specs/coral-rebrand-and-logo.md: "coral" is the new default brand
+// (from the design's own oklch(58% 0.18 40) base -- nudged down from its
+// literal oklch(62% 0.18 40) spec value specifically because the design
+// only ever showed that hue as a small icon stroke/swatch, never as a
+// large white-text button fill; at 62% L, white text measured 3.94:1,
+// below the 4.5:1 small-text minimum this app has held to all session --
+// 58% clears it at 4.64:1 while reading as the same coral). "purple" is
+// the app's original accent, unchanged, kept as an opt-in preference.
+// Resolved via canvas getImageData against real Chrome, not hand-converted.
+const ACCENT = {
+  coral: { base: "#cd4805", c600: "#b12c00", c700: "#960200" },
+  purple: { base: "#6247ea", c600: "#4f34d6", c700: "#3f28ab" },
+};
+
 export function applyTheme() {
   // tabbarInactive is its own token (not tertiary) because tertiary is
   // shared by 11+ mostly-static-text spots, while the tab bar is an
@@ -36,6 +50,21 @@ export function applyTheme() {
   root.setProperty("--color-expense", state.dark ? "#ff7a68" : "#ef4b3a");
   root.setProperty("--color-expense-700", state.dark ? "#ff7a68" : "#c22f22");
   root.setProperty("--color-warning", state.dark ? "#f5b95a" : "#ec9f2e");
+  // Independent of dark/light -- same axis the removed Linear theme used.
+  // --color-accent-tint/--shadow-accent are left alone: both are already
+  // color-mix() expressions in styles.css referencing var(--color-accent),
+  // so they auto-derive from whichever base is set here.
+  const accent = ACCENT[state.accentColor] || ACCENT.coral;
+  root.setProperty("--color-accent", accent.base);
+  root.setProperty("--color-accent-600", accent.c600);
+  root.setProperty("--color-accent-700", accent.c700);
+  // Sidebar lockup icon's ring (see .sidebar-logo, styles.css): follows the
+  // Coral/Purple preference in light mode via var(--color-accent), but goes
+  // solid white in dark mode regardless of preference -- matching the
+  // design's own "dark lockup" reference, which uses white for the ring
+  // independent of hue. (--color-logo-amber, the handle+dot, never changes
+  // with theme or preference, so it isn't set here.)
+  root.setProperty("--logo-ring-color", state.dark ? "#ffffff" : "var(--color-accent)");
   const themeColorMeta = $("themeColorMeta");
   if (themeColorMeta) themeColorMeta.setAttribute("content", t.bg);
 }
