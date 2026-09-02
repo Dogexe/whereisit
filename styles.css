@@ -50,6 +50,18 @@
        --color-card -- see theme.js, which overrides both per-theme (these
        are just the light-mode fallback values for the pre-JS first paint). */
     --color-income: #1fae71; --color-income-700: #147a54; --color-income-tint: color-mix(in srgb, var(--color-income) 12%, white);
+    /* --color-income-tint always mixes toward white regardless of theme
+       (measured: light and dark tint end up within ~2 RGB points of each
+       other, since a 12% mix is dominated by the white it's mixed into) --
+       unlike --color-card/--color-surface, it never inverts for dark mode.
+       So an icon foreground sitting on it needs a color that's ALSO
+       theme-invariant, not --color-income-700 (which deliberately equals
+       the bright base --color-income in dark mode, correct for its own
+       "text on --color-card" job but wrong here: paired with a tint that
+       stays light, that would measure ~1.9:1). Reuses -700's light-mode
+       hex, fixed, for exactly this "icon glyph on its own permanently-light
+       tint circle" pattern -- categories.js's rowTone()/GOAL_TONES. */
+    --color-income-tint-fg: #147a54;
     --color-expense: #ef4b3a; --color-expense-700: #c22f22; --color-expense-tint: color-mix(in srgb, var(--color-expense) 12%, white);
     --color-warning: #ec9f2e; --color-warning-text: #93630f; --color-warning-tint: color-mix(in srgb, var(--color-warning) 15%, white);
     /* surfaces (swapped by applyTheme for dark mode) */
@@ -115,7 +127,7 @@
      safe-area inset plus a fixed breathing-room gap, so it's always
      exactly enough regardless of device. */
   .screen { flex: 1; max-width: 480px; margin: 0 auto; width: 100%; padding: 20px 20px calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 20px); box-sizing: border-box; }
-  .screen-title { font-size: 22px; margin: 4px 0 16px; }
+  .screen-title { font-size: 22px; margin: 4px 0 var(--space-md); }
   /* Fires only on a genuine tab switch (screens/router.js's setTab, which
      re-adds this class after a forced reflow) -- NOT on every renderScreen()
      call, since that also runs on sync pulls and local saves where a fade
@@ -268,7 +280,7 @@
   /* — badges & switches — */
   .badge { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: var(--radius-pill); font-size: 12px; font-weight: 600; white-space: nowrap; }
   .badge-brand { background: var(--color-accent-tint); color: var(--color-accent-700); }
-  .badge-income { background: var(--color-income-tint); color: var(--color-income); }
+  .badge-income { background: var(--color-income-tint); color: var(--color-income-tint-fg); }
   .badge-expense { background: var(--color-expense-tint); color: var(--color-expense-700); }
   .badge-warn { background: var(--color-warning-tint); color: var(--color-warning-text); }
   .switch { width: 48px; height: 28px; background: var(--color-border); border: none; border-radius: var(--radius-pill); padding: 2px; cursor: pointer; position: relative; box-sizing: border-box; display: inline-flex; transition: background var(--duration-normal) var(--ease-standard); }
@@ -399,7 +411,7 @@
      .tx-toolbar-row below). Insights' Breakdown tab shares its own
      Filters button with its pill instead, via .toolbar-row (see the
      insights section further down). */
-  .tx-toolbar-row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+  .tx-toolbar-row { display: flex; gap: 8px; align-items: center; margin-bottom: var(--space-sm); }
   .tx-toolbar-row .input { flex: 1; min-width: 0; }
   .tx-toolbar-row .filters-btn { flex-shrink: 0; }
   .filters-btn { position: relative; }
@@ -414,7 +426,7 @@
      source order -- so a badge set to `hidden` would otherwise still
      render. This rule out-specifies both to make hidden actually hide it. */
   .filter-badge[hidden] { display: none; }
-  .active-filter-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .active-filter-chips { display: flex; flex-wrap: wrap; gap: var(--space-xs); margin-bottom: var(--space-sm); }
   .active-filter-chips:empty { margin-bottom: 0; }
   .filter-chip {
     display: inline-flex; align-items: center; gap: 4px; border: none; cursor: pointer;
@@ -709,7 +721,7 @@
   .trend-labels div { flex: 1; text-align: center; font-size: 11px; color: var(--color-tertiary); }
 
   /* — settings — */
-  .settings-block { display: flex; flex-direction: column; gap: 22px; padding-bottom: 24px; max-width: 480px; }
+  .settings-block { display: flex; flex-direction: column; gap: var(--space-xl); padding-bottom: 24px; max-width: 480px; }
   /* .settings-layout/.settings-nav/.settings-panels only matter at 1024px+
      (see that breakpoint below, which turns them into a list-left/
      detail-right pattern) -- below it .settings-nav stays hidden and
@@ -717,8 +729,8 @@
      blocks used to get for free as direct children of .settings-block,
      before this wrapper existed, so mobile spacing is unchanged. */
   .settings-nav { display: none; }
-  .settings-panels { display: flex; flex-direction: column; gap: 22px; }
-  .settings-section-label { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-tertiary); margin-bottom: 8px; }
+  .settings-panels { display: flex; flex-direction: column; gap: var(--space-xl); }
+  .settings-section-label { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-tertiary); margin-bottom: var(--space-xs); }
   .profile-row { display: flex; align-items: center; gap: 14px; }
   .avatar { width: 52px; height: 52px; border-radius: 50%; background: var(--color-surface); display: flex; align-items: center; justify-content: center; font-weight: 700; font-family: var(--font-sans); font-size: 18px; color: var(--color-tertiary); flex-shrink: 0; object-fit: cover; }
   .profile-name { font-weight: 600; font-size: 15px; }
@@ -746,14 +758,14 @@
   .settings-group summary > .icon:last-child { margin-left: auto; color: var(--color-tertiary); transition: transform var(--duration-normal) var(--ease-standard); }
   .settings-group[open] summary > .icon:last-child { transform: rotate(90deg); }
   .settings-badge-count { font-size: 11px; font-weight: 700; color: var(--color-tertiary); background: var(--color-surface); border-radius: var(--radius-pill); padding: 2px 8px; }
-  .settings-group-body { padding: 0 4px 14px; }
+  .settings-group-body { padding: 0 4px var(--space-sm); }
 
   #syncStatus { font-size: 12.5px; color: var(--color-muted); display: flex; align-items: center; gap: 6px; }
-  #syncStatus.ok { color: var(--color-income); }
-  #syncStatus.err { color: var(--color-expense); }
+  #syncStatus.ok { color: var(--color-income-700); }
+  #syncStatus.err { color: var(--color-expense-700); }
   .sync-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--color-tertiary); flex-shrink: 0; }
-  #syncStatus.ok .sync-dot { background: var(--color-income); }
-  #syncStatus.err .sync-dot { background: var(--color-expense); }
+  #syncStatus.ok .sync-dot { background: var(--color-income-700); }
+  #syncStatus.err .sync-dot { background: var(--color-expense-700); }
 
   .manage-row { display: flex; align-items: center; gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--color-divider); }
   .manage-row:last-child { border-bottom: none; }

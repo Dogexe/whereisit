@@ -80,7 +80,7 @@ export function guessCategory(note, type) {
 // Deduped defensively even though today's 16 defaults happen to use 16
 // distinct icons.
 export const CATEGORY_ICON_CHOICES = Array.from(new Set(DEFAULT_CATEGORIES.map((c) => c.icon)));
-export function rowTone(type) { return type === "income" ? { bg: "var(--color-income-tint)", color: "var(--color-income)" } : { bg: "var(--color-accent-tint)", color: "var(--color-accent)" }; }
+export function rowTone(type) { return type === "income" ? { bg: "var(--color-income-tint)", color: "var(--color-income-tint-fg)" } : { bg: "var(--color-accent-tint)", color: "var(--color-accent)" }; }
 
 // Stage 2 of docs/specs/custom-categories.md: transactions/budgets/bills
 // are moving from storing a category by name to referencing it by a
@@ -188,6 +188,6 @@ export function groupedCategories(categoriesList) {
 export const GOAL_ICONS = ["flag", "piggy-bank", "plane", "shield", "gift", "target"];
 export const GOAL_TONES = [
   { bg: "var(--color-accent-tint)", color: "var(--color-accent)" },
-  { bg: "var(--color-income-tint)", color: "var(--color-income)" },
+  { bg: "var(--color-income-tint)", color: "var(--color-income-tint-fg)" },
   { bg: "var(--color-warning-tint)", color: "var(--color-warning-text)" }
 ];

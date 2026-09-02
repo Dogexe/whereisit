@@ -620,7 +620,7 @@ export function goalCardHtml(g, idx) {
   return `
     <div class="goal-card">
       <div class="top">${topRow}</div>
-      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${complete ? "var(--color-income)" : tone.color}"></div></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${complete ? "var(--color-income-700)" : tone.color}"></div></div>
       ${state.goalContributeId === g.id && isDesktopShell() ? goalContributeFormHtml() : ""}
     </div>`;
 }
@@ -832,7 +832,7 @@ export function renderSettings() {
   const name = accountDisplayName(currentUser, l.notSignedIn);
 
   $("screen").innerHTML = `
-    <h2 class="screen-title" style="margin-bottom:22px">${escapeHtml(l.settingsTitle)}</h2>
+    <h2 class="screen-title" style="margin-bottom:var(--space-xl)">${escapeHtml(l.settingsTitle)}</h2>
     <div class="settings-block">
 
       <div class="profile-row">
@@ -893,7 +893,7 @@ export function renderSettings() {
           </div>
           ${pushReminderRowHtml()}
           ${deferredInstallPrompt ? `
-          <div style="padding:10px 4px">
+          <div style="padding:var(--space-sm) 4px">
             <button type="button" class="btn btn-primary btn-block" id="installAppBtn">
               ${icon("download-cloud")}
               ${escapeHtml(l.installAppBtn)}
