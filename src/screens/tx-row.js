@@ -37,7 +37,7 @@ export function txRowHtml(t, viewingAccountId) {
       sign = "−"; amountColor = "var(--color-text)";
     } else if (viewingTo) {
       label = l.transferFromRowLabel.replace("{name}", accountNameById(accounts, t.accountId, t.accountId));
-      sign = "+"; amountColor = "var(--color-income)";
+      sign = "+"; amountColor = "var(--color-income-700)";
     } else {
       const fromName = accountNameById(accounts, t.accountId, t.accountId);
       const toName = accountNameById(accounts, t.toAccountId, t.toAccountId);
@@ -68,7 +68,7 @@ export function txRowHtml(t, viewingAccountId) {
     </div>`;
   }
   const tone = rowTone(t.type);
-  const amountColor = t.type === "income" ? "var(--color-income)" : "var(--color-text)";
+  const amountColor = t.type === "income" ? "var(--color-income-700)" : "var(--color-text)";
   const sign = t.type === "income" ? "+" : "−";
   const catId = resolveCategoryId(t, t.type);
   const cat = categories.find((c) => c.id === catId);

@@ -46,7 +46,10 @@
     --color-accent-tint: color-mix(in srgb, var(--color-accent) 12%, white);
     --shadow-accent: 0 12px 28px color-mix(in srgb, var(--color-accent) 30%, transparent);
     /* semantic */
-    --color-income: #1fae71; --color-income-tint: color-mix(in srgb, var(--color-income) 12%, white);
+    /* -700 pair is the AA-contrast-safe variant for small/bold text on
+       --color-card -- see theme.js, which overrides both per-theme (these
+       are just the light-mode fallback values for the pre-JS first paint). */
+    --color-income: #1fae71; --color-income-700: #147a54; --color-income-tint: color-mix(in srgb, var(--color-income) 12%, white);
     --color-expense: #ef4b3a; --color-expense-700: #c22f22; --color-expense-tint: color-mix(in srgb, var(--color-expense) 12%, white);
     --color-warning: #ec9f2e; --color-warning-text: #93630f; --color-warning-tint: color-mix(in srgb, var(--color-warning) 15%, white);
     /* surfaces (swapped by applyTheme for dark mode) */
@@ -68,6 +71,13 @@
        or none, on some platforms/older Android especially. */
     --font-sans: "Inter", "Noto Sans Thai", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
     --radius-sm: 8px; --radius-md: 12px; --radius-lg: 18px; --radius-xl: 24px; --radius-pill: 999px;
+    /* Linear (4px-step), not the more common doubling scale -- chosen
+       deliberately per docs/specs/home-spacing-scale.md's design-skill
+       review so the existing, audit-confirmed-fine 12px card rhythm can be
+       tokenized as-is instead of being forced to round to 8px or 16px.
+       Home-only for now (see that spec for the full remap + rationale);
+       other screens keep their literal px values until a future pass. */
+    --space-xs: 8px; --space-sm: 12px; --space-md: 16px; --space-lg: 20px; --space-xl: 24px;
     --shadow-xs: 0 1px 2px rgba(15,15,20,0.04);
     --shadow-sm: 0 2px 6px rgba(15,15,20,0.06);
     --shadow-md: 0 8px 24px rgba(15,15,20,0.08);
@@ -112,6 +122,7 @@
      would feel like a glitch rather than polish. */
   @keyframes screen-fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
   .screen.screen-enter { animation: screen-fade-in var(--duration-normal) var(--ease-standard); }
+  @media (prefers-reduced-motion: reduce) { .screen.screen-enter { animation: none; } }
 
   /* — shared card base (list/insight/goal/stat/etc. cards all sit on this) — */
   .card, .list-card, .insight-card, .trend-chart-card, .goal-card,
@@ -220,7 +231,7 @@
      -- structurally identical to the category-chip row above, kept as its
      own class pair rather than reusing .category-chip directly since the
      two aren't the same concept, just the same visual shape. */
-  .account-switcher-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; margin-bottom: 12px; -webkit-overflow-scrolling: touch; scrollbar-width: none; -ms-overflow-style: none; }
+  .account-switcher-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; margin-bottom: var(--space-sm); -webkit-overflow-scrolling: touch; scrollbar-width: none; -ms-overflow-style: none; }
   .account-switcher-row::-webkit-scrollbar { display: none; }
   .account-chip {
     display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
@@ -232,6 +243,11 @@
   .account-chip .icon { width: 16px; height: 16px; }
   .account-chip:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
   .account-chip.active { background: var(--color-accent); border-color: var(--color-accent); color: #fff; }
+  /* Mouse-only: the chip already declares a background/border transition
+     above but had no hover rule to trigger it, so a desktop pointer got no
+     feedback at all before a click landed. (hover: hover) keeps this off
+     touch, where it would otherwise stick after a tap. */
+  @media (hover: hover) { .account-chip:not(.active):not(:disabled):not(.account-chip-disabled):hover { background: var(--color-surface); } }
   /* Add form's Transfer tab (requested after the Transfer tab shipped):
      whichever account the other picker (From/To) currently holds renders
      disabled here, so picking the same account for both is caught at the
@@ -267,7 +283,7 @@
   /* — home — */
   .today-label { font-size: 13px; color: var(--color-muted); }
   .home-columns { display: flex; flex-direction: column; gap: 20px; }
-  .hero-card { border-radius: var(--radius-lg); padding: 22px; color: #ffffff; background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-700) 100%); box-shadow: var(--shadow-accent); margin-top: 16px; }
+  .hero-card { border-radius: var(--radius-lg); padding: 22px; color: #ffffff; background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-700) 100%); box-shadow: var(--shadow-accent); margin-top: var(--space-md); }
   .hero-card.hero-card-negative { background: linear-gradient(135deg, var(--color-expense) 0%, var(--color-expense-700) 100%); box-shadow: 0 12px 28px color-mix(in srgb, var(--color-expense) 30%, transparent); }
   .hero-card .kicker { font-size: 13px; opacity: 0.85; font-weight: 500; }
   /* "Hide financial status" quick toggle, top corner of the hero card next
@@ -287,18 +303,29 @@
   .hero-card .foot-row { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; }
   .hero-card .delta-pill { font-size: 13px; font-weight: 600; background: rgba(255,255,255,0.18); border-radius: var(--radius-pill); padding: 6px 12px; white-space: nowrap; }
 
-  .stat-row { display: flex; gap: 12px; margin-top: 12px; }
+  .stat-row { display: flex; gap: 12px; margin-top: var(--space-sm); }
   .stat-card { flex: 1; padding: 14px 16px; min-width: 0; }
   .stat-card .head { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--color-muted); }
   .stat-card .head .icon { width: 15px; height: 15px; }
   .stat-card .value { font-size: 20px; font-weight: 700; margin-top: 6px; letter-spacing: -0.02em; }
   .stat-card .delta { font-size: 12px; font-weight: 600; margin-top: 4px; }
 
-  .today-spend-card { display: flex; align-items: center; gap: 12px; padding: 12px 16px; margin-top: 12px; }
+  /* One-shot stagger for Home's top cards on a genuine tab entry (piggybacks
+     on .screen-enter, same trigger/comment as screen-fade-in above -- not on
+     every re-render). Opt-in via (no-preference) rather than an opt-out
+     override, so a reduced-motion user gets no animation at all here. */
+  @media (prefers-reduced-motion: no-preference) {
+    @keyframes home-card-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .screen.screen-enter .hero-card { animation: home-card-in var(--duration-normal) var(--ease-standard) both; }
+    .screen.screen-enter .stat-row .stat-card:nth-child(1) { animation: home-card-in var(--duration-normal) var(--ease-standard) both 40ms; }
+    .screen.screen-enter .stat-row .stat-card:nth-child(2) { animation: home-card-in var(--duration-normal) var(--ease-standard) both 80ms; }
+    .screen.screen-enter .today-spend-card { animation: home-card-in var(--duration-normal) var(--ease-standard) both 120ms; }
+  }
+  .today-spend-card { display: flex; align-items: center; gap: 12px; padding: 12px 16px; margin-top: var(--space-sm); }
   .today-spend-card .label { font-size: 14px; font-weight: 500; color: var(--color-text); }
   .today-spend-card .value { margin-left: auto; font-size: 16px; font-weight: 700; flex-shrink: 0; }
 
-  .section-head { margin: 22px 0 6px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .section-head { margin: var(--space-xl) 0 var(--space-xs); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .section-head h3 { font-size: 15px; font-weight: 700; }
   .section-head:first-of-type { margin-top: 0; }
 
@@ -352,7 +379,7 @@
   .budget-item .row1 .right { color: var(--color-muted); }
   .bar-track { height: 8px; border-radius: var(--radius-pill); background: var(--color-surface); overflow: hidden; }
   .bar-fill { height: 100%; border-radius: var(--radius-pill); }
-  .budgets-list { display: flex; flex-direction: column; gap: 14px; padding: 16px; }
+  .budgets-list { display: flex; flex-direction: column; gap: var(--space-sm); padding: 16px; }
 
   /* — transactions filters — */
   .filter-row { display: flex; gap: 8px; margin-bottom: 10px; }

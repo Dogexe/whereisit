@@ -106,7 +106,7 @@ export function renderHome() {
 
   $("screen").innerHTML = `
     <div class="today-label">${escapeHtml(today)}</div>
-    <h2 class="screen-title" style="margin:2px 0 0">${escapeHtml(l.overview)}</h2>
+    <h2 class="screen-title" style="margin:2px 0 var(--space-xs)">${escapeHtml(l.overview)}</h2>
     <div class="home-columns">
       <div class="home-col-main">
         ${accountSwitcherHtml()}
@@ -125,12 +125,12 @@ export function renderHome() {
           <div class="stat-card">
             <div class="head">${icon("arrow-down-left")}<span>${escapeHtml(l.incomeLabel)}</span></div>
             <div class="value">${fmtMoney(income)}</div>
-            <div class="delta" style="color:var(--color-income)">${incomeDelta !== null ? escapeHtml(incomeDelta) + " " + escapeHtml(l.vsLastMonth) : "—"}</div>
+            <div class="delta" style="color:var(--color-income-700)">${incomeDelta !== null ? escapeHtml(incomeDelta) + " " + escapeHtml(l.vsLastMonth) : "—"}</div>
           </div>
           <div class="stat-card">
             <div class="head">${icon("arrow-up-right")}<span>${escapeHtml(l.expenseLabel)}</span></div>
             <div class="value">${fmtMoney(expense)}</div>
-            <div class="delta" style="color:var(--color-expense)">${expenseDelta !== null ? escapeHtml(expenseDelta) + " " + escapeHtml(l.vsLastMonth) : "—"}</div>
+            <div class="delta" style="color:var(--color-expense-700)">${expenseDelta !== null ? escapeHtml(expenseDelta) + " " + escapeHtml(l.vsLastMonth) : "—"}</div>
           </div>
         </div>
 
