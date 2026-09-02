@@ -20,15 +20,9 @@ export const state = {
   // gates entry). Device-local only, same treatment as lang/dark: never
   // synced via Supabase, never touched by wipeLocalAccountData().
   hideAmounts: false,
-  // "current" | "linear" -- a bundled visual theme (accent + panel radius/
-  // border/shadow + heading weight + nav icons), not an independent accent
-  // picker. Device-local only, same treatment as lang/dark immediately
-  // above: never synced via Supabase, never touched by
-  // wipeLocalAccountData(). See docs/specs/linear-theme.md.
-  themeStyle: "current",
   // docs/specs/app-lock.md stage 1: a lightweight, purely client-side PIN
   // gate on the app itself -- not a Supabase auth mechanism. Device-local
-  // only, same treatment as lang/dark/themeStyle immediately above: never
+  // only, same treatment as lang/dark immediately above: never
   // synced via Supabase, never touched by wipeLocalAccountData() (the PIN
   // locks this device, not this signed-in account, so an account
   // sign-out/switch shouldn't clear or need it).

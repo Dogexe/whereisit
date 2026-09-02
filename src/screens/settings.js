@@ -11,7 +11,7 @@ import { accountDisplayName } from "../account.js";
 import { daysUntilBillDue, dueSoonLabel, resolveCategoryId, computeBalance } from "../derived.js";
 import { saveSettings } from "../storage.js";
 import { setPin, clearPin } from "../applock.js";
-import { applyTheme, applyThemeStyle } from "../theme.js";
+import { applyTheme } from "../theme.js";
 import {
   currentUser, lastSyncStatus, signInWithGoogle, signOutUser, syncNow,
   budgetToRow, billToRow, goalToRow, categoryToRow, accountToRow, pushRows
@@ -876,14 +876,6 @@ export function renderSettings() {
             <button type="button" class="switch ${state.dark ? "on" : ""}" id="darkSwitch"><span class="thumb"></span></button>
           </div>
           <div class="toggle-row">
-            ${iconAvatar("palette", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
-            <span class="label">${escapeHtml(l.themeSection)}</span>
-            <div class="tabs" role="radiogroup" style="flex-shrink:0">
-              <label class="tab-opt"><input type="radio" name="theme-style-switch" value="current" ${state.themeStyle === "current" ? "checked" : ""}>${escapeHtml(l.themeCurrentOpt)}</label>
-              <label class="tab-opt"><input type="radio" name="theme-style-switch" value="linear" ${state.themeStyle === "linear" ? "checked" : ""}>${escapeHtml(l.themeLinearOpt)}</label>
-            </div>
-          </div>
-          <div class="toggle-row">
             ${iconAvatar(state.hideAmounts ? "eye-off" : "eye", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
             <span class="label">${escapeHtml(l.hideAmountsLabel)}</span>
             <button type="button" class="switch ${state.hideAmounts ? "on" : ""}" id="hideAmountsSwitch"><span class="thumb"></span></button>
@@ -1037,14 +1029,7 @@ export function renderSettings() {
   }));
   $("authBtn").addEventListener("click", () => { currentUser ? signOutUser() : signInWithGoogle(); });
   document.querySelectorAll('input[name="lang-switch"]').forEach((r) => r.addEventListener("change", (e) => { state.lang = e.target.value; saveSettings(); renderChrome(); renderScreen(); }));
-  // applyThemeStyle() runs here too, not just from the Theme switch below:
-  // the Linear theme's own tokens (accent, shadow) differ by light/dark,
-  // so a dark-mode toggle while Linear is active needs to refresh them,
-  // the same reason applyTheme() itself always runs on this click.
-  $("darkSwitch").addEventListener("click", () => { state.dark = !state.dark; saveSettings(); applyTheme(); applyThemeStyle(); renderScreen(); });
-  document.querySelectorAll('input[name="theme-style-switch"]').forEach((r) => r.addEventListener("change", (e) => {
-    state.themeStyle = e.target.value; saveSettings(); applyThemeStyle(); renderScreen();
-  }));
+  $("darkSwitch").addEventListener("click", () => { state.dark = !state.dark; saveSettings(); applyTheme(); renderScreen(); });
   $("hideAmountsSwitch").addEventListener("click", () => { state.hideAmounts = !state.hideAmounts; saveSettings(); renderScreen(); });
   $("syncNowBtn").addEventListener("click", syncNow);
   if ($("pushReminderSwitch")) $("pushReminderSwitch").addEventListener("click", async () => {

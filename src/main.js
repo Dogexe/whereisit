@@ -5,7 +5,7 @@ import { loadFromStorage } from "./storage.js";
 import { loadPending } from "./pending.js";
 import { loadWatermark, resetWatermark } from "./watermark.js";
 import { shouldWipeLocalData, getStoredUserId, setStoredUserId } from "./account.js";
-import { applyTheme, applyThemeStyle } from "./theme.js";
+import { applyTheme } from "./theme.js";
 import {
   sb, setCurrentUser, currentUser, hasLiveInputRisk, syncNow, setSyncStatus, setSyncRerenderCallback, markAllPending,
   wipeLocalAccountData, backfillCategoryIds, backfillAccountIds
@@ -50,7 +50,6 @@ backfillCategoryIds();
 // a default account first if this device/account genuinely has none.
 backfillAccountIds();
 applyTheme();
-applyThemeStyle();
 
 // docs/specs/app-lock.md stage 3: if a PIN is enabled, everything that
 // used to run unconditionally right here (the first renderScreen(), the

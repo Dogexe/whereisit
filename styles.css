@@ -45,23 +45,6 @@
     --color-accent-700: #3f28ab;
     --color-accent-tint: color-mix(in srgb, var(--color-accent) 12%, white);
     --shadow-accent: 0 12px 28px color-mix(in srgb, var(--color-accent) 30%, transparent);
-    /* docs/specs/linear-theme.md: the "filled buttons go monochrome" surfaces
-       (hero card, .btn-primary, the tab bar's raised Add circle) read from
-       these two instead of a literal var(--color-accent)/#fff, so the
-       Current theme (identical to --color-accent/#fff below, zero visual
-       change) and the Linear theme (near-black/near-white, set by
-       theme.js's applyThemeStyle()) can both drive them without touching
-       the component rules themselves. --weight-heading likewise lets
-       theme.js retune h1-h4 without a second copy of that rule. */
-    --color-primary-fill: var(--color-accent);
-    --color-primary-fill-text: #ffffff;
-    --color-primary-fill-hover: var(--color-accent-600);
-    /* Separate from --color-primary-fill because the Current theme's hero
-       is a gradient (two color stops) while .btn-primary is a solid fill --
-       they only converge to the same flat value under the Linear theme,
-       where theme.js sets this to a plain color instead of a gradient. */
-    --hero-fill: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-700) 100%);
-    --weight-heading: 800;
     /* semantic */
     --color-income: #1fae71; --color-income-tint: color-mix(in srgb, var(--color-income) 12%, white);
     --color-expense: #ef4b3a; --color-expense-700: #c22f22; --color-expense-tint: color-mix(in srgb, var(--color-expense) 12%, white);
@@ -103,18 +86,10 @@
     background: var(--color-bg); color: var(--color-text); font-family: var(--font-sans);
     font-size: 15px; line-height: 1.45; -webkit-font-smoothing: antialiased;
   }
-  h1, h2, h3, h4 { font-family: var(--font-sans); font-weight: var(--weight-heading); margin: 0; letter-spacing: -0.02em; }
+  h1, h2, h3, h4 { font-family: var(--font-sans); font-weight: 800; margin: 0; letter-spacing: -0.02em; }
   a { color: var(--color-accent); }
   svg { display: block; }
   .icon { width: 18px; height: 18px; flex-shrink: 0; }
-  /* Nav icons carry both a Lucide (.icon-lucide) and a Radix (.icon-linear)
-     <use> in the same <svg>, per docs/specs/linear-theme.md Stage 3 -- only
-     one is ever shown, toggled by the data-theme-style attribute theme.js
-     sets on <html>. Defaults to showing Lucide so a pre-JS/first-paint icon
-     never shows blank or the wrong set. */
-  .icon-linear { display: none; }
-  html[data-theme-style="linear"] .icon-lucide { display: none; }
-  html[data-theme-style="linear"] .icon-linear { display: inline; }
 
   .app { display: flex; flex-direction: column; min-height: 100vh; }
 
@@ -156,8 +131,8 @@
   .btn:active { transform: scale(0.97); }
   .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
   .btn:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
-  .btn-primary { background: var(--color-primary-fill); color: var(--color-primary-fill-text); box-shadow: var(--shadow-accent); }
-  .btn-primary:hover { background: var(--color-primary-fill-hover); }
+  .btn-primary { background: var(--color-accent); color: #ffffff; box-shadow: var(--shadow-accent); }
+  .btn-primary:hover { background: var(--color-accent-600); }
   .btn-secondary { background: var(--color-card); color: var(--color-text); border: 1px solid var(--color-border); box-shadow: none; }
   .btn-secondary:hover { background: var(--color-surface); }
   .btn-ghost { color: var(--color-accent-600); padding: 0 4px; height: auto; font-size: 13px; font-weight: 600; }
@@ -292,7 +267,7 @@
   /* — home — */
   .today-label { font-size: 13px; color: var(--color-muted); }
   .home-columns { display: flex; flex-direction: column; gap: 20px; }
-  .hero-card { border-radius: var(--radius-lg); padding: 22px; color: var(--color-primary-fill-text); background: var(--hero-fill); box-shadow: var(--shadow-accent); margin-top: 16px; }
+  .hero-card { border-radius: var(--radius-lg); padding: 22px; color: #ffffff; background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-700) 100%); box-shadow: var(--shadow-accent); margin-top: 16px; }
   .hero-card.hero-card-negative { background: linear-gradient(135deg, var(--color-expense) 0%, var(--color-expense-700) 100%); box-shadow: 0 12px 28px color-mix(in srgb, var(--color-expense) 30%, transparent); }
   .hero-card .kicker { font-size: 13px; opacity: 0.85; font-weight: 500; }
   /* "Hide financial status" quick toggle, top corner of the hero card next
@@ -861,8 +836,8 @@
      18px default, which this selector out-specifies. */
   .tabbar button[data-tab="add"] .icon {
     width: 52px; height: 52px; padding: 14px; flex-shrink: 0;
-    border-radius: 50%; color: var(--color-primary-fill-text);
-    background: var(--hero-fill);
+    border-radius: 50%; color: #ffffff;
+    background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-700) 100%);
     box-shadow: var(--shadow-accent);
     margin-top: -20px;
   }
