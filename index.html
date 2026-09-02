@@ -103,6 +103,13 @@
        until opened. -->
   <div id="manageSheetContainer"></div>
 
+  <!-- docs/specs/app-lock.md. Same reasoning as #addSheetContainer/
+       #manageSheetContainer above -- not owned by any one screen (it can
+       cover any tab), so it lives outside #screen's per-tab full-replace
+       renders and survives them untouched. Populated by applock.js. Empty
+       until a PIN gate is actually showing. -->
+  <div id="appLockContainer"></div>
+
   <div class="tabbar-wrap">
     <nav class="tabbar" id="tabbar">
       <button type="button" class="nav-btn" data-tab="home">

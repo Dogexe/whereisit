@@ -469,6 +469,50 @@
   .sheet-header-btn { background: none; border: none; font-size: 15px; cursor: pointer; padding: 6px 4px; color: var(--color-muted); flex-shrink: 0; border-radius: 6px; }
   .sheet-header-btn-primary { color: var(--color-accent); font-weight: 700; }
   .sheet-header-btn:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+  /* docs/specs/app-lock.md stage 3. Deliberately its own class, not a
+     reskinned .filter-sheet-backdrop/.filter-sheet: those are bottom
+     sheets (slide up, rounded top corners only, implicitly swipeable),
+     and a lock screen reading as "swipeable" would be actively misleading
+     -- it has no wireSheetDrag() wired at all, on purpose (see the spec's
+     own note on why). What IS reused is the underlying mechanics: fixed
+     full-viewport positioning, createFocusTrap()'s focus-trap + piggybacked
+     scroll-lock, and a centered dialog card. z-index 60 -- deliberately
+     above .filter-sheet-backdrop's 50 and .toast's 40, so nothing (an
+     open sheet from before backgrounding, a background-sync toast) can
+     ever render on top of the lock screen while it's up. */
+  .app-lock-backdrop {
+    position: fixed; inset: 0; background: var(--color-bg); z-index: 60;
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+    animation: backdrop-fade-in var(--duration-normal) var(--ease-standard);
+  }
+  .app-lock-panel {
+    width: 100%; max-width: 340px; background: var(--color-card); border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg); padding: 32px 24px; display: flex; flex-direction: column;
+    align-items: center; gap: 14px; text-align: center;
+  }
+  .app-lock-panel h2 { font-size: 18px; margin: 0; }
+  .app-lock-pin-input {
+    width: 160px; text-align: center; font-size: 24px; letter-spacing: 12px; padding: 10px 0 10px 12px;
+  }
+  .app-lock-forgot-btn { background: none; border: none; color: var(--color-accent); font-size: 13px; font-weight: 600; cursor: pointer; padding: 6px; }
+  .app-lock-forgot-btn:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+  .app-lock-forgot-note { font-size: 11px; color: var(--color-muted); margin: -6px 0 0; max-width: 260px; }
+  /* Wrong-PIN feedback -- re-triggered on each failed attempt via a
+     remove/reflow/add cycle (see applock.js), since re-adding the same
+     class name alone wouldn't restart an already-finished CSS animation. */
+  @keyframes app-lock-shake {
+    10%, 90% { transform: translateX(-1px); } 20%, 80% { transform: translateX(2px); }
+    30%, 50%, 70% { transform: translateX(-4px); } 40%, 60% { transform: translateX(4px); }
+  }
+  .app-lock-shake { animation: app-lock-shake 400ms ease-in-out; }
+  /* Backgrounded-app content cover (decision 2 of the spec): targets the
+     actual chrome regions directly, NOT a filter on their shared .app
+     ancestor -- a filter on an ancestor blurs every descendant, which
+     would also blur the lock screen itself once rendered into
+     #appLockContainer (also inside .app). Targeting #screen/.sidebar/
+     .tabbar-wrap directly leaves #appLockContainer (and #toast) untouched
+     regardless of how long .app-blurred stays applied. */
+  .app-blurred #screen, .app-blurred .sidebar, .app-blurred .tabbar-wrap { filter: blur(20px); }
   .filter-checkbox-list { display: flex; flex-direction: column; gap: 2px; max-height: 240px; overflow-y: auto; }
   .filter-checkbox-row { display: flex; align-items: center; gap: 10px; padding: 8px 4px; font-size: 14px; cursor: pointer; }
   .amount-range-row { display: flex; align-items: center; gap: 8px; }
@@ -1015,6 +1059,7 @@
     .settings-panels [data-settings-panel] { display: none; }
     .settings-layout[data-active="display"] [data-settings-panel="display"] { display: block; }
     .settings-layout[data-active="sync"] [data-settings-panel="sync"] { display: block; }
+    .settings-layout[data-active="security"] [data-settings-panel="security"] { display: block; }
     .settings-layout[data-active="budgets"] [data-settings-panel="manage"],
     .settings-layout[data-active="bills"] [data-settings-panel="manage"],
     .settings-layout[data-active="goals"] [data-settings-panel="manage"],

@@ -508,6 +508,10 @@ export function hasLiveInputRisk() {
   // the same as every other in-progress sheet/form.
   if (state.importSheetOpen) return true;
   if (state.budgetEditId || state.billEditId || state.goalEditId || state.goalContributeId || state.accountEditId) return true;
+  // docs/specs/app-lock.md stage 1: Settings' Security section's inline
+  // "set a new PIN" form, same guard shape as every other in-progress
+  // form checked above.
+  if (state.pinSetupActive) return true;
   const active = document.activeElement;
   const screenEl = $("screen");
   if (active && screenEl && screenEl.contains(active) && /^(INPUT|SELECT|TEXTAREA)$/.test(active.tagName)) return true;

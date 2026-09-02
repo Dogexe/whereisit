@@ -10,6 +10,7 @@ import { ACCOUNT_ICON_CHOICES, accountNameById } from "../accounts.js";
 import { accountDisplayName } from "../account.js";
 import { daysUntilBillDue, dueSoonLabel, resolveCategoryId, computeBalance } from "../derived.js";
 import { saveSettings } from "../storage.js";
+import { setPin, clearPin } from "../applock.js";
 import { applyTheme, applyThemeStyle } from "../theme.js";
 import {
   currentUser, lastSyncStatus, signInWithGoogle, signOutUser, syncNow,
@@ -714,6 +715,60 @@ function pushReminderRowHtml() {
     ${hint ? `<div class="empty-note" style="padding:4px 4px 10px;text-align:left">${escapeHtml(hint)}</div>` : ""}`;
 }
 
+// docs/specs/app-lock.md stage 2: revealed inline (same toggle-row area,
+// not a separate dialog/sheet) the moment "Require PIN" is switched on --
+// matching Categories' inline-form precedent. Only ever shown while
+// state.pinSetupActive is true, i.e. before a PIN has actually been
+// confirmed and saved; state.pinEnabled only flips true once saveNewPin()
+// below succeeds.
+function pinSetupFormHtml() {
+  const l = L();
+  return `
+    <div class="field" style="padding:0 4px">
+      <label>${escapeHtml(l.pinLabel)}</label>
+      <input class="input" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" id="pinSetupInput" autocomplete="off">
+    </div>
+    <div class="field" style="padding:0 4px 10px">
+      <label>${escapeHtml(l.confirmPinLabel)}</label>
+      <input class="input" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" id="pinConfirmInput" autocomplete="off">
+    </div>
+    <div style="display:flex;gap:8px;padding:0 4px 10px">
+      <button type="button" class="btn btn-primary" id="savePinBtn">${escapeHtml(l.savePinBtn)}</button>
+      <button type="button" class="btn btn-secondary" id="cancelPinSetupBtn">${escapeHtml(l.cancelBtn)}</button>
+    </div>`;
+}
+const PIN_PATTERN = /^\d{4}$/;
+async function saveNewPin() {
+  const pin = ($("pinSetupInput") || {}).value || "";
+  const confirmPin = ($("pinConfirmInput") || {}).value || "";
+  if (!PIN_PATTERN.test(pin)) { showToast(L().toastPinInvalid); return; }
+  if (pin !== confirmPin) { showToast(L().toastPinMismatch); return; }
+  await setPin(pin);
+  state.pinSetupActive = false;
+  showToast(L().toastPinSaved);
+  renderSettings();
+}
+// Turning the toggle off (an already-enabled PIN) and Settings' own share
+// of the lock screen's "Forgot PIN?" flow both go through this: act
+// immediately, no confirm() dialog (this codebase has none, anywhere --
+// see the spec's own note on checking that directly), then offer Undo via
+// the same showToast(message, undoFn) shape deleteCategory/deleteBudget
+// etc. already use. The snapshot is just the three plain fields -- no
+// dedicated snapshot/restore helper in applock.js, per that module's own
+// comment on why one isn't needed for something this small.
+function removePinWithUndo() {
+  const snapshot = { pinEnabled: state.pinEnabled, pinHash: state.pinHash, pinSalt: state.pinSalt };
+  clearPin();
+  renderSettings();
+  showToast(L().toastPinRemoved, () => {
+    state.pinEnabled = snapshot.pinEnabled;
+    state.pinHash = snapshot.pinHash;
+    state.pinSalt = snapshot.pinSalt;
+    saveSettings();
+    renderSettings();
+  });
+}
+
 // The three export options (CSV/JSON/Google Sheets) used to be three
 // always-visible toggle-rows; now they're one "Export" row that opens a
 // bottom sheet, copying Transactions' filter-sheet structure exactly
@@ -800,6 +855,7 @@ export function renderSettings() {
           <button type="button" class="settings-nav-item${state.settingsActiveSection === "goals" ? " active" : ""}" data-settings-section="goals">${iconAvatar("target", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}<span>${escapeHtml(l.goalsSection)}</span></button>
           <button type="button" class="settings-nav-item${state.settingsActiveSection === "categories" ? " active" : ""}" data-settings-section="categories">${iconAvatar("layout-grid", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}<span>${escapeHtml(l.categoriesSection)}</span></button>
           <button type="button" class="settings-nav-item${state.settingsActiveSection === "accounts" ? " active" : ""}" data-settings-section="accounts">${iconAvatar("landmark", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}<span>${escapeHtml(l.accountsSection)}</span></button>
+          <button type="button" class="settings-nav-item${state.settingsActiveSection === "security" ? " active" : ""}" data-settings-section="security">${iconAvatar("shield", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}<span>${escapeHtml(l.securitySection)}</span></button>
         </nav>
         <div class="settings-panels">
 
@@ -932,6 +988,19 @@ export function renderSettings() {
         </div>
       </div>
 
+      <div data-settings-panel="security">
+        <div class="settings-section-label">${escapeHtml(l.securitySection)}</div>
+        <div class="list-card">
+          <div class="toggle-row">
+            ${iconAvatar("shield", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+            <span class="label">${escapeHtml(l.requirePinLabel)}</span>
+            <button type="button" class="switch ${state.pinEnabled ? "on" : ""}" id="pinRequireSwitch"><span class="thumb"></span></button>
+          </div>
+          <div style="padding:0 4px 10px;font-size:12px;color:var(--color-muted)">${escapeHtml(l.pinDescription)}</div>
+          ${state.pinSetupActive ? pinSetupFormHtml() : ""}
+        </div>
+      </div>
+
         </div>
       </div>
 
@@ -977,6 +1046,18 @@ export function renderSettings() {
     else await enableBillReminders();
     renderSettings();
   });
+  // docs/specs/app-lock.md stage 2: switching an already-off PIN on just
+  // reveals the inline setup form (pinSetupFormHtml) -- pinEnabled only
+  // actually flips once saveNewPin() succeeds. Switching an already-on PIN
+  // off removes it immediately with an Undo toast, no re-entry, per the
+  // spec's decision on why that's not worth the extra friction here.
+  if ($("pinRequireSwitch")) $("pinRequireSwitch").addEventListener("click", () => {
+    if (state.pinEnabled) { removePinWithUndo(); return; }
+    state.pinSetupActive = !state.pinSetupActive;
+    renderSettings();
+  });
+  if ($("savePinBtn")) $("savePinBtn").addEventListener("click", saveNewPin);
+  if ($("cancelPinSetupBtn")) $("cancelPinSetupBtn").addEventListener("click", () => { state.pinSetupActive = false; renderSettings(); });
   if ($("installAppBtn")) $("installAppBtn").addEventListener("click", function () {
     if (!deferredInstallPrompt) return;
     deferredInstallPrompt.prompt();

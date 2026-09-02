@@ -11,6 +11,7 @@ import {
   wipeLocalAccountData, backfillCategoryIds, backfillAccountIds
 } from "./sync.js";
 import { setDeferredInstallPrompt } from "./pwa-install.js";
+import { renderAppLockGate, wireAppLockVisibility } from "./applock-ui.js";
 import { initErrorReporting } from "./error-report.js";
 import { setTab, renderScreen, registerRenderers } from "./screens/router.js";
 import { renderHome } from "./screens/home.js";
@@ -50,23 +51,31 @@ backfillCategoryIds();
 backfillAccountIds();
 applyTheme();
 applyThemeStyle();
-renderScreen();
-refreshIcons();
 
-// Deep-links a tapped bill reminder straight to that bill's edit form in
-// Settings when it's already synced locally; otherwise still lands on
-// Settings with the Bills group expanded (a device that hasn't synced yet
-// still gets *somewhere* useful, rather than nothing). Only ever reached
-// via a real notification tap, never on a plain page load without that
-// query param.
-if (billIdFromNotification) {
-  state.tab = "settings";
-  state.settingsGroupOpen.bills = true;
-  state.settingsActiveSection = "bills";
-  if (bills.some((b) => b.id === billIdFromNotification)) state.billEditId = billIdFromNotification;
+// docs/specs/app-lock.md stage 3: if a PIN is enabled, everything that
+// used to run unconditionally right here (the first renderScreen(), the
+// bill-notification deep link, refreshIcons()) is deferred until the
+// correct PIN (or "Forgot PIN?") clears the lock overlay renderAppLockGate
+// shows instead -- see that function's own doc comment in applock.js.
+renderAppLockGate(() => {
   renderScreen();
-  window.history.replaceState(null, "", window.location.pathname);
-}
+  refreshIcons();
+
+  // Deep-links a tapped bill reminder straight to that bill's edit form in
+  // Settings when it's already synced locally; otherwise still lands on
+  // Settings with the Bills group expanded (a device that hasn't synced yet
+  // still gets *somewhere* useful, rather than nothing). Only ever reached
+  // via a real notification tap, never on a plain page load without that
+  // query param.
+  if (billIdFromNotification) {
+    state.tab = "settings";
+    state.settingsGroupOpen.bills = true;
+    state.settingsActiveSection = "bills";
+    if (bills.some((b) => b.id === billIdFromNotification)) state.billEditId = billIdFromNotification;
+    renderScreen();
+    window.history.replaceState(null, "", window.location.pathname);
+  }
+});
 
 // .nav-btn covers both #tabbar's (mobile) and #sidebar's (desktop) buttons
 // -- wired identically since only one of the two is ever visible at a time,
@@ -88,6 +97,12 @@ window.addEventListener("online", syncNow);
 window.addEventListener("offline", () => setSyncStatus(L().syncOffline, false));
 document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") syncNow(); });
 setInterval(syncNow, 25000);
+// docs/specs/app-lock.md stage 3: a second, independent visibilitychange
+// listener (immediate-threshold re-lock + app-switcher-blur cover) --
+// registering its own listener rather than folding into the one right
+// above keeps this feature's boot wiring self-contained in applock.js,
+// and multiple listeners on the same event don't conflict.
+wireAppLockVisibility();
 
 if (sb) {
   sb.auth.onAuthStateChange(function (event, session) {

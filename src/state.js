@@ -20,6 +20,18 @@ export const state = {
   // above: never synced via Supabase, never touched by
   // wipeLocalAccountData(). See docs/specs/linear-theme.md.
   themeStyle: "current",
+  // docs/specs/app-lock.md stage 1: a lightweight, purely client-side PIN
+  // gate on the app itself -- not a Supabase auth mechanism. Device-local
+  // only, same treatment as lang/dark/themeStyle immediately above: never
+  // synced via Supabase, never touched by wipeLocalAccountData() (the PIN
+  // locks this device, not this signed-in account, so an account
+  // sign-out/switch shouldn't clear or need it).
+  pinEnabled: false, pinHash: null, pinSalt: null,
+  // pinSetupActive: UI-only, not persisted -- true while Settings'
+  // Security section has its inline "set a new PIN" form open, so
+  // hasLiveInputRisk() (sync.js) can guard it like every other
+  // in-progress form in this app already is.
+  pinSetupActive: false,
   tab: "home", insightsTab: "budgets",
   // Budgets and Breakdown ("Categories") tabs each get their own instance
   // of the same pill component (period-picker.js's pillPickerHtml/

@@ -32,6 +32,16 @@ export function loadFromStorage() {
       if (s.lang === "th" || s.lang === "en") state.lang = s.lang;
       if (typeof s.dark === "boolean") state.dark = s.dark;
       if (s.themeStyle === "current" || s.themeStyle === "linear") state.themeStyle = s.themeStyle;
+      // docs/specs/app-lock.md stage 1: pinHash/pinSalt only mean anything
+      // together with pinEnabled, so all three are restored as one unit --
+      // a corrupt/partial write (e.g. pinHash present but pinEnabled
+      // missing) falls back to "PIN off" entirely rather than a broken
+      // half-state that could lock the app with no way to verify.
+      if (typeof s.pinEnabled === "boolean") {
+        state.pinEnabled = s.pinEnabled;
+        state.pinHash = typeof s.pinHash === "string" ? s.pinHash : null;
+        state.pinSalt = typeof s.pinSalt === "string" ? s.pinSalt : null;
+      }
       // A saved *empty* array must win over the hardcoded defaults -- the
       // user deleted their last budget/bill/goal on purpose. Only a
       // missing key (no prior save) falls back to state.js's defaults; see
@@ -66,6 +76,12 @@ export function saveToStorage() {
 }
 export function saveSettings() {
   if (!storageAvailable) { warnUnavailable(); return; }
-  try { window.localStorage.setItem(SETTINGS_KEY, JSON.stringify({ lang: state.lang, dark: state.dark, themeStyle: state.themeStyle, budgets, bills, goals, categories, accounts })); }
+  try {
+    window.localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+      lang: state.lang, dark: state.dark, themeStyle: state.themeStyle,
+      pinEnabled: state.pinEnabled, pinHash: state.pinHash, pinSalt: state.pinSalt,
+      budgets, bills, goals, categories, accounts
+    }));
+  }
   catch (e) { queueMicrotask(() => showToast(L().toastSaveFailed)); }
 }
