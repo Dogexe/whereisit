@@ -10,9 +10,17 @@ import { $ } from "./utils.js";
 // 58% clears it at 4.64:1 while reading as the same coral). "purple" is
 // the app's original accent, unchanged, kept as an opt-in preference.
 // Resolved via canvas getImageData against real Chrome, not hand-converted.
+// heroStart/heroEnd feed the Home hero (balance) card's gradient
+// specifically -- Coral's pair is just base/c700 again (unchanged look),
+// but Purple's plain base/c700 pair (#6247ea -> #3f28ab) reads as one
+// fairly dark, low-blue violet on that large a card, not the brighter
+// blue-to-violet look a reference design asked for -- so Purple gets its
+// own dedicated, more vivid pair here. Every other Purple-themed element
+// (buttons, the active tab, etc.) still uses plain base/c700 below,
+// unaffected by this.
 const ACCENT = {
-  coral: { base: "#cd4805", c600: "#b12c00", c700: "#960200" },
-  purple: { base: "#6247ea", c600: "#4f34d6", c700: "#3f28ab" },
+  coral: { base: "#cd4805", c600: "#b12c00", c700: "#960200", heroStart: "#cd4805", heroEnd: "#960200" },
+  purple: { base: "#6247ea", c600: "#4f34d6", c700: "#3f28ab", heroStart: "#7b68ee", heroEnd: "#4f7df3" },
 };
 
 export function applyTheme() {
@@ -58,6 +66,8 @@ export function applyTheme() {
   root.setProperty("--color-accent", accent.base);
   root.setProperty("--color-accent-600", accent.c600);
   root.setProperty("--color-accent-700", accent.c700);
+  root.setProperty("--hero-gradient-start", accent.heroStart);
+  root.setProperty("--hero-gradient-end", accent.heroEnd);
   // Sidebar lockup icon's ring (see .sidebar-logo, styles.css): follows the
   // Coral/Purple preference in light mode via var(--color-accent), but goes
   // solid white in dark mode regardless of preference -- matching the

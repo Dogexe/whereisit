@@ -7,7 +7,7 @@ export const STRINGS = {
   darkModeBtn: ["โหมดมืด", "Dark mode"], overview: ["ภาพรวม", "Overview"], balanceLabel: ["คงเหลือ", "Balance"],
   incomeLabel: ["รายรับ", "Income"], expenseLabel: ["รายจ่าย", "Expense"],
   recentTx: ["รายการล่าสุด", "Recent activity"], addShort: ["+ เพิ่มรายการ", "+ Add transaction"],
-  addTransactionAria: ["เพิ่มรายการ", "Add transaction"], profileAria: ["โปรไฟล์และการตั้งค่า", "Profile & settings"],
+  profileAria: ["โปรไฟล์และการตั้งค่า", "Profile & settings"],
   budgetsThisMonth: ["งบประมาณเดือนนี้", "This month's budgets"], seeAll: ["ดูทั้งหมด", "See all"],
   allTransactions: ["รายการทั้งหมด", "All Transactions"], filterAll: ["ทั้งหมด", "All"],
   allCategories: ["ทุกหมวดหมู่", "All categories"],

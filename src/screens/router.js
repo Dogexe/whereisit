@@ -9,6 +9,9 @@ import { accountDisplayName } from "../account.js";
 let renderers = null;
 export function registerRenderers(r) { renderers = r; }
 
+// Cleared/reset on every setTab() call so a rapid tab switch can't have an
+// earlier timeout cut the class off mid-animation, and so it never stacks.
+let screenEnterTimeout = null;
 export function setTab(tab) {
   state.tab = tab;
   renderScreen();
@@ -18,9 +21,26 @@ export function setTab(tab) {
   // between remove/re-add so the CSS animation actually restarts.
   const screenEl = document.getElementById("screen");
   if (screenEl) {
+    if (screenEnterTimeout) clearTimeout(screenEnterTimeout);
     screenEl.classList.remove("screen-enter");
     void screenEl.offsetWidth;
     screenEl.classList.add("screen-enter");
+    // The comment above says "not every renderScreen() call" but this class
+    // being merely *present* on #screen was doing the real gating, not
+    // "was it just toggled" -- a CSS animation plays on any element that
+    // matches an animating selector at the moment it's inserted, however
+    // long the class has already been sitting there. Since a background
+    // sync's renderScreen() call (main.js's onSyncRerender) rebuilds
+    // #screen's entire innerHTML but never touches this class, every
+    // freshly-created .hero-card/.stat-card/.today-spend-card kept
+    // replaying home-card-in on literally every sync tick for as long as
+    // the class stuck around -- which was forever, since nothing ever
+    // removed it. Stripping it once the longest chained animation here
+    // (home-card-in's own longest case: 200ms duration + a 120ms stagger
+    // delay, see styles.css's .today-spend-card rule) has finished closes
+    // that gap: later sync-triggered re-renders create elements that no
+    // longer match any .screen-enter-scoped animation selector.
+    screenEnterTimeout = setTimeout(() => { screenEl.classList.remove("screen-enter"); screenEnterTimeout = null; }, 400);
   }
 }
 export function renderScreen() {

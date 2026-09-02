@@ -63,6 +63,11 @@
     --color-accent-700: #960200;
     --color-accent-tint: color-mix(in srgb, var(--color-accent) 12%, white);
     --shadow-accent: 0 12px 28px color-mix(in srgb, var(--color-accent) 30%, transparent);
+    /* Home hero card's own gradient stops -- same pre-JS fallback pattern
+       as --color-accent above, theme.js's ACCENT map overrides both per
+       state.accentColor. */
+    --hero-gradient-start: #cd4805;
+    --hero-gradient-end: #960200;
     /* Sidebar lockup icon only (see .sidebar-logo below) -- deliberately
        not promoted to a general system color, same reasoning as when the
        coral rebrand spec first considered and rejected that. --logo-ring-color
@@ -334,7 +339,7 @@
   .home-profile-btn:active { transform: scale(0.92); }
   .home-profile-btn img { width: 100%; height: 100%; object-fit: cover; }
   .home-columns { display: flex; flex-direction: column; gap: 20px; }
-  .hero-card { border-radius: var(--radius-lg); padding: 22px; color: #ffffff; background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-700) 100%); box-shadow: var(--shadow-accent); margin-top: var(--space-md); }
+  .hero-card { border-radius: var(--radius-lg); padding: 22px; color: #ffffff; background: linear-gradient(135deg, var(--hero-gradient-start) 0%, var(--hero-gradient-end) 100%); box-shadow: var(--shadow-accent); margin-top: var(--space-md); }
   .hero-card.hero-card-negative { background: linear-gradient(135deg, var(--color-expense) 0%, var(--color-expense-700) 100%); box-shadow: 0 12px 28px color-mix(in srgb, var(--color-expense) 30%, transparent); }
   .hero-card .kicker { font-size: 13px; opacity: 0.85; font-weight: 500; }
   /* "Hide financial status" quick toggle, top corner of the hero card next
@@ -379,25 +384,6 @@
   .section-head { margin: var(--space-xl) 0 var(--space-xs); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .section-head h3 { font-size: 15px; font-weight: 700; }
   .section-head:first-of-type { margin-top: 0; }
-  /* Home's own "add a transaction" shortcut next to Recent activity --
-     mobile-only (see the 1024px breakpoint below, which swaps this for the
-     original small text link): icon-only and sized up from the app's usual
-     30px .btn-icon so it reads as the screen's primary action, same accent
-     gradient as the tab bar's raised Add button for visual consistency
-     across the two entry points. Two separate buttons (not one restyled by
-     media query) so each can keep its own straightforward markup/class,
-     matching how .tabbar-wrap vs .sidebar already split mobile/desktop nav. */
-  .home-add-link { display: none; }
-  .home-add-btn {
-    width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
-    border: none; cursor: pointer; padding: 0; color: #ffffff;
-    background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-700) 100%);
-    box-shadow: var(--shadow-accent);
-    display: flex; align-items: center; justify-content: center;
-    transition: transform var(--duration-fast) var(--ease-standard);
-  }
-  .home-add-btn:active { transform: scale(0.92); }
-  .home-add-btn .icon { width: 20px; height: 20px; }
 
   .tx-date-group { padding: 14px 4px 4px; font-size: 12px; font-weight: 700; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.02em; }
   .tx-date-group:first-child { padding-top: 4px; }
@@ -1087,11 +1073,6 @@
        nothing to clear. */
     .screen { padding-bottom: 20px; }
     .toast { bottom: 24px; }
-
-    /* — Home: the big mobile-only circular Add button (styles.css above)
-       reverts to the original small text link at desktop width. */
-    .home-add-btn { display: none; }
-    .home-add-link { display: inline-flex; }
 
     /* — Insights: take further advantage of the space beside the sidebar,
        building on (not replacing) the 880px rules above -- 3 budget cards

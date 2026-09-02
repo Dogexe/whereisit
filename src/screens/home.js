@@ -1,6 +1,6 @@
 import { L } from "../i18n.js";
 import { state, transactions, bills, accounts } from "../state.js";
-import { $, uid, escapeHtml, icon, iconAvatar, fmtMoney, refreshIcons, isDesktopShell, localDateIso, localMonthKey, PLUS_ICON } from "../utils.js";
+import { $, uid, escapeHtml, icon, iconAvatar, fmtMoney, refreshIcons, isDesktopShell, localDateIso, localMonthKey } from "../utils.js";
 import { CATEGORIES } from "../categories.js";
 import {
   byRecency, computeBudgets, upcomingBills, monthTotal, monthHasTransactions, pctDeltaLabel, prevMonthKey,
@@ -153,8 +153,7 @@ export function renderHome() {
 
         <div class="section-head">
           <h3>${escapeHtml(l.recentTx)}</h3>
-          <button type="button" class="btn btn-ghost home-add-link" id="goAddBtnDesktop">${escapeHtml(l.addShort)}</button>
-          <button type="button" class="home-add-btn" id="goAddBtn" aria-label="${escapeHtml(l.addTransactionAria)}">${PLUS_ICON}</button>
+          <button type="button" class="btn btn-ghost" id="goRecentSeeAllBtn">${escapeHtml(l.seeAll)}</button>
         </div>
         <div class="list-card">
           ${recent.length ? groupedTxRowsHtml(recent, selectedId) : `<div class="empty-note empty-note-search">${icon("receipt")}<div>${escapeHtml(l.noTransactionsYet)}</div><button type="button" class="btn btn-primary btn-sm" id="emptyAddBtn">${escapeHtml(l.addShort)}</button></div>`}
@@ -201,8 +200,7 @@ export function renderHome() {
   }));
   $("hideAmountsBtn").addEventListener("click", () => { state.hideAmounts = !state.hideAmounts; saveSettings(); renderScreen(); });
   $("homeProfileBtn").addEventListener("click", () => setTab("settings"));
-  $("goAddBtn").addEventListener("click", goAdd);
-  $("goAddBtnDesktop").addEventListener("click", goAdd);
+  $("goRecentSeeAllBtn").addEventListener("click", () => setTab("transactions"));
   $("goBudgetsBtn").addEventListener("click", () => { state.insightsTab = "budgets"; setTab("insights"); });
   const emptyAddBtn = document.getElementById("emptyAddBtn");
   if (emptyAddBtn) emptyAddBtn.addEventListener("click", goAdd);
