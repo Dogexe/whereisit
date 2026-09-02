@@ -231,7 +231,7 @@
      -- structurally identical to the category-chip row above, kept as its
      own class pair rather than reusing .category-chip directly since the
      two aren't the same concept, just the same visual shape. */
-  .account-switcher-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; margin-bottom: var(--space-sm); -webkit-overflow-scrolling: touch; scrollbar-width: none; -ms-overflow-style: none; }
+  .account-switcher-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; margin-bottom: var(--space-xs); -webkit-overflow-scrolling: touch; scrollbar-width: none; -ms-overflow-style: none; }
   .account-switcher-row::-webkit-scrollbar { display: none; }
   .account-chip {
     display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;

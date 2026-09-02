@@ -106,7 +106,7 @@ export function renderHome() {
 
   $("screen").innerHTML = `
     <div class="today-label">${escapeHtml(today)}</div>
-    <h2 class="screen-title" style="margin:2px 0 var(--space-xs)">${escapeHtml(l.overview)}</h2>
+    <h2 class="screen-title" style="margin:2px 0 var(--space-sm)">${escapeHtml(l.overview)}</h2>
     <div class="home-columns">
       <div class="home-col-main">
         ${accountSwitcherHtml()}

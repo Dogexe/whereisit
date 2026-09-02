@@ -76,3 +76,15 @@ Net visual effect: three tiny nudges (+8px title gap where there was none, +2px 
 ## Result
 
 `npm test` (172/172), `npm run build`, `npm run test:e2e` (9/9) all pass. Re-measured all 8 gaps live against the built `dist/`: every one landed exactly on its new target value (`title→switcher` 0→8, `switcher→hero`/`hero→stats`/`stats→spend` unchanged at 12, `spend→heading` 22→24, `heading→list` 6→8, side-column `heading→card` 22→24, `budgets-list` gap 14→12). Confirmed correct in dark mode via screenshot (spacing is theme-independent, but nothing else regressed).
+
+## Follow-up: title↔switcher↔hero felt backwards (same session)
+
+Reported directly after seeing it live: "switcher feel too far from hero card and too close to overview." Real feedback on the numbers above, not a new spec — a same-scale value swap, not a new decision.
+
+Root cause: the account switcher is functionally a filter tied to "Overview" (selects which account's data the whole page shows), so it reads as *part of the header*, not part of the card stack below it. The original remap treated it as an isolated outlier fix (0px→`--space-xs`) without reconsidering whether `--space-sm` between switcher and hero was still right once the title gap existed at all.
+
+Fix: swapped the two tokens, no new values introduced —
+- `home.js` screen-title inline margin (bottom): `var(--space-xs)` (8px) → `var(--space-sm)` (12px)
+- `.account-switcher-row` `margin-bottom`: `var(--space-sm)` (12px) → `var(--space-xs)` (8px)
+
+Re-measured live: `title→switcher` now 12px (was 8), `switcher→hero` now 8px (was 12) — desktop width, where `.hero-card`'s own `margin-top` is zeroed by the `≥1024px` override so the switcher's `margin-bottom` is the entire gap. On mobile (where that override doesn't apply), the switcher-to-hero *visual* gap is `--space-xs` (8px, switcher) + `--space-md` (16px, hero's own mobile-only top margin) = 24px, down from 28px before this fix — not independently re-verified on a real mobile viewport in this follow-up (the browser tool's `resize_window` doesn't actually shrink this environment's viewport below its native size, a known limitation noted in this session), but the underlying token math is unambiguous. `npm test` (172/172) and `npm run build` re-confirmed passing after this change.
