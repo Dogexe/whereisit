@@ -16,7 +16,15 @@
 // (new mark + color), manifest.json's theme_color changed, and the new
 // self-hosted Poppins font (sidebar wordmark) added to APP_SHELL for the
 // same first-load-not-yet-controlled reason v3's comment already covers.
-const CACHE_NAME = "rrrj-v4";
+// v5: same spec's follow-up -- manifest.json's theme_color corrected again
+// (was briefly the coral accent in v4, which showed up as a coral Android
+// status bar; now matches the page background instead, see that spec's
+// last section). Content-only change to an already-precached APP_SHELL
+// entry, same as v4's own reasoning: a v4 device would otherwise keep
+// serving the stale coral manifest.json indefinitely, since the SW only
+// re-installs/re-precaches when sw.js's own bytes change, not when a
+// precached URL's *content* changes server-side.
+const CACHE_NAME = "rrrj-v5";
 const APP_SHELL = [
   "./", "./index.html", "./manifest.json", "./styles.css", "./main.js",
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/sprite.svg",
