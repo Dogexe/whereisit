@@ -1031,7 +1031,19 @@ export function renderSettings() {
   document.querySelectorAll('input[name="lang-switch"]').forEach((r) => r.addEventListener("change", (e) => { state.lang = e.target.value; saveSettings(); renderChrome(); renderScreen(); }));
   $("darkSwitch").addEventListener("click", () => { state.dark = !state.dark; saveSettings(); applyTheme(); renderScreen(); });
   $("hideAmountsSwitch").addEventListener("click", () => { state.hideAmounts = !state.hideAmounts; saveSettings(); renderScreen(); });
-  $("syncNowBtn").addEventListener("click", syncNow);
+  // ui-ux-pro-max skill audit (Touch & Interaction, priority 2, "Loading
+  // Buttons" -- Severity: High in the skill's own dataset): syncNow()
+  // already updates the separate #syncStatus text/dot while it runs, but
+  // this button itself never visually changed -- a real network
+  // round-trip with zero feedback on the control the user actually
+  // pressed. Disabling it here doesn't change syncNow()'s own behavior
+  // (still exported/awaited exactly as before) or any of its other
+  // fire-and-forget call sites elsewhere in this file.
+  $("syncNowBtn").addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    try { await syncNow(); } finally { btn.disabled = false; }
+  });
   if ($("pushReminderSwitch")) $("pushReminderSwitch").addEventListener("click", async () => {
     if (pushReminderState() === "enabled") await disableBillReminders();
     else await enableBillReminders();

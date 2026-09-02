@@ -5,7 +5,8 @@ import {
   nextBillDueDate, daysUntilBillDue, billDueCycle, dueSoonLabel, upcomingBills, monthKeyOf,
   pctDeltaLabel, monthHasTransactions, monthTotal, unbudgetedSpend, unbudgetedSpendForYear, unbudgetedSpendForRange,
   computeBudgets, computeBudgetsForRange, checkBudgetAlert, computeBreakdown, computeBreakdownForRange,
-  mostUsedCategoryIds, filteredTxList, groupByDate, availableMonthKeys, computeBalance, defaultAccountId, computeSparklinePoints
+  mostUsedCategoryIds, filteredTxList, groupByDate, availableMonthKeys, computeBalance, defaultAccountId, computeSparklinePoints,
+  computeTrend
 } from "../src/derived.js";
 
 // derived.js's bill-due functions read the wall clock via `new Date()`
@@ -614,4 +615,33 @@ test("defaultAccountId: returns null when there are zero active accounts", () =>
   setAccounts([{ id: "acc0", name: "Old cash", icon: "wallet", openingBalance: 0, archived: true }]);
   setTransactions([]);
   assert.equal(defaultAccountId(), null);
+});
+
+// ui-ux-pro-max skill audit: computeTrend's bars used to carry no value at
+// all (see docs/specs/hide-amounts.md's chart-shape note and screens/
+// insights.js's new tap-for-detail handler) -- these confirm the added
+// incomeFmt/expenseFmt fields carry the real totals, not just the scaled
+// pixel heights that already existed.
+test("computeTrend: incomeFmt/expenseFmt carry the real formatted totals, not just the scaled bar heights", () => {
+  state.hideAmounts = false;
+  setTransactions([
+    { id: "t1", type: "income", date: "2026-03-05", amount: 1000 },
+    { id: "t2", type: "expense", date: "2026-03-10", amount: 250 }
+  ]);
+  const [month] = computeTrend();
+  assert.equal(month.incomeFmt, "฿1,000.00");
+  assert.equal(month.expenseFmt, "฿250.00");
+  // The pre-existing height fields are untouched by this change.
+  assert.equal(month.incomeH, 130);
+  assert.ok(month.expenseH < month.incomeH);
+});
+
+test("computeTrend: incomeFmt/expenseFmt respect hideAmounts, same as every other fmtMoney call site", () => {
+  const original = state.hideAmounts;
+  state.hideAmounts = true;
+  try {
+    setTransactions([{ id: "t1", type: "income", date: "2026-03-05", amount: 1000 }]);
+    const [month] = computeTrend();
+    assert.equal(month.incomeFmt, "฿•••••");
+  } finally { state.hideAmounts = original; }
 });

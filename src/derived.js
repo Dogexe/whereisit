@@ -404,6 +404,16 @@ export function availableMonthKeys() {
   keys.add(localMonthKey());
   return Array.from(keys).sort().reverse();
 }
+// ui-ux-pro-max skill audit: the Trend tab's bars used to carry no value
+// at all -- no axis, no label, nothing -- which is exactly the "impossible
+// to read without any vertical axis" anti-pattern the skill's chart
+// dataset calls out for compare/trend charts (its own accessibility
+// fallback for this chart type is "direct series labels," which is what
+// incomeFmt/expenseFmt below exist to provide). The raw incomeH/expenseH
+// pixel heights alone already shipped and are kept unchanged so existing
+// bar-height rendering isn't touched -- this just adds the numbers back
+// in, going through fmtMoney so hideAmounts masking (docs/specs/
+// hide-amounts.md) applies here automatically like every other figure.
 export function computeTrend() {
   const byMonth = {};
   transactions.forEach((t) => { const k = monthKey(t.date); byMonth[k] = byMonth[k] || { income: 0, expense: 0 }; byMonth[k][t.type] += t.amount; });
@@ -412,7 +422,9 @@ export function computeTrend() {
   return keys.map((k) => ({
     label: monthLabel(k),
     incomeH: Math.max(2, Math.round((byMonth[k].income / max) * 130)),
-    expenseH: Math.max(2, Math.round((byMonth[k].expense / max) * 130))
+    expenseH: Math.max(2, Math.round((byMonth[k].expense / max) * 130)),
+    incomeFmt: fmtMoney(byMonth[k].income),
+    expenseFmt: fmtMoney(byMonth[k].expense)
   }));
 }
 // accountId: stage 5 of docs/specs/multi-account-support.md, optional --

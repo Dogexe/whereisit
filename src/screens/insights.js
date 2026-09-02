@@ -9,6 +9,7 @@ import {
 } from "../derived.js";
 import { pillPickerHtml, wirePillPicker } from "./period-picker.js";
 import { setTab } from "./router.js";
+import { showToast } from "../toast.js";
 
 function todayIso() { return localDateIso(); }
 function pad2(n) { return String(n).padStart(2, "0"); }
@@ -302,11 +303,35 @@ export function renderInsightsBody() {
       </div>
       <div class="trend-chart-card">
         <div class="trend-chart">
-          ${trend.map((m) => `<div class="trend-col"><div class="trend-bars"><div class="bar" style="background:var(--color-income);height:${m.incomeH}px"></div><div class="bar" style="background:var(--color-accent);height:${m.expenseH}px"></div></div></div>`).join("")}
+          ${trend.map((m, i) => `
+            <div class="trend-col" role="button" tabindex="0" data-trend-col="${i}"
+              aria-label="${escapeHtml(m.label)}: ${escapeHtml(l.incomeLabel)} ${escapeHtml(m.incomeFmt)}, ${escapeHtml(l.expenseLabel)} ${escapeHtml(m.expenseFmt)}">
+              <div class="trend-bars">
+                <div class="bar" style="background:var(--color-income);height:${m.incomeH}px" title="${escapeHtml(l.incomeLabel)}: ${escapeHtml(m.incomeFmt)}"></div>
+                <div class="bar" style="background:var(--color-accent);height:${m.expenseH}px" title="${escapeHtml(l.expenseLabel)}: ${escapeHtml(m.expenseFmt)}"></div>
+              </div>
+            </div>`).join("")}
         </div>
         <div class="trend-labels">${trend.map((m) => `<div>${escapeHtml(m.label)}</div>`).join("")}</div>
       </div>
     ` : `<div class="empty-note">${escapeHtml(l.noResults)}</div>`;
+    // ui-ux-pro-max skill audit (Charts, priority 10): the chart's own
+    // dataset lists "direct series labels" / "focus reveals hover values"
+    // as the accessibility fallback for a compare/trend chart. A visible
+    // `title` covers desktop hover; this tap/Enter handler is what makes
+    // the same numbers reachable on touch and via keyboard -- the bars
+    // themselves are too narrow (10px) to print currency text on directly
+    // without a layout rework, so a toast is the lightest way to surface
+    // them on demand instead. aria-label on the column covers screen
+    // readers without needing any interaction at all.
+    if (trend.length) {
+      document.querySelectorAll("[data-trend-col]").forEach((col, i) => {
+        const m = trend[i];
+        const show = () => showToast(`${m.label}: ${l.incomeLabel} ${m.incomeFmt}, ${l.expenseLabel} ${m.expenseFmt}`);
+        col.addEventListener("click", show);
+        col.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); show(); } });
+      });
+    }
   }
   refreshIcons();
 }
