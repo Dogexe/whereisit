@@ -507,7 +507,14 @@ export function hasLiveInputRisk() {
   // be a jarring close/reopen flash for no reason, so it's guarded here
   // the same as every other in-progress sheet/form.
   if (state.importSheetOpen) return true;
-  if (state.budgetEditId || state.billEditId || state.goalEditId || state.goalContributeId || state.accountEditId) return true;
+  // Transactions/Insights filter sheets and Settings' Export/Manage sheets
+  // render their markup inline inside their parent screen's own innerHTML
+  // (not a separately-updated container), so a background renderScreen()
+  // while one is open would destroy and recreate its DOM: restarting its
+  // open transition, resetting scroll position inside it, and tearing down
+  // its focus trap -- even with no focused field for the check below to catch.
+  if (state.txFilterSheetOpen || state.insightsFilterSheetOpen || state.exportSheetOpen || state.manageSheetOpen) return true;
+  if (state.budgetEditId || state.billEditId || state.goalEditId || state.goalContributeId || state.categoryEditId || state.accountEditId) return true;
   // docs/specs/app-lock.md stage 1: Settings' Security section's inline
   // "set a new PIN" form, same guard shape as every other in-progress
   // form checked above.
