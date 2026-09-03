@@ -38,3 +38,40 @@ export async function addTransaction(page, { type = "expense", note, amount, cat
 export function navBtn(page, tab) {
   return page.locator(`.nav-btn[data-tab="${tab}"]:visible`);
 }
+
+// Switches Settings' left-nav section -- desktop only. .settings-nav is
+// display:none below styles.css's 1024px breakpoint (every Manage section
+// already stacks inline there instead, see settings.js's data-settings-panel
+// blocks), so a click on a .settings-nav-item would fail Playwright's
+// actionability check on a narrower viewport. Specs that need a Manage
+// section's content on a mobile viewport open its <details> group directly
+// instead (see accounts.spec.js's mobile regression test).
+export async function openSettingsSection(page, section) {
+  await page.locator(`.settings-nav-item[data-settings-section="${section}"]`).click();
+}
+
+// Creates a new account via Settings' desktop inline Manage form (see
+// openSettingsSection's own doc comment on why this is desktop-only).
+// Shared by every spec that needs a second account to exist (transfers,
+// multi-account switching) rather than each re-deriving the same add-flow.
+// Returns nothing -- callers so far all locate the new row by its name text
+// afterward (e.g. an account-chip/switcher's hasText match), which doesn't
+// need the id; add a return value here if a future spec needs it.
+export async function createAccount(page, { name, openingBalance = 0 } = {}) {
+  await navBtn(page, "settings").click();
+  await openSettingsSection(page, "accounts");
+  await page.locator("#addAccountBtn").click();
+  await expect(page.locator("#accountNameInput")).toBeVisible();
+  await page.locator("#accountNameInput").fill(name);
+  await page.locator("#accountOpeningBalanceInput").fill(String(openingBalance));
+  await page.locator("#saveAccountFormBtn").click();
+  await expect(page.locator(".manage-row", { hasText: name })).toBeVisible();
+}
+
+// Mirrors src/utils.js's fmtMoney() exactly for the app's default state
+// (state.hideAmounts=false, state.lang="th") -- lets a spec assert an
+// actual displayed balance/amount string instead of just "some text
+// changed", so a real formatting regression would be caught here too.
+export function fmtMoney(n) {
+  return "฿" + Number(n).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
