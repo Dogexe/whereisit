@@ -1,7 +1,7 @@
 import { L } from "../i18n.js";
 import { state, transactions, categories, accounts, setTransactions } from "../state.js";
-import { $, uid, escapeHtml, dateLabel, formatDateTyping, parseDateText, optionsHtml, icon, isDesktopShell, createFocusTrap, localDateIso, sheetGrabberHtml, wireSheetDrag } from "../utils.js";
-import { guessCategory, categoryDisplayName, groupedCategories } from "../categories.js";
+import { $, uid, escapeHtml, dateLabel, formatDateTyping, parseDateText, optionsHtml, icon, iconAvatar, fmtMoney, isDesktopShell, createFocusTrap, localDateIso, sheetGrabberHtml, wireSheetDrag } from "../utils.js";
+import { guessCategory, categoryDisplayName, groupedCategories, rowTone } from "../categories.js";
 import { accountNameById } from "../accounts.js";
 import { checkBudgetAlert, resolveCategoryId, mostUsedCategoryIds, defaultAccountId } from "../derived.js";
 import { saveToStorage } from "../storage.js";
@@ -139,6 +139,11 @@ function renderAccountChipPicker(chipRowId, selectId, stateKey, excludeId, refre
     state[stateKey] = id;
     $(selectId).value = id;
     (refresh || (() => renderAccountChipPicker(chipRowId, selectId, stateKey)))();
+    // Shared by the plain account picker and both Transfer chip rows (see
+    // callers below) -- also runs harmlessly for the CSV import sheet's
+    // reuse of this same picker, since #addCommitPreview simply doesn't
+    // exist there (renderCommitPreview no-ops).
+    renderCommitPreview();
   }));
 }
 function renderAccountChips() { renderAccountChipPicker("accountChipRow", "txAccount", "formAccountId"); }
@@ -190,6 +195,40 @@ export function renderCategoryChips() {
     if (typeof select.showPicker === "function") { try { select.showPicker(); } catch (e) { select.focus(); } }
     else select.focus();
   });
+  renderCommitPreview();
+}
+// docs/specs/add-transaction-bottom-sheet.md phase 2: a live one-line
+// summary (icon + category/route + account + signed amount) pinned as the
+// sheet's last field, right before the sticky header's always-visible
+// Save -- Amount now living at the top (phase 1) means it scrolls out of
+// view well before Save is reached, so this restores "what am I about to
+// record" without scrolling back up. Pure read of state already tracked
+// (formType/formCategoryId/formAccountId/formToAccountId) plus the live
+// #txAmount value -- no new state, no new validation. No-ops on desktop,
+// which never renders #addCommitPreview.
+function renderCommitPreview() {
+  const el = $("addCommitPreview");
+  if (!el) return;
+  const amount = parseFloat($("txAmount").value) || 0;
+  const tone = rowTone(state.formType);
+  if (state.formType === "transfer") {
+    const fromName = accountNameById(accounts, state.formAccountId, "");
+    const toName = accountNameById(accounts, state.formToAccountId, "");
+    el.innerHTML = `
+      ${iconAvatar("arrow-right-left", tone.bg, tone.color, "sm")}
+      <div class="info"><div class="cat">${escapeHtml(fromName)} &rarr; ${escapeHtml(toName)}</div></div>
+      <div class="amt">${fmtMoney(amount)}</div>`;
+    return;
+  }
+  const cat = categories.find((c) => c.id === state.formCategoryId);
+  const catName = categoryDisplayName(categories, state.formCategoryId, "");
+  const accName = accountNameById(accounts, state.formAccountId, "");
+  const sign = state.formType === "income" ? "+" : "−";
+  const amountColor = state.formType === "income" ? "var(--color-income-700)" : "var(--color-text)";
+  el.innerHTML = `
+    ${iconAvatar(cat ? cat.icon : "circle", tone.bg, tone.color, "sm")}
+    <div class="info"><div class="cat">${escapeHtml(catName)}</div><div class="acc">${escapeHtml(accName)}</div></div>
+    <div class="amt" style="color:${amountColor}">${sign}${fmtMoney(amount)}</div>`;
 }
 // Shared by the desktop full-page screen (renderAdd) and the mobile
 // bottom sheet (renderAddSheet, docs/specs/add-transaction-bottom-sheet.md)
@@ -202,9 +241,20 @@ export function renderCategoryChips() {
 // never gets covered by the on-screen keypad the way a bottom-of-form button
 // can. Desktop's full-page renderAdd() has no such button and keeps the
 // original bottom buttons.
+// docs/specs/add-transaction-bottom-sheet.md phase 1 (mobile Add-sheet
+// hierarchy pass): the sheet leads with Amount -- the one field every
+// transaction needs and the only one with no useful default -- and demotes
+// Date to a small chip near the bottom, since it's already correct (today)
+// on effectively every add. Desktop's full-page form keeps its original
+// Type/Date/Category/Account/Amount/Note order and plain field styling
+// untouched; only the mobile sheet reorders and re-weights. Reuses
+// opts.hideBottomButtons as the "is this the mobile sheet" signal rather
+// than adding a second opts flag that would always match it 1:1 -- it's
+// already only ever true for the one caller (renderAddSheet) that wants
+// this reordering too.
 function addFormFieldsHtml(l, isEditing, opts = {}) {
-  return `
-    <form class="add-form" id="addForm" autocomplete="off">
+  const isSheet = !!opts.hideBottomButtons;
+  const typeField = `
       <div class="field">
         <label>${escapeHtml(l.typeLabel)}</label>
         <div class="tabs block" role="radiogroup">
@@ -212,46 +262,75 @@ function addFormFieldsHtml(l, isEditing, opts = {}) {
           <label class="tab-opt"><input type="radio" name="form-type" value="income" ${state.formType === "income" ? "checked" : ""}>${escapeHtml(l.incomeLabel)}</label>
           <label class="tab-opt"><input type="radio" name="form-type" value="transfer" ${state.formType === "transfer" ? "checked" : ""}>${escapeHtml(l.transferLabel)}</label>
         </div>
-      </div>
-      <div class="field">
-        <label for="txDateText">${escapeHtml(l.dateLabel)}</label>
-        <div class="date-input-wrap">
+      </div>`;
+  // Same #txDateText/#txDateNative wiring either way (wireAddForm doesn't
+  // care which layout rendered them) -- the sheet variant only drops the
+  // visible <label> (replaced by an aria-label on the input itself, same
+  // pattern as this app's icon-only buttons) and wraps in .date-compact,
+  // which styles.css shrinks to a small pill instead of a full field.
+  const dateField = `
+      <div class="field${isSheet ? " field-date-compact" : ""}">
+        ${isSheet ? "" : `<label for="txDateText">${escapeHtml(l.dateLabel)}</label>`}
+        <div class="date-input-wrap${isSheet ? " date-compact" : ""}">
           <div class="input-wrap">
-            <input type="text" id="txDateText" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" value="${dateLabel(state.formDate)}" required>
+            <input type="text" id="txDateText" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" value="${dateLabel(state.formDate)}" required${isSheet ? ` aria-label="${escapeHtml(l.dateLabel)}"` : ""}>
           </div>
           <svg class="date-icon icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
           <input class="date-native-overlay" type="date" id="txDateNative" value="${state.formDate}" tabindex="-1" aria-hidden="true">
         </div>
-      </div>
+      </div>`;
+  const categoryField = `
       <div class="field${state.formType === "transfer" ? " form-field-hidden" : ""}" id="categoryField">
         <label>${escapeHtml(l.categoryLabel)}</label>
         <div class="category-chip-row" id="categoryChipRow"></div>
         <select class="input" id="txCategory" required></select>
-      </div>
+      </div>`;
+  const accountField = `
       <div class="field">
         <label id="accountFieldLabel">${escapeHtml(state.formType === "transfer" ? l.transferFromLabel : l.accountLabel)}</label>
         <div class="account-chip-row" id="accountChipRow"></div>
         <select class="input account-select-collapsed" id="txAccount" required></select>
-      </div>
+      </div>`;
+  const transferSwapField = `
       <div class="transfer-swap-row${state.formType === "transfer" ? "" : " form-field-hidden"}" id="transferSwapRow">
         <button type="button" class="btn btn-secondary btn-icon" id="transferSwapBtn" aria-label="${escapeHtml(l.transferSwapAria)}">${icon("arrow-right-left")}</button>
-      </div>
+      </div>`;
+  const transferToField = `
       <div class="field${state.formType === "transfer" ? "" : " form-field-hidden"}" id="transferToField">
         <label>${escapeHtml(l.transferToLabel)}</label>
         <div class="account-chip-row" id="transferToChipRow"></div>
         <select class="input account-select-collapsed" id="txTransferTo" required></select>
-      </div>
-      <div class="field">
-        <label for="txAmount">${escapeHtml(l.amountLabel)}</label>
-        <div class="input-wrap"><span class="prefix">฿</span><input type="number" id="txAmount" step="0.01" placeholder="0.00"></div>
-      </div>
+      </div>`;
+  // Sheet variant: same #txAmount input the submit handler already reads,
+  // just a visually-hidden label (screen readers still get "Amount") and a
+  // large centered numeric treatment (.amount-hero-row/-input, styles.css)
+  // instead of the standard field styling desktop keeps.
+  const amountField = `
+      <div class="field${isSheet ? " field-amount-hero" : ""}">
+        <label for="txAmount"${isSheet ? ' class="sr-only"' : ""}>${escapeHtml(l.amountLabel)}</label>
+        <div class="input-wrap${isSheet ? " amount-hero-row" : ""}"><span class="prefix">฿</span><input type="number" id="txAmount" step="0.01" placeholder="0.00"${isSheet ? ' class="amount-hero-input"' : ""}></div>
+      </div>`;
+  const noteField = `
       <div class="field">
         <label for="txNote">${escapeHtml(l.noteLabel)}</label>
         <div class="input-wrap"><input type="text" id="txNote" placeholder="${escapeHtml(l.notePlaceholder)}"></div>
-      </div>
-      ${opts.hideBottomButtons ? "" : `
+      </div>`;
+  // Phase 2: a live one-line summary pinned as the sheet's last field --
+  // see renderCommitPreview()'s own comment for why this position (right
+  // before the sticky header's always-visible Save) beats "above Save"
+  // literally, now that Amount lives at the top and scrolls out of view.
+  const commitPreviewField = isSheet ? `
+      <div class="commit-preview" id="addCommitPreview" aria-live="polite"></div>` : "";
+  const bottomButtons = opts.hideBottomButtons ? "" : `
       <button type="submit" class="btn btn-primary btn-block">${escapeHtml(isEditing ? l.saveEditBtn : l.saveBtn)}</button>
-      ${isEditing ? `<button type="button" class="btn btn-secondary btn-block" id="cancelEditBtn">${escapeHtml(l.cancelEditBtn)}</button>` : ""}`}
+      ${isEditing ? `<button type="button" class="btn btn-secondary btn-block" id="cancelEditBtn">${escapeHtml(l.cancelEditBtn)}</button>` : ""}`;
+  const fieldsInOrder = isSheet
+    ? [amountField, typeField, categoryField, accountField, transferSwapField, transferToField, dateField, noteField, commitPreviewField]
+    : [typeField, dateField, categoryField, accountField, transferSwapField, transferToField, amountField, noteField];
+  return `
+    <form class="add-form" id="addForm" autocomplete="off">
+      ${fieldsInOrder.join("")}
+      ${bottomButtons}
     </form>
   `;
 }
@@ -311,6 +390,10 @@ function wireAddForm({ onSaved, onCancelled }) {
     const tx = transactions.find((t) => t.id === state.editingId);
     if (tx) { $("txAmount").value = tx.amount; $("txNote").value = tx.note || ""; }
   }
+  // The calls above already trigger renderCommitPreview() as a side effect
+  // (see renderCategoryChips()), but that ran before #txAmount/#txNote were
+  // populated for an edit -- one explicit call here catches up.
+  renderCommitPreview();
   document.querySelectorAll('input[name="form-type"]').forEach((r) => r.addEventListener("change", (e) => {
     state.formType = e.target.value;
     const guess = state.categoryManual ? state.formCategoryId : guessCategory($("txNote").value, state.formType);
@@ -323,8 +406,8 @@ function wireAddForm({ onSaved, onCancelled }) {
     updateFormTypeVisibility();
   }));
   $("txCategory").addEventListener("change", (e) => { state.formCategoryId = e.target.value; state.categoryManual = true; renderCategoryChips(); });
-  $("txAccount").addEventListener("change", (e) => { state.formAccountId = e.target.value; });
-  $("txTransferTo").addEventListener("change", (e) => { state.formToAccountId = e.target.value; });
+  $("txAccount").addEventListener("change", (e) => { state.formAccountId = e.target.value; renderCommitPreview(); });
+  $("txTransferTo").addEventListener("change", (e) => { state.formToAccountId = e.target.value; renderCommitPreview(); });
   // Bug report: with exactly 2 accounts, the From/To chip pickers' own
   // same-account exclusion (docs/specs earlier pass) made reversing a
   // transfer's direction literally impossible -- whichever account isn't
@@ -340,6 +423,7 @@ function wireAddForm({ onSaved, onCancelled }) {
     $("txAccount").value = state.formAccountId;
     $("txTransferTo").value = state.formToAccountId;
     renderTransferAccountChips();
+    renderCommitPreview();
   });
   $("txDateText").addEventListener("input", function () { this.value = formatDateTyping(this.value); });
   $("txDateText").addEventListener("change", function () {
@@ -353,6 +437,7 @@ function wireAddForm({ onSaved, onCancelled }) {
   $("txAmount").addEventListener("input", function () {
     this.closest(".input-wrap").classList.remove("has-error");
     this.removeAttribute("aria-invalid");
+    renderCommitPreview();
   });
   $("txNote").addEventListener("input", function () {
     if (state.categoryManual) return;

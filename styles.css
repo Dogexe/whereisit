@@ -610,6 +610,60 @@
   .add-form { display: flex; flex-direction: column; gap: 16px; }
   .transfer-swap-row:not(.form-field-hidden) { display: flex; justify-content: center; margin: -8px 0; }
   .transfer-swap-row .btn-icon { transform: rotate(90deg); }
+  /* Standard visually-hidden-but-still-announced pattern -- keeps a real
+     <label> in the DOM (for txAmount on the mobile Add sheet, see add.js)
+     for screen readers without rendering visible text where the large
+     amount input + its ฿ prefix already make the field's purpose obvious. */
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+  /* Mobile Add-sheet hierarchy pass (docs/specs/add-transaction-bottom-sheet.md
+     phase 1): #txAmount gets a large, centered, borderless-except-underline
+     treatment here instead of the standard .input-wrap box desktop keeps.
+     .amount-hero-row still carries the base .input-wrap class (see add.js)
+     so the existing has-error/focus-within plumbing keeps working -- these
+     rules only override what needs to look different, at higher specificity
+     via the extra class rather than fighting .input-wrap's own rules. */
+  .field-amount-hero { align-items: center; }
+  .amount-hero-row {
+    border: none; border-bottom: 2px solid var(--color-border); border-radius: 0; background: transparent;
+    height: auto; padding: 8px 0 12px; justify-content: center; gap: 6px;
+  }
+  .amount-hero-row:focus-within { outline: none; border-bottom-color: var(--color-accent); }
+  .amount-hero-row.has-error { border-bottom-color: var(--color-expense); }
+  .amount-hero-row .prefix { font-size: 22px; font-weight: 700; color: var(--color-muted); flex-shrink: 0; }
+  .amount-hero-row .amount-hero-input {
+    border: none; background: transparent; outline: none; padding: 0; height: auto;
+    font-family: var(--font-sans); font-size: 40px; font-weight: 800; letter-spacing: -0.01em;
+    color: var(--color-text); text-align: left; width: auto; max-width: 220px; min-width: 60px;
+    font-variant-numeric: tabular-nums;
+  }
+  .amount-hero-row .amount-hero-input::placeholder { color: var(--color-tertiary); }
+  /* Same #txDateText/#txDateNative/.date-icon markup and interaction as the
+     full-size field (tap the icon corner for the native picker via
+     .date-native-overlay, type directly anywhere else) -- only shrunk to a
+     pill. .date-compact needs an explicit width (not the default block
+     auto-fill-parent) so .date-native-overlay's absolute right:0 tracks the
+     pill's own right edge instead of the field's full column width. */
+  .date-compact { width: fit-content; }
+  .date-compact .input-wrap {
+    width: fit-content; height: 34px; padding: 0 30px 0 12px; border: none; border-radius: var(--radius-pill);
+    background: var(--color-surface);
+  }
+  /* 104px, not a tighter guess: dateLabel() renders a 10-char dd/mm/YYYY
+     string in both languages (Thai's Buddhist-Era year is 4 digits too,
+     e.g. "04/09/2569") -- measured via scrollWidth against clientWidth in
+     a real browser, a narrower width clipped the last 1-2 digits. */
+  .date-compact .input-wrap input { flex: none; width: 104px; font-size: 13px; font-weight: 600; }
+  /* Phase 2's live commit-preview row (mobile sheet only, see
+     renderCommitPreview()/add.js) -- .info/.cat/.amt deliberately reuse
+     tx-row.js's own class names (scoped under this different ancestor, so
+     no collision) rather than inventing a parallel vocabulary for what is
+     visually a miniature transaction row. */
+  .commit-preview { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-lg); background: var(--color-surface); }
+  .commit-preview:empty { display: none; }
+  .commit-preview .info { min-width: 0; flex: 1; }
+  .commit-preview .cat { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .commit-preview .acc { font-size: 12px; color: var(--color-muted); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .commit-preview .amt { font-size: 15px; font-weight: 700; flex-shrink: 0; }
 
   /* — CSV import sheet (docs/specs/csv-import.md) — */
   .import-step { display: flex; flex-direction: column; gap: 16px; }
