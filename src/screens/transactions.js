@@ -348,9 +348,13 @@ export function renderTransactions() {
   $("screen").innerHTML = `
     <h2 class="screen-title">${escapeHtml(l.allTransactions)}</h2>
     <div class="tx-toolbar-row">
-      <input class="input" id="txSearchInput" placeholder="${escapeHtml(l.searchPlaceholder)}" value="${escapeHtml(state.txSearch)}">
-      <button type="button" class="btn btn-secondary filters-btn" id="openTxFiltersBtn">
-        ${icon("filter")}<span>${escapeHtml(l.filtersBtn)}</span><span class="filter-badge" id="txFiltersBadge" hidden></span>
+      <div class="tx-search-field">
+        <span class="tx-search-icon">${icon("search")}</span>
+        <input class="input" id="txSearchInput" placeholder="${escapeHtml(l.searchPlaceholder)}" value="${escapeHtml(state.txSearch)}">
+        <button type="button" class="tx-search-clear" id="txSearchClearBtn" aria-label="${escapeHtml(l.clearSearchAria)}"${state.txSearch === "" ? " hidden" : ""}>&times;</button>
+      </div>
+      <button type="button" class="filters-btn" id="openTxFiltersBtn" aria-label="${escapeHtml(l.filtersBtnAria)}">
+        ${icon("filter")}<span class="filter-badge" id="txFiltersBadge" hidden></span>
       </button>
     </div>
     <div class="active-filter-chips" id="txActiveChips"></div>
@@ -371,5 +375,18 @@ export function renderTransactions() {
   renderTxPeriodPicker();
   renderTxCustomDateField();
   wireFilterSheet();
-  $("txSearchInput").addEventListener("input", (e) => { state.txSearch = e.target.value; renderTxListOnly(); });
+  const searchInput = $("txSearchInput");
+  const searchClearBtn = $("txSearchClearBtn");
+  searchInput.addEventListener("input", (e) => {
+    state.txSearch = e.target.value;
+    searchClearBtn.hidden = state.txSearch === "";
+    renderTxListOnly();
+  });
+  searchClearBtn.addEventListener("click", () => {
+    state.txSearch = "";
+    searchInput.value = "";
+    searchClearBtn.hidden = true;
+    renderTxListOnly();
+    searchInput.focus();
+  });
 }

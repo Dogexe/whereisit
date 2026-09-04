@@ -473,9 +473,29 @@
      Filters button with its pill instead, via .toolbar-row (see the
      insights section further down). */
   .tx-toolbar-row { display: flex; gap: 8px; align-items: center; margin-bottom: var(--space-sm); }
-  .tx-toolbar-row .input { flex: 1; min-width: 0; }
-  .tx-toolbar-row .filters-btn { flex-shrink: 0; }
-  .filters-btn { position: relative; }
+  .tx-search-field { position: relative; flex: 1; min-width: 0; }
+  .tx-search-field .input { width: 100%; padding-left: 42px; padding-right: 42px; }
+  .tx-search-icon {
+    position: absolute; left: 14px; top: 50%; transform: translateY(-50%); z-index: 1;
+    display: flex; color: var(--color-muted); pointer-events: none;
+  }
+  .tx-search-icon .icon { width: 18px; height: 18px; }
+  .tx-search-clear {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+    padding: 0; border: none; border-radius: 50%; background: none;
+    color: var(--color-muted); font-size: 22px; line-height: 1; cursor: pointer;
+  }
+  .tx-search-clear[hidden] { display: none; }
+  .tx-search-clear:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+  .tx-toolbar-row .filters-btn {
+    position: relative; flex: 0 0 44px; width: 44px; height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0; border: 1px solid var(--color-border); border-radius: 50%;
+    background: var(--color-card); color: var(--color-text); cursor: pointer;
+  }
+  .tx-toolbar-row .filters-btn:hover { background: var(--color-surface); }
+  .tx-toolbar-row .filters-btn:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
   .filter-badge {
     position: absolute; top: -6px; right: -6px; min-width: 16px; height: 16px;
     display: flex; align-items: center; justify-content: center; padding: 0 4px;
@@ -695,7 +715,7 @@
   .toolbar-row { display: flex; gap: 8px; align-items: stretch; }
   .toolbar-row .picker-anchor { flex: 1; min-width: 0; }
   .toolbar-row .period-pill.wide { width: 100%; }
-  .toolbar-row .filters-btn { flex-shrink: 0; }
+  .toolbar-row .filters-btn { position: relative; flex-shrink: 0; }
   /* One-tap shortcut(s) inside the popover (opts.shortcuts in
      pillPickerHtml) -- Budgets passes none, Breakdown passes one
      ("today"), Transactions passes two ("all", "today"). A single
