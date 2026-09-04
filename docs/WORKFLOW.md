@@ -109,6 +109,21 @@ After the change is merged, update the ticket status to `Completed` and move it
 from `docs/tickets/active/` to `docs/tickets/completed/`. Keep the originating
 spec and `docs/CHANGELOG.md` current with what actually shipped.
 
+## Known limitations
+
+- **Codex cannot run Playwright or open a real browser inside its sandbox**
+  (no network access to download Chromium there). Its own verification is
+  therefore limited to `npm test` and `npm run build`; `npm run test:e2e`
+  and any live/manual browser check are Claude's or the maintainer's
+  responsibility to run outside Codex's task, not something to expect back
+  in Codex's own verification report. A ticket's verification checklist
+  should say so explicitly when it requires e2e or a real-browser check.
+- **A backgrounded Codex task doesn't proactively report back when it
+  finishes** — retrieving its final output can require repeatedly
+  resuming/nudging the relay agent rather than a single wait, especially
+  once a long step (like an e2e run) is in progress. Budget for this rather
+  than expecting one clean turnaround.
+
 ## Later upgrades
 
 Only after several successful sequential tickets should the project consider
