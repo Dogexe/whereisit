@@ -206,7 +206,7 @@ export function renderCategoryChips() {
 // original bottom buttons.
 function addFormFieldsHtml(l, isEditing, opts = {}) {
   return `
-    <form class="add-form" id="addForm">
+    <form class="add-form" id="addForm" autocomplete="off">
       <div class="field">
         <label>${escapeHtml(l.typeLabel)}</label>
         <div class="tabs block" role="radiogroup">
