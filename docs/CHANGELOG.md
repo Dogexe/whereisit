@@ -533,3 +533,34 @@ folders and `docs/tickets/TICKET_TEMPLATE.md`. Updated both `CLAUDE.md` copies
 and both `AGENTS.md` copies; this also repaired the previously documented but
 missing committed `repo/AGENTS.md`. Deliberately did not install third-party
 skills or introduce GitHub Issues, worktrees, parallel agents, or automation.
+
+## Workflow defaults, requested directly (no application code touched)
+
+`docs/WORKFLOW.md` got a new "Standing defaults" section so the maintainer
+doesn't have to restate the same instructions every cycle: the minimum
+`/spec` starting prompt, that Claude clarifies one question at a time then
+stops after writing the spec and creating `Ready` tickets (no auto-delegation
+to Codex without an explicit ask), that the first Claude review always stays
+read-only with confirmed defects kept separate from optional suggestions,
+and a proportional verification table (`npm test` for logic;
+`+ npm run build` for state/storage/sync; `+ npm run test:e2e` for
+screens/UI). The step-3 Codex task prompt now says to read only the ticket,
+its spec, relevant source, and relevant tests — `docs/CHANGELOG.md` is
+skipped by default, since it's history, not something a scoped ticket needs.
+Step 5 now says explicitly to resume the same Codex task for review-fix
+rounds rather than starting a new one.
+
+Also corrected a stale "Known limitations" claim that Codex can never run
+Playwright/open a real browser in its sandbox. Traced during WI-002: the
+actual failure was `browserType.launch: spawn EPERM` (a missing
+browser-launch permission), not a hard sandbox restriction — once granted,
+the same Codex task ran all 15 E2E tests successfully. The doc now says to
+grant browser-launch permission and rerun, reserving delegation elsewhere
+for environments that genuinely cannot launch Chromium.
+
+`CLAUDE.md` and `AGENTS.md` (both copies of each) got short pointers to
+`docs/WORKFLOW.md`'s "Standing defaults" rather than duplicating it — this
+was a deliberate choice to keep `docs/WORKFLOW.md` the single source of
+truth. `docs/tickets/TICKET_TEMPLATE.md` was left unchanged; its generic
+verification checklist already composes fine with the new proportional
+matrix.

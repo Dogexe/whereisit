@@ -32,6 +32,12 @@ merge. Claude Code owns requirements clarification, specs, ticket decomposition,
 and read-only first review. Codex is the default implementation agent for one
 `Ready` ticket at a time. Do not jump from an ambiguous request directly to
 implementation, and separate confirmed review defects from optional suggestions.
+`repo/docs/WORKFLOW.md`'s "Standing defaults" section is the source of truth
+for the minimum `/spec` starting prompt and the proportional verification
+matrix — don't restate them here. One rule worth calling out because it's
+easy to slip on: after writing the spec and creating `Ready` tickets, Claude
+stops — it does not start a Codex implementation task unless the maintainer
+explicitly asks for that delegation.
 
 `repo/workflows/` holds repeatable dev-process SOPs (`ship-feature.md`, `sync-claude-md.md`, `release-check.md`) — read the relevant one before a multi-step change instead of re-deriving the process each session. `repo/tools/` holds small standalone scripts for a specific recurring check; currently just `check-sprite-svg.mjs` (also run automatically inside `npm run build`, guarding the documented `icons/sprite.svg` XML-comment failure mode below). These aren't a general framework — add a new workflow/tool only for a process or check that's actually recurred, not speculatively.
 

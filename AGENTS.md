@@ -32,6 +32,13 @@ independent review → fix → maintainer merge. Codex is the implementation age
 and works on one `Ready` ticket from `repo/docs/tickets/active/` at a time. Read
 the originating spec and relevant tests before coding; do not invent requirements
 or expand the ticket's scope. Verify review findings before fixing them.
+Per ticket, read only the ticket, its spec, relevant source, and relevant
+tests — skip `repo/docs/CHANGELOG.md` unless historical context is genuinely
+needed. `repo/docs/WORKFLOW.md`'s "Standing defaults" section has the
+proportional verification matrix (`npm test` for logic, add `npm run build`
+for state/storage/sync, add `npm run test:e2e` for screens/UI); don't
+restate it here. For a review-fix round, resume the existing task instead of
+starting a new one.
 
 `repo/workflows/` holds repeatable dev-process SOPs (`ship-feature.md`, `sync-Codex-md.md`, `release-check.md`) — read the relevant one before a multi-step change instead of re-deriving the process each session. `repo/tools/` holds small standalone scripts for a specific recurring check; currently just `check-sprite-svg.mjs` (also run automatically inside `npm run build`, guarding the documented `icons/sprite.svg` XML-comment failure mode below). These aren't a general framework — add a new workflow/tool only for a process or check that's actually recurred, not speculatively.
 
