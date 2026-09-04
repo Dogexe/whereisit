@@ -44,7 +44,7 @@ export function openImportSheet() {
 }
 // Looked up fresh from the DOM rather than closed over at wire-time, same
 // reasoning as settings.js's closeExportSheet/transactions.js's closeTxFilterSheet.
-export function closeImportSheet() {
+function closeImportSheet() {
   state.importSheetOpen = false;
   const backdrop = document.getElementById("importSheetBackdrop");
   if (backdrop) backdrop.hidden = true;

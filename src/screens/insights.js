@@ -282,7 +282,7 @@ function renderBreakdownFilterSheet() {
   refreshIcons();
 }
 
-export function renderInsightsBody() {
+function renderInsightsBody() {
   const l = L();
   const body = $("insightsBody");
   if (state.insightsTab === "budgets") {

@@ -25,7 +25,7 @@ const PEEK_KEY = "expense_tracker_swipe_peek_shown_v1";
 // row on Home. The Transactions list never passes this param, per the
 // spec's confirmed decision, so a transfer there is always the neutral
 // form regardless of any active account filter.
-export function txRowHtml(t, viewingAccountId) {
+function txRowHtml(t, viewingAccountId) {
   if (t.type === "transfer") {
     const l = L();
     const tone = rowTone(t.type);

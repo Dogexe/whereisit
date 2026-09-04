@@ -1,7 +1,7 @@
 import { state } from "./state.js";
 
 export const $ = (id) => document.getElementById(id);
-export const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+export const uid = () => crypto.randomUUID();
 // The single source of truth for "is the desktop sidebar shell active"
 // (matching styles.css's own 1024px sidebar/tab-bar breakpoint) -- used
 // wherever behavior, not just layout, needs to branch on it (e.g.

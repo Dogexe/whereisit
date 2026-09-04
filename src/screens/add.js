@@ -93,12 +93,12 @@ export function renderFormCategoryOptions(select) {
 // account that's since been archived still shows it correctly pre-selected
 // instead of silently reassigning it to something else the moment the form
 // opens.
-export function renderFormAccountOptions(select) {
+function renderFormAccountOptions(select) {
   const opts = accounts.filter((a) => !a.archived || a.id === state.formAccountId);
   select.innerHTML = optionsHtml(opts.map((a) => a.id), state.formAccountId, (id) => accountNameById(accounts, id, id));
 }
 // Same shape as renderFormAccountOptions, for the Transfer tab's To picker.
-export function renderFormTransferToOptions(select) {
+function renderFormTransferToOptions(select) {
   const opts = accounts.filter((a) => !a.archived || a.id === state.formToAccountId);
   select.innerHTML = optionsHtml(opts.map((a) => a.id), state.formToAccountId, (id) => accountNameById(accounts, id, id));
 }
@@ -142,7 +142,7 @@ function renderAccountChipPicker(chipRowId, selectId, stateKey, excludeId, refre
   }));
   refreshIcons();
 }
-export function renderAccountChips() { renderAccountChipPicker("accountChipRow", "txAccount", "formAccountId"); }
+function renderAccountChips() { renderAccountChipPicker("accountChipRow", "txAccount", "formAccountId"); }
 // docs/specs/csv-import.md stage 3: the Import sheet's account picker
 // reuses this exact same underlying picker (a hidden <select id="importAccount">
 // as the real form value, chips as the visible UI) rather than a second
@@ -153,7 +153,7 @@ export function renderImportAccountChips() { renderAccountChipPicker("importAcco
 // a transfer's source account IS its .accountId, the same field every
 // other transaction type already uses (see the spec's schema decision), so
 // there's no separate "from" state or select to keep in sync.
-export function renderTransferAccountChips() {
+function renderTransferAccountChips() {
   renderAccountChipPicker("accountChipRow", "txAccount", "formAccountId", state.formToAccountId, renderTransferAccountChips);
   renderAccountChipPicker("transferToChipRow", "txTransferTo", "formToAccountId", state.formAccountId, renderTransferAccountChips);
 }
@@ -492,7 +492,7 @@ export function openAddSheet() {
   renderAddSheet();
   addSheetFocusTrap.activate();
 }
-export function closeAddSheet() {
+function closeAddSheet() {
   state.addSheetOpen = false;
   const backdrop = $("addSheetBackdrop");
   if (backdrop) backdrop.hidden = true;

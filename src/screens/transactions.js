@@ -213,7 +213,7 @@ function refreshFilteredResults() {
   updateFiltersBtnBadge();
   renderTxListOnly();
 }
-export function renderTxListOnly() {
+function renderTxListOnly() {
   const l = L();
   const rows = filteredTxList();
   const html = rows.length
