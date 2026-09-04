@@ -564,3 +564,34 @@ was a deliberate choice to keep `docs/WORKFLOW.md` the single source of
 truth. `docs/tickets/TICKET_TEMPLATE.md` was left unchanged; its generic
 verification checklist already composes fine with the new proportional
 matrix.
+
+## WI-002: move the Add-sheet commit preview to the top
+
+First ticket run through the dual-agent workflow end to end (spec → ticket →
+Codex implementation → independent Claude review → maintainer merge). In the
+mobile Add/Edit bottom sheet only, the live commit preview
+(`#addCommitPreview` — icon + category/route + account + signed amount)
+moved from the last field (just above the sticky Save button) to the first
+field, above Amount, per `docs/specs/add-sheet-preview-position.md`: the
+point of a preview is to confirm choices as they're made, which the old
+"final check before Save" position couldn't do once Amount scrolled out of
+view.
+
+Since the preview is now the first thing visible on opening the sheet,
+`renderCommitPreview()` (`src/screens/add.js`) gained an empty-state guard:
+it hides itself (and clears its children, so the pre-existing
+`.commit-preview:empty { display: none; }` CSS rule wins over
+`.commit-preview { display: flex; }` — a bare `hidden` attribute alone would
+lose that specificity tie, since `[hidden]` is a UA-stylesheet rule) whenever
+`amount <= 0`, rather than showing a meaningless `฿0.00` default. Editing an
+existing transaction shows the preview immediately, since its amount is
+already prefilled and positive. Desktop's full-page Add/Edit form never
+renders this element and is untouched.
+
+Independent review found no confirmed functional defects; one out-of-scope
+edit (an update to `docs/WORKFLOW.md`'s Playwright/EPERM note, made correctly
+but outside this ticket) was reverted from the diff before merge, and folded
+instead into the dedicated workflow-defaults pass above. `npm test` (172/172)
+and `npm run build` re-run independently by the reviewer; live-verified
+against built `dist/` (DOM order, hide/show on amount changes, the Transfer
+from→to branch, desktop unaffected).

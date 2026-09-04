@@ -198,18 +198,20 @@ export function renderCategoryChips() {
   renderCommitPreview();
 }
 // docs/specs/add-transaction-bottom-sheet.md phase 2: a live one-line
-// summary (icon + category/route + account + signed amount) pinned as the
-// sheet's last field, right before the sticky header's always-visible
-// Save -- Amount now living at the top (phase 1) means it scrolls out of
-// view well before Save is reached, so this restores "what am I about to
-// record" without scrolling back up. Pure read of state already tracked
-// (formType/formCategoryId/formAccountId/formToAccountId) plus the live
-// #txAmount value -- no new state, no new validation. No-ops on desktop,
-// which never renders #addCommitPreview.
+// Live one-line summary (icon + category/route + account + signed amount)
+// shown as the sheet's first field once a positive amount exists. Keeping
+// the empty state hidden avoids presenting a meaningless zero-value preview.
+// Pure read of state already tracked (formType/formCategoryId/formAccountId/
+// formToAccountId) plus the live #txAmount value -- no new state, no new
+// validation. No-ops on desktop, which never renders #addCommitPreview.
 function renderCommitPreview() {
   const el = $("addCommitPreview");
   if (!el) return;
   const amount = parseFloat($("txAmount").value) || 0;
+  el.hidden = amount <= 0;
+  // .commit-preview is display:flex, so empty it as well: its existing
+  // :empty rule ensures the hidden state wins over that author style.
+  if (el.hidden) { el.replaceChildren(); return; }
   const tone = rowTone(state.formType);
   if (state.formType === "transfer") {
     const fromName = accountNameById(accounts, state.formAccountId, "");
@@ -315,17 +317,16 @@ function addFormFieldsHtml(l, isEditing, opts = {}) {
         <label for="txNote">${escapeHtml(l.noteLabel)}</label>
         <div class="input-wrap"><input type="text" id="txNote" placeholder="${escapeHtml(l.notePlaceholder)}"></div>
       </div>`;
-  // Phase 2: a live one-line summary pinned as the sheet's last field --
-  // see renderCommitPreview()'s own comment for why this position (right
-  // before the sticky header's always-visible Save) beats "above Save"
-  // literally, now that Amount lives at the top and scrolls out of view.
+  // The sheet starts with its live summary above Amount. Its empty-state
+  // guard in renderCommitPreview() keeps this first field hidden until a
+  // positive amount has been entered; desktop never renders it.
   const commitPreviewField = isSheet ? `
       <div class="commit-preview" id="addCommitPreview" aria-live="polite"></div>` : "";
   const bottomButtons = opts.hideBottomButtons ? "" : `
       <button type="submit" class="btn btn-primary btn-block">${escapeHtml(isEditing ? l.saveEditBtn : l.saveBtn)}</button>
       ${isEditing ? `<button type="button" class="btn btn-secondary btn-block" id="cancelEditBtn">${escapeHtml(l.cancelEditBtn)}</button>` : ""}`;
   const fieldsInOrder = isSheet
-    ? [amountField, typeField, categoryField, accountField, transferSwapField, transferToField, dateField, noteField, commitPreviewField]
+    ? [commitPreviewField, amountField, typeField, categoryField, accountField, transferSwapField, transferToField, dateField, noteField]
     : [typeField, dateField, categoryField, accountField, transferSwapField, transferToField, amountField, noteField];
   return `
     <form class="add-form" id="addForm" autocomplete="off">
