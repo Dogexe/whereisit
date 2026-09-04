@@ -24,6 +24,8 @@ This working directory holds two independent git repos, not one:
 
 Feature specs (written before building, updated with what actually shipped) live in `repo/docs/specs/`. Full project history lives in `repo/docs/CHANGELOG.md`.
 
+`repo/workflows/` holds repeatable dev-process SOPs (`ship-feature.md`, `sync-claude-md.md`) — read the relevant one before a multi-step change instead of re-deriving the process each session. `repo/tools/` holds small standalone scripts for a specific recurring check; currently just `check-sprite-svg.mjs` (also run automatically inside `npm run build`, guarding the documented `icons/sprite.svg` XML-comment failure mode below). These aren't a general framework — add a new workflow/tool only for a process or check that's actually recurred, not speculatively.
+
 ## Running locally
 
 Source lives in `repo/src/`; `repo/index.html` is a thin HTML shell — no inline `<style>` or `<script>`, just `<link rel="stylesheet" href="./styles.css">` and `<script type="module" src="./main.js"></script>`. There's a real build step (esbuild).

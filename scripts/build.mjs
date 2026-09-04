@@ -3,6 +3,9 @@
 // this directory is needed to serve the site.
 import { build } from "esbuild";
 import { cpSync, rmSync, mkdirSync } from "node:fs";
+import { checkSpriteSvg } from "../tools/check-sprite-svg.mjs";
+
+checkSpriteSvg();
 
 const isProd = process.env.NODE_ENV === "production";
 

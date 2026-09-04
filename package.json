@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
+    "check:sprite": "node tools/check-sprite-svg.mjs",
     "test": "node --test",
     "test:e2e": "npm run build && playwright test"
   },
