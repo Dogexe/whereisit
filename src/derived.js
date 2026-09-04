@@ -123,7 +123,7 @@ function budgetRowsFor(txPredicate, limitMultiplier) {
     const over = spent > limit;
     const near = !over && spent / limit >= 0.8;
     return {
-      category: displayName(bid, b.category), categoryId: bid, spentFmt: fmtMoney(spent), limitFmt: fmtMoney(limit), pct,
+      category: displayName(bid, b.category), categoryId: bid, spent, limit, spentFmt: fmtMoney(spent), limitFmt: fmtMoney(limit), pct,
       barColor: over ? "var(--color-expense)" : (near ? "var(--color-warning)" : "var(--color-accent)"),
       badgeClass: over ? "badge-expense" : (near ? "badge-warn" : "badge-brand"),
       statusLabel: over ? L().overBudget : pct + "%"

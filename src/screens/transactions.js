@@ -1,11 +1,23 @@
 import { L } from "../i18n.js";
-import { state, categories, accounts } from "../state.js";
-import { $, escapeHtml, refreshIcons, icon, fmtMoney, monthLabel, dateLabel, createFocusTrap, localDateIso, localMonthKey, sheetGrabberHtml, wireSheetDrag } from "../utils.js";
+import { state, transactions, categories, accounts } from "../state.js";
+import { $, escapeHtml, refreshIcons, icon, fmtMoney, monthLabel, dateLabel, createFocusTrap, localDateIso, localMonthKey, sheetGrabberHtml, wireSheetDrag, isDesktopShell } from "../utils.js";
 import { categoryDisplayName } from "../categories.js";
 import { accountNameById } from "../accounts.js";
 import { availableYears, yearLabel, filteredTxList } from "../derived.js";
 import { groupedTxRowsHtml, wireTxRowActions } from "./tx-row.js";
 import { pillPickerHtml, wirePillPicker } from "./period-picker.js";
+import { resetForm, openAddSheet } from "./add.js";
+import { setTab } from "./router.js";
+
+// Mirrors home.js's private goAdd() -- same desktop/mobile branch, kept as
+// its own copy per this codebase's screens/*.js import convention (only
+// leaf modules like add.js/router.js/tx-row.js are imported across screens,
+// never one top-level screen from another).
+function goAddFromTx() {
+  resetForm();
+  if (isDesktopShell()) { setTab("add"); return; }
+  openAddSheet();
+}
 
 function defaultMonthNum() { return localMonthKey().slice(5, 7); }
 function defaultYear() { return String(new Date().getFullYear()); }
@@ -218,11 +230,15 @@ function renderTxListOnly() {
   const rows = filteredTxList();
   const html = rows.length
     ? groupedTxRowsHtml(rows)
-    : `<div class="empty-note empty-note-search">${icon("search")}<div>${escapeHtml(l.noResults)}</div><button type="button" class="btn btn-ghost" id="clearTxFiltersBtn">${escapeHtml(l.clearFiltersBtn)}</button></div>`;
+    : transactions.length === 0
+      ? `<div class="empty-note empty-note-search">${icon("receipt")}<div>${escapeHtml(l.noTransactionsYet)}</div><button type="button" class="btn btn-primary btn-sm" id="txEmptyAddBtn">${escapeHtml(l.addShort)}</button></div>`
+      : `<div class="empty-note empty-note-search">${icon("search")}<div>${escapeHtml(l.noResults)}</div><button type="button" class="btn btn-ghost" id="clearTxFiltersBtn">${escapeHtml(l.clearFiltersBtn)}</button></div>`;
   $("txListContainer").innerHTML = html;
   wireTxRowActions();
   const clearBtn = document.getElementById("clearTxFiltersBtn");
   if (clearBtn) clearBtn.addEventListener("click", clearTxFilters);
+  const emptyAddBtn = document.getElementById("txEmptyAddBtn");
+  if (emptyAddBtn) emptyAddBtn.addEventListener("click", goAddFromTx);
   refreshIcons();
 }
 function filterSheetHtml() {

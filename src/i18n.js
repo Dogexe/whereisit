@@ -146,6 +146,7 @@ export const STRINGS = {
   allBudgeted: ["ตั้งงบประมาณครบทุกหมวดหมู่รายจ่ายแล้ว", "All expense categories already have a budget"],
   unbudgetedSpending: ["รายจ่ายที่ยังไม่มีงบ", "Unbudgeted spending"],
   unbudgetedSpendingHint: ["ยอดรวมหมวดหมู่ที่ยังไม่ได้ตั้งงบประมาณ", "Total spent in categories with no budget set"],
+  budgetRollupUsed: ["ใช้งบไปแล้ว", "of budget used"],
   toastBudgetSaved: ["บันทึกงบประมาณแล้ว", "Budget saved"], toastBudgetDeleted: ["ลบงบประมาณแล้ว", "Budget deleted"],
   addBillBtn: ["+ เพิ่มรายการ", "+ Add bill"], billNameLabel: ["ชื่อรายการ", "Bill name"],
   billDayLabel: ["วันที่ต้องจ่าย (1-31)", "Due day (1-31)"], saveBillBtn: ["บันทึกรายการ", "Save bill"],

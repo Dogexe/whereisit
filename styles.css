@@ -53,8 +53,7 @@
   }
   :root {
     /* neutrals */
-    --gray-0:#ffffff; --gray-50:#f6f6f8; --gray-100:#eeeef1; --gray-150:#e4e4e9; --gray-200:#d9dae0;
-    --gray-300:#bdbfc8; --gray-400:#9497a3; --gray-500:#71747f; --gray-600:#565964; --gray-900:#15161a;
+    --gray-900:#15161a;
     /* brand accent -- coral is the default (docs/specs/coral-rebrand-and-logo.md);
        these are just the pre-JS first-paint fallback, theme.js's ACCENT
        map overrides all three per state.accentColor ("coral" | "purple"). */
@@ -120,10 +119,9 @@
        tokenized as-is instead of being forced to round to 8px or 16px.
        Home-only for now (see that spec for the full remap + rationale);
        other screens keep their literal px values until a future pass. */
-    --space-xs: 8px; --space-sm: 12px; --space-md: 16px; --space-lg: 20px; --space-xl: 24px;
+    --space-xs: 8px; --space-sm: 12px; --space-md: 16px; --space-xl: 24px;
     --shadow-xs: 0 1px 2px rgba(15,15,20,0.04);
     --shadow-sm: 0 2px 6px rgba(15,15,20,0.06);
-    --shadow-md: 0 8px 24px rgba(15,15,20,0.08);
     --shadow-lg: 0 16px 40px rgba(15,15,20,0.14);
     --ease-standard: cubic-bezier(0.4,0,0.2,1);
     --duration-fast: 120ms; --duration-normal: 200ms;
@@ -168,7 +166,7 @@
   @media (prefers-reduced-motion: reduce) { .screen.screen-enter { animation: none; } }
 
   /* — shared card base (list/insight/goal/stat/etc. cards all sit on this) — */
-  .card, .list-card, .insight-card, .trend-chart-card, .goal-card,
+  .card, .list-card, .insight-card, .insight-rollup, .trend-chart-card, .goal-card,
   .stat-card, .today-spend-card, .inline-form {
     background: var(--color-card); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
   }
@@ -363,7 +361,7 @@
   .stat-card { flex: 1; padding: 14px 16px; min-width: 0; }
   .stat-card .head { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--color-muted); }
   .stat-card .head .icon { width: 15px; height: 15px; }
-  .stat-card .value { font-size: 20px; font-weight: 700; margin-top: 6px; letter-spacing: -0.02em; }
+  .stat-card .value { font-size: 22px; font-weight: 700; margin-top: 6px; letter-spacing: -0.02em; }
   .stat-card .delta { font-size: 12px; font-weight: 600; margin-top: 4px; }
 
   /* One-shot stagger for Home's top cards on a genuine tab entry (piggybacks
@@ -732,6 +730,11 @@
   .kind-toggle button.active { background: var(--color-accent-tint); border-color: var(--color-accent); color: var(--color-accent-700); }
   .field-hint { font-size: 11.5px; color: var(--color-tertiary); margin-top: 6px; line-height: 1.5; }
 
+  .insight-rollup { display: flex; align-items: baseline; gap: 14px; padding: 18px 16px; margin-bottom: 14px; }
+  .insight-rollup .pct { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; flex-shrink: 0; }
+  .insight-rollup .detail { min-width: 0; }
+  .insight-rollup .label { font-size: 13px; color: var(--color-muted); }
+  .insight-rollup .figures { font-size: 13px; color: var(--color-muted); margin-top: 2px; }
   .insight-cards { display: flex; flex-direction: column; gap: 14px; padding-bottom: 16px; }
   .insight-card { padding: 16px; }
   .insight-card .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px; }
@@ -1073,6 +1076,14 @@
        nothing to clear. */
     .screen { padding-bottom: 20px; }
     .toast { bottom: 24px; }
+
+    /* — Add form: wrap the category chips instead of horizontal-scrolling
+       them. Mobile's overflow-x:auto (with its scrollbar intentionally
+       hidden, see the comment above .category-chip-row) relies on touch
+       swipe as the discovery mechanism -- there's no such affordance with a
+       mouse, so at this width the row wrapped instead, using the space a
+       centered form column otherwise leaves idle on either side. */
+    .category-chip-row { flex-wrap: wrap; overflow-x: visible; }
 
     /* — Insights: take further advantage of the space beside the sidebar,
        building on (not replacing) the 880px rules above -- 3 budget cards

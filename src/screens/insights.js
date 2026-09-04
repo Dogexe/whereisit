@@ -62,7 +62,25 @@ function renderBudgetsContent() {
   const targetMonthKey = state.insightsBudgetsYear + "-" + state.insightsBudgetsMonthNum;
   const rows = isYear ? computeBudgetsForYear(state.insightsBudgetsYear) : computeBudgets(targetMonthKey);
   const unbudgeted = isYear ? unbudgetedSpendForYear(state.insightsBudgetsYear) : unbudgetedSpend(targetMonthKey);
+  // A single rollup figure above the per-category cards, so this screen has
+  // the same "one dominant entry point" Home's balance card gives it --
+  // otherwise every card below carries identical weight and there's nothing
+  // to anchor on before scanning all of them.
+  const totalSpent = rows.reduce((a, b) => a + b.spent, 0);
+  const totalLimit = rows.reduce((a, b) => a + b.limit, 0);
+  const rollupPct = totalLimit > 0 ? Math.min(100, Math.round((totalSpent / totalLimit) * 100)) : 0;
+  const rollupOver = totalSpent > totalLimit;
+  const rollupNear = !rollupOver && totalLimit > 0 && totalSpent / totalLimit >= 0.8;
+  const rollupColor = rollupOver ? "var(--color-expense)" : (rollupNear ? "var(--color-warning)" : "var(--color-accent)");
   $("budgetsContent").innerHTML = `
+    ${rows.length ? `
+    <div class="insight-rollup">
+      <div class="pct" style="color:${rollupColor}">${rollupPct}%</div>
+      <div class="detail">
+        <div class="label">${escapeHtml(l.budgetRollupUsed)}</div>
+        <div class="figures">${fmtMoney(totalSpent)} / ${fmtMoney(totalLimit)}</div>
+      </div>
+    </div>` : ""}
     <div class="insight-cards">${rows.map((b) => `
     <div class="insight-card">
       <div class="head"><span class="cat">${escapeHtml(b.category)}</span><span class="badge ${b.badgeClass}">${escapeHtml(b.statusLabel)}</span></div>
