@@ -1,6 +1,6 @@
 import { L } from "../i18n.js";
 import { state, transactions, categories, accounts } from "../state.js";
-import { $, escapeHtml, refreshIcons, icon, fmtMoney, monthLabel, dateLabel, createFocusTrap, localDateIso, localMonthKey, sheetGrabberHtml, wireSheetDrag, isDesktopShell } from "../utils.js";
+import { $, escapeHtml, icon, fmtMoney, monthLabel, dateLabel, createFocusTrap, localDateIso, localMonthKey, sheetGrabberHtml, wireSheetDrag, isDesktopShell } from "../utils.js";
 import { categoryDisplayName } from "../categories.js";
 import { accountNameById } from "../accounts.js";
 import { availableYears, yearLabel, filteredTxList } from "../derived.js";
@@ -78,7 +78,6 @@ function renderTxPeriodPicker() {
     },
     onClose: () => { state.txPillPopoverOpen = false; renderTxPeriodPicker(); }
   });
-  refreshIcons();
 }
 // Custom date: single day / date range toggle, identical shape and i18n
 // strings to Insights' own Filters-sheet section (no new strings needed).
@@ -239,7 +238,6 @@ function renderTxListOnly() {
   if (clearBtn) clearBtn.addEventListener("click", clearTxFilters);
   const emptyAddBtn = document.getElementById("txEmptyAddBtn");
   if (emptyAddBtn) emptyAddBtn.addEventListener("click", goAddFromTx);
-  refreshIcons();
 }
 function filterSheetHtml() {
   const l = L();
@@ -374,5 +372,4 @@ export function renderTransactions() {
   renderTxCustomDateField();
   wireFilterSheet();
   $("txSearchInput").addEventListener("input", (e) => { state.txSearch = e.target.value; renderTxListOnly(); });
-  refreshIcons();
 }

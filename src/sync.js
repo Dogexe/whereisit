@@ -15,7 +15,7 @@ import { fetchAllPages } from "./paginate.js";
 // depend on each other circularly.
 let onSyncRerender = () => {};
 export function setSyncRerenderCallback(fn) { onSyncRerender = fn; }
-export const SUPABASE_URL = "https://kbpnolgucodpiglarsoj.supabase.co";
+const SUPABASE_URL = "https://kbpnolgucodpiglarsoj.supabase.co";
 export const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImticG5vbGd1Y29kcGlnbGFyc29qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4NDkzOTYsImV4cCI6MjEwMjQyNTM5Nn0.mDSJ8msVCVpWRntJTm6hN3etKKm1cq2R3AGhRlX-V0A";
 export let sb = null;
 try {

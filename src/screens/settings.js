@@ -14,7 +14,7 @@
 // back from here directly -- see that file's own comment on why).
 import { L } from "../i18n.js";
 import { state, budgets, bills, goals, categories, accounts } from "../state.js";
-import { $, icon, iconAvatar, escapeHtml, refreshIcons, createFocusTrap, isDesktopShell, PLUS_ICON, sheetGrabberHtml, wireSheetDrag } from "../utils.js";
+import { $, icon, iconAvatar, escapeHtml, createFocusTrap, isDesktopShell, PLUS_ICON, sheetGrabberHtml, wireSheetDrag } from "../utils.js";
 import { wireManageRowSwipe } from "./manage-row-swipe.js";
 import { groupedCategories } from "../categories.js";
 import { accountDisplayName } from "../account.js";
@@ -122,7 +122,6 @@ function renderManageSheet() {
     btn.classList.add("selected");
   }));
   wireCategoryTypeRadios(container);
-  refreshIcons();
   if (!state.manageSheetOpen) { state.manageSheetOpen = true; manageSheetFocusTrap.activate(); }
 }
 document.addEventListener("keydown", (e) => {
@@ -438,7 +437,6 @@ export function renderSettings() {
     btn.classList.add("selected");
   }));
   wireCategoryTypeRadios(document);
-  refreshIcons();
   if (!isDesktopShell()) wireManageRowSwipe($("screen"));
   renderManageSheet();
 }

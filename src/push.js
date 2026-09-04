@@ -18,7 +18,7 @@ const VAPID_PUBLIC_KEY = "BEkZUDphQYsXqsaKs-fZE97REAmIr6THcABQZVzXanArvszMhtVjR7
 // "is this actually wired up" signal without an async check on every render.
 const ENABLED_KEY = "expense_tracker_push_enabled_v1";
 
-export function isPushSupported() {
+function isPushSupported() {
   return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 }
 

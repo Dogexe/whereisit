@@ -1,6 +1,6 @@
 import { L } from "./i18n.js";
 import { state, bills } from "./state.js";
-import { refreshIcons, isDesktopShell } from "./utils.js";
+import { isDesktopShell } from "./utils.js";
 import { loadFromStorage } from "./storage.js";
 import { loadPending } from "./pending.js";
 import { loadWatermark, resetWatermark } from "./watermark.js";
@@ -53,12 +53,11 @@ applyTheme();
 
 // docs/specs/app-lock.md stage 3: if a PIN is enabled, everything that
 // used to run unconditionally right here (the first renderScreen(), the
-// bill-notification deep link, refreshIcons()) is deferred until the
-// correct PIN (or "Forgot PIN?") clears the lock overlay renderAppLockGate
-// shows instead -- see that function's own doc comment in applock.js.
+// bill-notification deep link) is deferred until the correct PIN (or
+// "Forgot PIN?") clears the lock overlay renderAppLockGate shows instead --
+// see that function's own doc comment in applock.js.
 renderAppLockGate(() => {
   renderScreen();
-  refreshIcons();
 
   // Deep-links a tapped bill reminder straight to that bill's edit form in
   // Settings when it's already synced locally; otherwise still lands on

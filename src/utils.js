@@ -97,12 +97,6 @@ export function iconAvatar(name, bg, color, sizeClass, iconAttrs) {
 export const EDIT_ICON = icon("pencil");
 export const DELETE_ICON = icon("trash-2");
 export const PLUS_ICON = icon("plus");
-// No-op: icon() above now renders real, immediately-valid SVG, so there's
-// no lucide.createIcons()-style activation pass left to run. Kept (rather
-// than deleting every "refresh icons after rendering" call site across
-// every screen) since each one is still harmless to call; safe to remove
-// entirely in a future cleanup pass.
-export function refreshIcons() {}
 // Builds <option> tags for a plain list of value strings. `labelFn` maps a
 // value to display text (defaults to the value itself); pass null as
 // `selected` when nothing should be pre-selected.

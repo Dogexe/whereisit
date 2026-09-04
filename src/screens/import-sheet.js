@@ -7,7 +7,7 @@
 // already sit.
 import { L } from "../i18n.js";
 import { state, transactions, categories, accounts } from "../state.js";
-import { $, uid, icon, escapeHtml, createFocusTrap, refreshIcons, optionsHtml, sheetGrabberHtml, wireSheetDrag } from "../utils.js";
+import { $, uid, icon, escapeHtml, createFocusTrap, optionsHtml, sheetGrabberHtml, wireSheetDrag } from "../utils.js";
 import { findCategoryId, guessCategory, categoryDisplayName } from "../categories.js";
 import { defaultAccountId } from "../derived.js";
 import { saveToStorage } from "../storage.js";
@@ -95,7 +95,6 @@ function renderImportStepBody() {
   else if (state.importStep === "map") body.innerHTML = mapStepHtml();
   else body.innerHTML = summaryStepHtml();
   wireCurrentStep();
-  refreshIcons();
 }
 
 function pickStepHtml() {

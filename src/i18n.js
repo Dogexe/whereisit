@@ -2,7 +2,7 @@ import { state } from "./state.js";
 
 // Each entry is [th, en]; LANGS.th / LANGS.en are derived below so every
 // other place in the app just reads L().someKey same as before.
-export const STRINGS = {
+const STRINGS = {
   appTitle: ["whereisit", "whereisit"],
   darkModeBtn: ["โหมดมืด", "Dark mode"], overview: ["ภาพรวม", "Overview"], balanceLabel: ["คงเหลือ", "Balance"],
   incomeLabel: ["รายรับ", "Income"], expenseLabel: ["รายจ่าย", "Expense"],
@@ -181,6 +181,6 @@ export const STRINGS = {
   csvDate: ["วันที่", "Date"], csvType: ["ประเภท", "Type"], csvCategory: ["หมวดหมู่", "Category"],
   csvNote: ["รายละเอียด", "Note"], csvAmount: ["จำนวนเงิน", "Amount"]
 };
-export const LANGS = { th: {}, en: {} };
+const LANGS = { th: {}, en: {} };
 for (const k in STRINGS) { LANGS.th[k] = STRINGS[k][0]; LANGS.en[k] = STRINGS[k][1]; }
 export function L() { return LANGS[state.lang]; }

@@ -1,6 +1,6 @@
 import { L } from "../i18n.js";
 import { state, categories } from "../state.js";
-import { $, escapeHtml, fmtMoney, icon, refreshIcons, monthNameFull, createFocusTrap, localDateIso, sheetGrabberHtml, wireSheetDrag } from "../utils.js";
+import { $, escapeHtml, fmtMoney, icon, monthNameFull, createFocusTrap, localDateIso, sheetGrabberHtml, wireSheetDrag } from "../utils.js";
 import { categoryDisplayName } from "../categories.js";
 import {
   yearLabel, computeBudgets, computeBudgetsForYear,
@@ -54,7 +54,6 @@ function renderBudgetsToolbar() {
     onPickMonth: (monthNum) => { state.insightsBudgetsMode = "month"; state.insightsBudgetsMonthNum = monthNum; state.insightsBudgetsPopoverOpen = false; renderBudgetsToolbar(); renderBudgetsContent(); },
     onClose: () => { state.insightsBudgetsPopoverOpen = false; renderBudgetsToolbar(); }
   });
-  refreshIcons();
 }
 function renderBudgetsContent() {
   const l = L();
@@ -159,7 +158,6 @@ function renderBreakdownToolbar() {
   });
   const openBtn = $("openInsightsFiltersBtn");
   if (openBtn) openBtn.addEventListener("click", () => { state.insightsFilterSheetOpen = true; renderBreakdownFilterSheet(); insightsFilterFocusTrap.activate(); });
-  refreshIcons();
 }
 
 function breakdownPeriodLabel() {
@@ -297,7 +295,6 @@ function renderBreakdownFilterSheet() {
     if (cb.checked) state.insightsFilterCategory.add(id); else state.insightsFilterCategory.delete(id);
     renderBreakdownToolbar(); renderBreakdownContent();
   }));
-  refreshIcons();
 }
 
 function renderInsightsBody() {
@@ -351,5 +348,4 @@ function renderInsightsBody() {
       });
     }
   }
-  refreshIcons();
 }

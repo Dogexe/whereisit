@@ -1,6 +1,6 @@
 import { L } from "../i18n.js";
 import { state, transactions, categories, accounts, setTransactions } from "../state.js";
-import { $, uid, escapeHtml, dateLabel, formatDateTyping, parseDateText, optionsHtml, refreshIcons, icon, isDesktopShell, createFocusTrap, localDateIso, sheetGrabberHtml, wireSheetDrag } from "../utils.js";
+import { $, uid, escapeHtml, dateLabel, formatDateTyping, parseDateText, optionsHtml, icon, isDesktopShell, createFocusTrap, localDateIso, sheetGrabberHtml, wireSheetDrag } from "../utils.js";
 import { guessCategory, categoryDisplayName, groupedCategories } from "../categories.js";
 import { accountNameById } from "../accounts.js";
 import { checkBudgetAlert, resolveCategoryId, mostUsedCategoryIds, defaultAccountId } from "../derived.js";
@@ -140,7 +140,6 @@ function renderAccountChipPicker(chipRowId, selectId, stateKey, excludeId, refre
     $(selectId).value = id;
     (refresh || (() => renderAccountChipPicker(chipRowId, selectId, stateKey)))();
   }));
-  refreshIcons();
 }
 function renderAccountChips() { renderAccountChipPicker("accountChipRow", "txAccount", "formAccountId"); }
 // docs/specs/csv-import.md stage 3: the Import sheet's account picker
@@ -191,7 +190,6 @@ export function renderCategoryChips() {
     if (typeof select.showPicker === "function") { try { select.showPicker(); } catch (e) { select.focus(); } }
     else select.focus();
   });
-  refreshIcons();
 }
 // Shared by the desktop full-page screen (renderAdd) and the mobile
 // bottom sheet (renderAddSheet, docs/specs/add-transaction-bottom-sheet.md)
@@ -423,7 +421,6 @@ function wireAddForm({ onSaved, onCancelled }) {
     onSaved();
     if (savedTx) pushTx(savedTx).then(() => syncNow());
   });
-  refreshIcons();
 }
 // Desktop (>=1024px) full-page screen -- unchanged behavior from before
 // docs/specs/add-transaction-bottom-sheet.md, just built on the shared

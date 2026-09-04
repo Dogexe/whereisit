@@ -104,8 +104,8 @@ const lockFocusTrap = createFocusTrap(() => document.querySelector(".app-lock-pa
 
 // Called once from main.js's boot, after loadFromStorage() has populated
 // state.pinEnabled. onProceed is the rest of boot (renderScreen, the
-// bill-notification deep link, refreshIcons) -- run immediately if no PIN
-// is set, or deferred until a correct PIN/"Forgot PIN?" if one is.
+// bill-notification deep link) -- run immediately if no PIN is set, or
+// deferred until a correct PIN/"Forgot PIN?" if one is.
 export function renderAppLockGate(onProceed) {
   if (!state.pinEnabled) { onProceed(); return; }
   showLockOverlay(onProceed);

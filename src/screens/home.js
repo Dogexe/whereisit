@@ -1,6 +1,6 @@
 import { L } from "../i18n.js";
 import { state, transactions, bills, accounts } from "../state.js";
-import { $, uid, escapeHtml, icon, iconAvatar, fmtMoney, refreshIcons, isDesktopShell, localDateIso, localMonthKey } from "../utils.js";
+import { $, uid, escapeHtml, icon, iconAvatar, fmtMoney, isDesktopShell, localDateIso, localMonthKey } from "../utils.js";
 import { CATEGORIES } from "../categories.js";
 import {
   byRecency, computeBudgets, upcomingBills, monthTotal, monthHasTransactions, pctDeltaLabel, prevMonthKey,
@@ -206,5 +206,4 @@ export function renderHome() {
   if (emptyAddBtn) emptyAddBtn.addEventListener("click", goAdd);
   document.querySelectorAll("[data-mark-paid]").forEach((btn) => btn.addEventListener("click", () => markBillPaid(btn.getAttribute("data-mark-paid"))));
   wireTxRowActions();
-  refreshIcons();
 }
