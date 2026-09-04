@@ -1,10 +1,10 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
 
-A copy of this file is committed at `repo/CLAUDE.md` (18+ docs/comments
-inside `repo/` cite "CLAUDE.md" by name, and a fresh clone of just that repo
-needs a real file there to find). This outer copy stays the one Claude Code
+A copy of this file is committed at `repo/AGENTS.md` (18+ docs/comments
+inside `repo/` cite "AGENTS.md" by name, and a fresh clone of just that repo
+needs a real file there to find). This outer copy stays the one Codex
 actually auto-loads for a session started at this directory. When editing
 either copy, mirror the change into the other one in the same pass; they're
 expected to read identically.
@@ -26,14 +26,14 @@ Feature specs (written before building, updated with what actually shipped) live
 
 ## Development workflow
 
-For non-trivial features and significant bugs, follow `repo/docs/WORKFLOW.md`:
-clarify → spec → tickets → implement → independent review → fix → maintainer
-merge. Claude Code owns requirements clarification, specs, ticket decomposition,
-and read-only first review. Codex is the default implementation agent for one
-`Ready` ticket at a time. Do not jump from an ambiguous request directly to
-implementation, and separate confirmed review defects from optional suggestions.
+For non-trivial features and significant bugs, follow the shared Claude + Codex
+workflow in `repo/docs/WORKFLOW.md`: clarify → spec → tickets → implement →
+independent review → fix → maintainer merge. Codex is the implementation agent
+and works on one `Ready` ticket from `repo/docs/tickets/active/` at a time. Read
+the originating spec and relevant tests before coding; do not invent requirements
+or expand the ticket's scope. Verify review findings before fixing them.
 
-`repo/workflows/` holds repeatable dev-process SOPs (`ship-feature.md`, `sync-claude-md.md`, `release-check.md`) — read the relevant one before a multi-step change instead of re-deriving the process each session. `repo/tools/` holds small standalone scripts for a specific recurring check; currently just `check-sprite-svg.mjs` (also run automatically inside `npm run build`, guarding the documented `icons/sprite.svg` XML-comment failure mode below). These aren't a general framework — add a new workflow/tool only for a process or check that's actually recurred, not speculatively.
+`repo/workflows/` holds repeatable dev-process SOPs (`ship-feature.md`, `sync-Codex-md.md`, `release-check.md`) — read the relevant one before a multi-step change instead of re-deriving the process each session. `repo/tools/` holds small standalone scripts for a specific recurring check; currently just `check-sprite-svg.mjs` (also run automatically inside `npm run build`, guarding the documented `icons/sprite.svg` XML-comment failure mode below). These aren't a general framework — add a new workflow/tool only for a process or check that's actually recurred, not speculatively.
 
 ## Running locally
 
@@ -48,7 +48,7 @@ Then serve `dist/` over HTTP (not `file://` — the service worker and manifest 
 ```
 python -m http.server 8792 --directory E:/project/incomeexpenses/repo/dist --bind 127.0.0.1
 ```
-This exact command is wired up in `.claude/launch.json` (already pointed at `dist/`) — but you must run `npm run build` first, since `dist/` is gitignored and generated, not checked in.
+This exact command is wired up in `.Codex/launch.json` (already pointed at `dist/`) — but you must run `npm run build` first, since `dist/` is gitignored and generated, not checked in.
 
 There's no linter or typecheck command, but there are two automated test layers — **don't trust a stale doc's silence on this over grepping `package.json`/the repo directly.**
 

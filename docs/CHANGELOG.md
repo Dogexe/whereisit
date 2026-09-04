@@ -519,3 +519,17 @@ Prompted by a video on Claude Code's "Workflows/Agent/Tools" pattern for agentic
 **Verification**: `node tools/check-sprite-svg.mjs` run directly (confirmed the Windows entry-point bug, then confirmed the fix); a separate crafted self-test (`findBadComments` against a string with a deliberate `-- ` inside a comment, and against a clean one) confirmed the detection logic itself, not just that the real file happens to pass; `npm run build` re-run after wiring the check into `scripts/build.mjs` to confirm the build still succeeds with the guard in place.
 
 **Follow-up, requested directly**: a third workflow, `release-check.md` — the gate for "about to push to `main`" through "confirmed live," picking up exactly where `ship-feature.md`'s last step (commit, ask before pushing) leaves off rather than duplicating it. Covers: clean `git status` (an uncommitted backlog has been the actual cause of a "documented fix isn't live" report before, not the fix itself — see this file's "Type-toggle spacing" entry), the same `npm test`/`npm run test:e2e`/`npm run build` gate CI runs, docs-current, `gh run list --workflow=deploy.yml --limit 1` to confirm the deploy workflow actually succeeded rather than assuming a green push means deployed, and a final check against the real GitHub Pages URL — since this repo's own "live-verified" convention means checked against a local `dist/` build, not the deployed site, those are two different claims and the workflow says so explicitly. `ship-feature.md`'s step 7 now points to it. Both `CLAUDE.md` copies' `workflows/` pointer updated to list all three files.
+
+## Claude + Codex ticket workflow
+
+Added the small, sequential workflow described in
+`docs/specs/dual-agent-engineering-workflow.md`: Claude Code clarifies and
+specifies work, Markdown tickets provide the handoff, Codex implements one
+ready ticket, Claude performs a read-only independent review, Codex verifies
+and fixes confirmed findings, and the maintainer decides whether to merge.
+`docs/WORKFLOW.md` contains copyable prompts and explains when to use the full
+flow versus a tiny-fix or difficult-bug path. Added active/completed ticket
+folders and `docs/tickets/TICKET_TEMPLATE.md`. Updated both `CLAUDE.md` copies
+and both `AGENTS.md` copies; this also repaired the previously documented but
+missing committed `repo/AGENTS.md`. Deliberately did not install third-party
+skills or introduce GitHub Issues, worktrees, parallel agents, or automation.
