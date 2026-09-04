@@ -58,6 +58,14 @@ export function applyTheme() {
   root.setProperty("--color-expense", state.dark ? "#ff7a68" : "#ef4b3a");
   root.setProperty("--color-expense-700", state.dark ? "#ff7a68" : "#c22f22");
   root.setProperty("--color-warning", state.dark ? "#f5b95a" : "#ec9f2e");
+  // Breakdown chart's 5th/6th rotating colors (derived.js's CHART_COLORS) --
+  // same hue in both modes, brightened for dark the same way income/expense/
+  // warning are above, so each still clears the 3:1 floor against
+  // --color-card/--color-surface in the mode it's actually rendered in
+  // (the light-mode hexes alone only manage ~3:1 against dark's near-black
+  // card, too thin a margin to reuse unchanged).
+  root.setProperty("--color-chart-5", state.dark ? "#4fd6c4" : "#1f7d70");
+  root.setProperty("--color-chart-6", state.dark ? "#e768ab" : "#b23a7a");
   // Independent of dark/light -- same axis the removed Linear theme used.
   // --color-accent-tint/--shadow-accent are left alone: both are already
   // color-mix() expressions in styles.css referencing var(--color-accent),

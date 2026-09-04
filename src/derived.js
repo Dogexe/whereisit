@@ -318,7 +318,7 @@ export function upcomingBills() {
     .filter((b) => b.daysUntil <= 7 && b.lastPaidCycle !== b.dueCycle)
     .sort((a, b) => a.daysUntil - b.daysUntil);
 }
-export const CHART_COLORS = ["var(--color-accent)", "var(--color-income)", "var(--color-expense)", "var(--color-warning)", "#a190f7", "var(--color-tertiary)"];
+export const CHART_COLORS = ["var(--color-accent)", "var(--color-income)", "var(--color-expense)", "var(--color-warning)", "var(--color-chart-5)", "var(--color-chart-6)"];
 // Aggregates by categoryId but keeps a display name alongside each total
 // (rather than resolving it only at the end) so a transaction whose
 // category can't be matched to anything current still falls back to its

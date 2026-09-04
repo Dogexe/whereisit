@@ -94,6 +94,25 @@
     --color-income-tint-fg: #147a54;
     --color-expense: #ef4b3a; --color-expense-700: #c22f22; --color-expense-tint: color-mix(in srgb, var(--color-expense) 12%, white);
     --color-warning: #ec9f2e; --color-warning-text: #93630f; --color-warning-tint: color-mix(in srgb, var(--color-warning) 15%, white);
+    /* .hero-card-negative's own gradient, deliberately NOT --color-expense/
+       -700 -- those measure only 3.66:1 (light mode's lighter gradient
+       stop) / 2.55:1 (dark mode, where -700 collapses to the same hex as
+       the base) for the white text laid on top, both below the 4.5:1
+       small-text AA floor. Same hue as --color-expense (~6 deg), just
+       darkened until white clears AA (4.77:1 / 6.89:1) -- and unlike every
+       other themed token here, this ONE pair is theme-invariant (verified:
+       white-on-gradient contrast doesn't depend on the app's light/dark
+       surroundings, only on these two stops), so theme.js never touches
+       it. */
+    --hero-negative-gradient-start: #cf3f2f; --hero-negative-gradient-end: #a82c1f;
+    /* Breakdown chart's 5th/6th rotating colors (derived.js's CHART_COLORS).
+       Chosen far apart in hue from both accent options (Coral ~20deg,
+       Purple ~250deg -- #a190f7, the value this replaced, sat right on top
+       of Purple at ~255deg) so neither can be misread as "the accent" once
+       assigned to a category. theme.js overrides both per-theme -- these
+       are just the pre-JS light-mode fallback, same pattern as
+       --color-income/-expense/-warning above. */
+    --color-chart-5: #1f7d70; --color-chart-6: #b23a7a;
     /* surfaces (swapped by applyTheme for dark mode) */
     --color-bg: #f6f6f8; --color-card: #ffffff; --color-surface: #eeeef1;
     --color-text: #15161a; --color-muted: #71747f; --color-tertiary: #9497a3; --color-divider: #e4e4e9; --color-border: #d9dae0;
@@ -338,7 +357,7 @@
   .home-profile-btn img { width: 100%; height: 100%; object-fit: cover; }
   .home-columns { display: flex; flex-direction: column; gap: 20px; }
   .hero-card { border-radius: var(--radius-lg); padding: 22px; color: #ffffff; background: linear-gradient(135deg, var(--hero-gradient-start) 0%, var(--hero-gradient-end) 100%); box-shadow: var(--shadow-accent); margin-top: var(--space-md); }
-  .hero-card.hero-card-negative { background: linear-gradient(135deg, var(--color-expense) 0%, var(--color-expense-700) 100%); box-shadow: 0 12px 28px color-mix(in srgb, var(--color-expense) 30%, transparent); }
+  .hero-card.hero-card-negative { background: linear-gradient(135deg, var(--hero-negative-gradient-start) 0%, var(--hero-negative-gradient-end) 100%); box-shadow: 0 12px 28px color-mix(in srgb, var(--color-expense) 30%, transparent); }
   .hero-card .kicker { font-size: 13px; opacity: 0.85; font-weight: 500; }
   /* "Hide financial status" quick toggle, top corner of the hero card next
      to the Balance label -- kicker moves into a row alongside it rather
