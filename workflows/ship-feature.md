@@ -12,4 +12,4 @@ The repeatable process for taking a change from idea to deployed in this repo. S
    - Anything server-side (a Supabase Edge Function, an RLS/schema change) needs verification against a real deployed request — a local pass proves the code parses, not that it works once deployed.
 5. **Manual check** in a real browser for anything a keypress, animation, or signed-in state depends on — automated coverage has a documented gap around signed-in UI (see `../CLAUDE.md`'s e2e section).
 6. **Update docs in the same pass**: mirror `CLAUDE.md` ⇄ `../CLAUDE.md` if either changed (see `sync-claude-md.md`), append an entry to `docs/CHANGELOG.md`, and update the relevant `docs/specs/*.md` with what actually shipped versus what was planned.
-7. **Commit** — ask before pushing to `main`; that's the deploy trigger (`../CLAUDE.md`'s Deployment section).
+7. **Commit** — ask before pushing to `main`; that's the deploy trigger (`../CLAUDE.md`'s Deployment section). Run `release-check.md` before and after the push.
