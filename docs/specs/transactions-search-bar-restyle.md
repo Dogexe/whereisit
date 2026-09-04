@@ -1,6 +1,7 @@
 # Spec: Transactions search bar restyle
 
-Status: Draft (not yet built).
+Status: **built and verified live in the browser** (`src/screens/transactions.js`,
+`styles.css`, `src/i18n.js`). Shipped as `docs/tickets/completed/WI-001.md`.
 
 Small visual-only pass over the Transactions screen's search + Filters row
 (`.tx-toolbar-row` in `src/screens/transactions.js` / `styles.css`), based on
