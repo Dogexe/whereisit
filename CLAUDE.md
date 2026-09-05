@@ -9,11 +9,8 @@ facts a session needs before touching code; don't add pass-by-pass writeups
 here again — new entries belong in the changelog, with only a one-line pointer
 added here if the current-state facts actually changed.
 
-This file is self-contained for a standalone clone of this repository. If a
-session is instead opened one level up, inside a local workspace that nests
-this repo alongside unrelated sibling projects, that workspace's own entry
-file points back to this one rather than duplicating it — see
-`workflows/sync-agent-entry-docs.md` if you need to touch that pointer.
+This file is self-contained for a standalone clone of this repository — no
+path here assumes anything outside `whereisit/`.
 
 ## About this repository
 
@@ -30,7 +27,9 @@ live in `docs/specs/`. Full project history lives in `docs/CHANGELOG.md`.
 2. `docs/SOT.md` — a compact summary of what's actually true about the
    product and its technical state right now, so you don't have to
    reconstruct it from `docs/CHANGELOG.md`'s full history.
-3. `docs/WORKFLOW.md` — the full lifecycle and the minimum `/spec` prompt.
+3. `docs/WORKFLOW.md` — only when workflow/process guidance is actually
+   needed (the full lifecycle, handoff prompts, the minimum `/spec` prompt);
+   not required reading for every session.
 4. Only then, load relevant specs under `docs/specs/` and relevant code as
    the task requires — don't read every spec, every ticket, or the full
    changelog by default.
@@ -56,7 +55,7 @@ defects, kept separate from optional suggestions, before Claude edits
 anything. Codex verifies each finding against the code before fixing it —
 a Claude finding is not automatically correct.
 
-`workflows/` holds repeatable dev-process SOPs (`ship-feature.md`, `sync-agent-entry-docs.md`, `release-check.md`) — read the relevant one before a multi-step change instead of re-deriving the process each session. `tools/` holds small standalone scripts for a specific recurring check; currently just `check-sprite-svg.mjs` (also run automatically inside `npm run build`, guarding the documented `icons/sprite.svg` XML-comment failure mode below). These aren't a general framework — add a new workflow/tool only for a process or check that's actually recurred, not speculatively.
+`workflows/` holds repeatable dev-process SOPs (`ship-feature.md`, `release-check.md`) — read the relevant one before a multi-step change instead of re-deriving the process each session. `tools/` holds small standalone scripts for a specific recurring check; currently just `check-sprite-svg.mjs` (also run automatically inside `npm run build`, guarding the documented `icons/sprite.svg` XML-comment failure mode below). These aren't a general framework — add a new workflow/tool only for a process or check that's actually recurred, not speculatively.
 
 ## Running locally
 

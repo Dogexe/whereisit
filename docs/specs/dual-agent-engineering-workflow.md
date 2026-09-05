@@ -23,8 +23,7 @@ and release practices.
 - Existing repository test and release SOPs remain authoritative.
 - `CLAUDE.md` and `AGENTS.md` are self-contained for this repository — no
   path assumes a parent workspace directory, so a standalone clone works
-  unmodified. The outer workspace's own copies are thin pointers back to
-  these, not byte-identical mirrors (see `workflows/sync-agent-entry-docs.md`).
+  unmodified.
 - `docs/SOT.md` is a persistent, compact "current state" summary, added so a
   fresh agent session can recover product/technical reality quickly without
   reading the full changelog. It is not a second changelog, spec, or
@@ -51,8 +50,5 @@ and release practices.
 - Check all referenced files and directories exist.
 - `CLAUDE.md` and `AGENTS.md` are self-contained for a standalone clone of
   this repository (no path assumes a parent workspace directory).
-- The outer, uncommitted workspace copies of `CLAUDE.md`/`AGENTS.md` are thin
-  pointers to this repo's own copies, not byte-identical mirrors — see
-  `workflows/sync-agent-entry-docs.md`.
 - Run `npm test` and `npm run build`.
 - Inspect the complete diff for unrelated changes.

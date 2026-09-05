@@ -113,7 +113,7 @@ Use a fresh Claude session when practical:
 
 ```text
 Review docs/tickets/active/WI-XXX.md against its spec and the current git diff.
-Read CLAUDE.md and docs/WORKFLOW.md. Do not modify files.
+Read CLAUDE.md and docs/SOT.md. Do not modify files.
 
 Check acceptance criteria, correctness, regressions, architecture, persistence
 and sync when relevant, test coverage, and scope. Separate confirmed defects

@@ -1,6 +1,6 @@
 # Spec: local app-lock (PIN)
 
-Status: **not started.** Interviewed to find the real goal, then read the current codebase (`main.js`'s boot sequence, `storage.js`'s `SETTINGS_KEY` blob, the sheet-overlay/focus-trap pattern in `utils.js`, `screens/settings.js`'s section-nav structure) before staging a build plan, following this repo's usual staged-spec convention (`custom-categories.md`, `category-nesting.md`).
+Status: **implemented and live-verified** — `src/applock.js`, `src/applock-ui.js`, `src/screens/settings-security.js`; unit-tested (`tests/applock.test.js`) and e2e-tested (`e2e/pin-lock.spec.js`). Interviewed to find the real goal, then read the current codebase (`main.js`'s boot sequence, `storage.js`'s `SETTINGS_KEY` blob, the sheet-overlay/focus-trap pattern in `utils.js`, `screens/settings.js`'s section-nav structure) before staging a build plan, following this repo's usual staged-spec convention (`custom-categories.md`, `category-nesting.md`).
 
 ## Goal
 

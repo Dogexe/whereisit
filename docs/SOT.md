@@ -34,6 +34,12 @@ cross-device sync, GitHub Pages + GitHub Actions for deploy.
 - **Auth & sync**: Google sign-in via Supabase, incremental/paginated
   last-write-wins sync, offline-first via `localStorage`, account isolation
   on shared devices.
+- **App lock**: local 4-digit PIN gate (convenience lock, not real security),
+  immediate re-lock on backgrounding; see `docs/specs/app-lock.md`.
+- **Category nesting**: one level of subcategories (a category may have one
+  parent), Add-screen picker groups them, Insights breakdown rolls a
+  subcategory's spend into its parent's slice; see
+  `docs/specs/category-nesting.md`.
 - **Filtering & search**: transactions list filters and search bar.
 - **Amount privacy**: hide-amounts toggle.
 - **Localization**: Thai / English.
@@ -68,9 +74,6 @@ flags what a future agent needs to know exists, not how it works.
 
 - No e2e coverage of real Google sign-in or any signed-in UI state (the
   Playwright suite runs fully offline/signed-out by design).
-- Two specs are written but **not started**: `docs/specs/app-lock.md`
-  (PIN/biometric app lock) and `docs/specs/category-nesting.md`
-  (hierarchical categories). Neither has an active ticket yet.
 - Custom domain for GitHub Pages was deliberately skipped (needs the repo
   owner to own/control a domain).
 - The marketing landing page (`docs/specs/landing-page.md`) was built, then

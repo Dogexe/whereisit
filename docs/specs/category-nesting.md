@@ -1,6 +1,6 @@
 # Spec: one level of category nesting (subcategories)
 
-Status: **not started.** Interviewed to find the real goal, then read the current codebase (`src/categories.js`, `src/screens/settings.js`'s category CRUD, `src/screens/add.js`'s category picker, `src/derived.js`'s `breakdownEntries`) and the completed `custom-categories.md` spec this builds directly on top of, before staging a build plan the same way that spec was staged.
+Status: **implemented and live-verified** — `parentId` support across `src/categories.js`, `src/derived.js`, `src/sync.js`, `src/screens/settings-categories.js`, `src/screens/add.js`, migration `supabase/migrations/20260902120000_category_parent_id.sql`; unit-tested (`tests/categories.test.js`) and e2e-tested (`e2e/category-nesting.spec.js`). Interviewed to find the real goal, then read the current codebase (`src/categories.js`, `src/screens/settings.js`'s category CRUD, `src/screens/add.js`'s category picker, `src/derived.js`'s `breakdownEntries`) and the completed `custom-categories.md` spec this builds directly on top of, before staging a build plan the same way that spec was staged.
 
 ## Goal
 

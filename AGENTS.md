@@ -6,11 +6,8 @@ https://dogexe.github.io/whereisit/. In this project's workflow, Claude Code
 owns clarification, specs, and independent review; Codex owns implementation,
 testing, and review-fix work. See `docs/WORKFLOW.md` for the full lifecycle.
 
-This file is self-contained for a standalone clone of this repository. If a
-session is instead opened one level up, inside a local workspace that nests
-this repo alongside unrelated sibling projects, that workspace's own entry
-file points back to this one rather than duplicating it — see
-`workflows/sync-agent-entry-docs.md` if you need to touch that pointer.
+This file is self-contained for a standalone clone of this repository — no
+path here assumes anything outside `whereisit/`.
 
 ## Read in this order
 
@@ -23,14 +20,15 @@ file points back to this one rather than duplicating it — see
    product and its technical state right now. Read this for fast context;
    it points back at `CLAUDE.md`/specs/tickets for detail rather than
    restating them, and the code is authoritative if the two ever disagree.
-4. `docs/WORKFLOW.md` — how work moves end to end (clarify → spec → tickets
-   → implement → verify → independent review → review fixes → narrow
-   re-review → maintainer merge), plus the exact build/test commands and the
-   proportional verification matrix for each change type.
-5. The assigned ticket under `docs/tickets/active/`.
-6. The ticket's originating spec under `docs/specs/`.
-7. Relevant source and tests for the ticket. Skip `docs/CHANGELOG.md` unless
+4. The assigned ticket under `docs/tickets/active/`.
+5. The ticket's originating spec under `docs/specs/`.
+6. Relevant source and tests for the ticket. Skip `docs/CHANGELOG.md` unless
    historical context is genuinely needed.
+
+Consult `docs/WORKFLOW.md` only when process/handoff details are actually
+needed (e.g. the exact build/test commands, the proportional verification
+matrix, or how a review-fix round is supposed to work) — it is not required
+reading for every ticket.
 
 ## Codex's responsibilities
 
