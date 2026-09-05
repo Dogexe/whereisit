@@ -418,7 +418,7 @@
      edge instead of shrinking text to reveal the actions behind it. */
   .tx-trail-group { display: flex; align-items: stretch; flex-shrink: 0; }
   .tx-trail { display: flex; align-items: center; flex-shrink: 0; padding: 12px 0 12px 8px; cursor: grab; }
-  .tx-row-actions { position: absolute; z-index: 0; top: 0; right: 0; bottom: 0; display: flex; align-items: center; width: 108px; gap: 4px; padding: 0 12px; }
+  .tx-row-actions { position: absolute; z-index: 0; top: 0; right: 0; bottom: 0; display: flex; align-items: center; width: 96px; gap: 4px; padding: 0 0 0 12px; }
   .tx-row-actions .tx-swipe-action {
     width: 40px; height: 40px; min-width: 40px; padding: 0;
     border-radius: 20px; box-shadow: none; transform: scale(0); transform-origin: right center;

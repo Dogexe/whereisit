@@ -112,9 +112,12 @@ test("mobile whole-row full swipe grows Delete, commits past 65% of the row, and
   };
 
   // Revision 8: each circle scales only through the reveal window for its
-  // own slot. At 54px, Delete (12-52px) is full-size while Edit (56-96px)
-  // remains at zero scale behind the still-covered portion of the row.
-  const partialDrag = await dragRowLeft(54, false);
+  // own slot. Revision 12 tightened the resting right-side inset to 0
+  // (flush, matching the amount's own edge spacing), shrinking REVEAL from
+  // 108 to 96 and its windows accordingly. At 42px, Delete (0-40px) is
+  // full-size while Edit (44-84px) remains at zero scale behind the still-
+  // covered portion of the row.
+  const partialDrag = await dragRowLeft(42, false);
   const partialScales = await row.locator(".tx-row-actions").evaluate((actions) =>
     [...actions.querySelectorAll(".tx-swipe-action")].map((button) => {
       const values = getComputedStyle(button).transform.match(/^matrix\(([^,]+)/);
@@ -128,7 +131,7 @@ test("mobile whole-row full swipe grows Delete, commits past 65% of the row, and
 
   // Once the row has reached Edit's own reveal window, it grows separately
   // while Delete remains fully settled.
-  await dragRowLeft(72, false);
+  await dragRowLeft(60, false);
   const staggeredScales = await row.locator(".tx-row-actions").evaluate((actions) =>
     [...actions.querySelectorAll(".tx-swipe-action")].map((button) => {
       const values = getComputedStyle(button).transform.match(/^matrix\(([^,]+)/);
@@ -142,7 +145,7 @@ test("mobile whole-row full swipe grows Delete, commits past 65% of the row, and
 
   // A drag on the category/icon side of the row, not the amount, opens it.
   await dragRowLeft(115);
-  await expect(row.locator(".tx-row-inner")).toHaveCSS("transform", "matrix(1, 0, 0, 1, -108, 0)");
+  await expect(row.locator(".tx-row-inner")).toHaveCSS("transform", "matrix(1, 0, 0, 1, -96, 0)");
   const openGeometry = await row.evaluate((el) => {
     const edit = el.querySelector("[data-edit]");
     const del = el.querySelector("[data-delete]");
@@ -168,7 +171,7 @@ test("mobile whole-row full swipe grows Delete, commits past 65% of the row, and
   expect(openGeometry.editScale).toBe("matrix(1, 0, 0, 1, 0, 0)");
   expect(openGeometry.deleteScale).toBe("matrix(1, 0, 0, 1, 0, 0)");
   expect(openGeometry.gap).toBe("4px");
-  expect(openGeometry.innerTransform).toBe("matrix(1, 0, 0, 1, -108, 0)");
+  expect(openGeometry.innerTransform).toBe("matrix(1, 0, 0, 1, -96, 0)");
   expect(openGeometry.actionsAreSibling).toBe(true);
 
   // This is the critical Revision 6 regression guard: Delete is clicked

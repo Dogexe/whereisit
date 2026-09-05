@@ -690,6 +690,53 @@ its margin inset, plain row/card background. Confirm the bar's own margin
 inset from Revision 10 is unchanged, confirm no discontinuity anywhere in
 the drag range, confirm light and dark mode.
 
+## Revision 12: tighten the resting right-side inset to match the amount's own edge spacing
+
+**Requested directly**, after a screenshot of the open (non-full-swipe)
+state: the Delete circle's resting gap to the row's true right edge looked
+too wide.
+
+### Root cause
+
+`.tx-row-actions` used a symmetric `padding: 0 12px`, so Delete sat 12px
+in from `.tx-row-wrap`'s right edge even at rest. On a *closed* row, the
+amount (`.tx-trail`) has `padding-right: 0` — its only gap to the true
+card edge comes from `.list-card`'s own `14px` horizontal padding, not from
+the amount itself. That made the open row's edge spacing inconsistent with
+the closed row's.
+
+### Fix
+
+Confirmed with the maintainer: drop `.tx-row-actions`'s own right-side
+padding to `0` (flush), matching how the amount has zero of its own
+right-side padding — `padding: 0 0 0 12px` (left padding, for Edit's gap
+from the row content, is unchanged). `REVEAL` drops from `108` to `96`
+(`12 + 40 + 4 + 40 + 0`) accordingly, and the full-swipe growth's starting
+`right` offset (`src/screens/tx-row.js`) simplifies from `12 + (fullSwipeMargin
+- 12) * progress` to `fullSwipeMargin * progress`, since it now starts at
+`0` instead of `12`. The per-button pop-in windows (Revision 8) shift with
+`REVEAL`: Delete `0-40px`, Edit `44-84px` (each computed at runtime from
+`actions.clientWidth`, not hardcoded, so no other logic needed touching).
+
+### Unchanged
+
+Everything else from Revisions 4-11: the `REVEAL → commit` circle-to-pill-
+to-bar growth and its `8px` margin, the 65%-of-row-width commit threshold
+and immediate delete + Undo, whole-row drag surface, circle colors/40px
+resting size, icon-only buttons, one-row-open-at-a-time, desktop
+dense-table view (its own `.tx-list-card .tx-row-actions` padding is a
+separate, centered grid-column layout, not this absolute-positioned
+edge-inset — left untouched).
+
+### Verification plan (this revision)
+
+`npm run build`, serve `dist/`, real-browser check at a mobile viewport:
+open a row via swipe and confirm Delete now sits flush with the row's
+right edge (only the card's outer padding provides visible gap, matching
+a closed row's amount). Confirm the pop-in stagger (Revision 8) and the
+full-swipe growth (Revisions 9-11) still look and feel identical otherwise,
+in both light and dark mode.
+
 ## Goal
 
 Replace the always-visible Edit/Delete buttons on transaction rows with a

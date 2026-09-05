@@ -6,7 +6,7 @@ import { categories, accounts } from "../state.js";
 import { editTx, deleteTx } from "./add.js";
 import { L } from "../i18n.js";
 
-const REVEAL = 108; // 12px padding + 40px action + 4px gap + 40px action + 12px padding
+const REVEAL = 96; // 12px padding + 40px action + 4px gap + 40px action + 0px padding (flush with the row edge, matching the amount's own right-side spacing)
 const DELETE_COMMIT_RATIO = 0.65;
 const PEEK_KEY = "expense_tracker_swipe_peek_shown_v1";
 
@@ -150,7 +150,7 @@ function setRevealOffset(rowEl, offset) {
   const maxHeight = rowHeight - fullSwipeMargin * 2;
   const width = 40 + (maxWidth - 40) * progress;
   const height = 40 + (maxHeight - 40) * progress;
-  const right = 12 + (fullSwipeMargin - 12) * progress;
+  const right = fullSwipeMargin * progress;
   // Clear the whole row beneath the inset bar, including its leading margin.
   // REVEAL remains the continuous phase-boundary floor.
   const revealOffset = Math.max(REVEAL, width + right + fullSwipeMargin);
