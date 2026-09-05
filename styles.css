@@ -539,6 +539,13 @@
     box-shadow: var(--shadow-lg); animation: sheet-slide-up var(--duration-normal) var(--ease-standard);
     display: flex; flex-direction: column; gap: 16px;
   }
+  /* Unverified mitigation pending the mandatory real-device check: the
+     existing overflow-y:auto already clips the visible, normal-flow Type
+     content. Paint containment additionally forces a paint/stacking boundary
+     here, which may isolate Android Chrome's repaint while visualViewport
+     resize and native scroll-into-view interact; that mechanism and the fix's
+     effect have not yet been observed on-device. */
+  #addSheetBackdrop .filter-sheet { contain: paint; }
   @keyframes sheet-slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
   /* A drag that doesn't clear wireSheetDrag()'s dismiss threshold animates
      back to translateY(0) via this class (added right before the reset,
