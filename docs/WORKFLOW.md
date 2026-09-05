@@ -39,7 +39,16 @@ restate them in the prompt.
   writes or updates the spec in `docs/specs/`, defines measurable
   verification for it (see `/verify`), and creates one or more small
   `Ready` tickets under `docs/tickets/active/` using
-  `docs/tickets/TICKET_TEMPLATE.md`. **Claude stops there** — it does not
+  `docs/tickets/TICKET_TEMPLATE.md`. Each ticket may start as `Status:
+  Draft` with `Codex profile: terra-medium` (the default) while
+  requirements are still settling. Before moving a ticket to `Ready`,
+  Claude consults the "Codex execution profiles" section of `AGENTS.md`
+  — a targeted read of that one section, not the whole file — and confirms
+  or updates the profile for the finalized ticket, adding a one-line
+  `Profile reason:` only when the profile is non-default (or a reason is
+  genuinely useful). The profile is execution metadata for the Codex
+  environment; it must never influence acceptance criteria, scope, ticket
+  size, or dependency structure. **Claude stops there** — it does not
   start a Codex task unless the maintainer explicitly asks for
   implementation to be delegated.
 - The first Claude review of a Codex implementation is always read-only.
@@ -86,12 +95,17 @@ Claude turns the accepted spec into files under `docs/tickets/active/`, using
 `docs/tickets/TICKET_TEMPLATE.md`. Each ticket represents one coherent,
 reviewable outcome with acceptance criteria, proportional verification,
 dependencies, and out-of-scope work, and is marked `Ready` only once its
-requirements are unambiguous. Claude stops here — implementation starts only
-once the maintainer explicitly delegates it.
+requirements are unambiguous. Each ticket also carries a `Codex profile`
+(assigned per `AGENTS.md`'s "Codex execution profiles" section) — execution
+metadata for the Codex environment, never a lever on scope or acceptance
+criteria. Claude stops here — implementation starts only once the maintainer
+explicitly delegates it.
 
 ## 3. Implement and verify one ticket with Codex
 
-Start a Codex task with:
+The maintainer (or whatever launches Codex) starts the task using the
+ticket's `Codex profile` to pick the model/effort, per `AGENTS.md`. Start a
+Codex task with:
 
 ```text
 Implement docs/tickets/active/WI-XXX.md.

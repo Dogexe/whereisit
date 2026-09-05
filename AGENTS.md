@@ -60,3 +60,77 @@ requires them, and don't fold in unrelated cleanup.
 
 See `CLAUDE.md`'s "Running locally" section for the build/serve commands and
 exactly what each test layer covers.
+
+## Codex execution profiles
+
+**This section is the single authoritative source for Codex profile
+definitions and selection.** Every `Ready` ticket carries a `Codex profile`
+field, assigned by Claude when the ticket is created (see `docs/WORKFLOW.md`
+for when that happens). The profile is a recommendation for the Codex
+execution environment — not permission to expand scope, and it must never
+change acceptance criteria, scope, ticket size, or dependency structure.
+
+Use exactly one of these four profile names — no arbitrary free-text names:
+
+### `luna-low`
+
+Use for tiny mechanical edits, simple documentation changes, renames,
+trivial test additions, and other low-risk, tightly bounded work.
+
+Intended Codex setting: GPT-5.6 Luna, low effort.
+
+### `terra-medium` (default)
+
+Use for normal Ready tickets: clear, bounded implementation work, ordinary
+UI changes, ordinary feature work with settled requirements, and
+straightforward tests/refactors. This is the default unless the ticket
+clearly needs more or less reasoning.
+
+Intended Codex setting: GPT-5.6 Terra, medium effort.
+
+### `sol-high`
+
+Use for difficult debugging, state-management changes, local persistence
+changes, Supabase sync changes, database migrations, authentication or
+account-isolation work, security-sensitive changes, concurrency or
+race-condition issues, subtle regression fixes, large/risky refactors, or
+any task whose failure mode isn't yet well understood.
+
+Intended Codex setting: GPT-5.6 Sol, high effort.
+
+### `sol-highest`
+
+Reserved for exceptional work only: unusually difficult architecture
+changes, high-consequence migrations, deeply ambiguous bugs after
+investigation, or a task where `sol-high` has already failed to produce a
+reliable solution. Never select this merely because a task is large — it's
+about complexity/consequence or a prior escalation failure, not size.
+
+Intended Codex setting: GPT-5.6 Sol, highest available effort. Do not use
+by default.
+
+### Selection rule
+
+Classify in this order, and prefer the lower profile when uncertain between
+two unless the risk or complexity clearly justifies escalating:
+
+1. Tiny and mechanical? → `luna-low`
+2. Clear, bounded, and ordinary? → `terra-medium`
+3. Touches risky state, persistence, sync, migrations, auth, security,
+   concurrency, or difficult debugging? → `sol-high`
+4. Genuinely exceptional/high-consequence, or `sol-high` already failed?
+   → `sol-highest`
+
+### How Codex should interpret the profile
+
+- The ticket's `Codex profile` is a recommended execution profile, not
+  permission to expand scope — implement only what the ticket and its spec
+  state, regardless of which profile is assigned.
+- If the actual configured model/effort in the Codex environment differs
+  from the ticket's stated profile, still follow the ticket normally; don't
+  treat the mismatch as license to change scope or behavior.
+- Report which profile you actually ran under, if that's knowable, alongside
+  the rest of your verification report.
+- If the assigned profile looks clearly underpowered for risk discovered
+  while implementing, flag that in the ticket's Review notes rather than
+  silently changing scope or expanding the task yourself.

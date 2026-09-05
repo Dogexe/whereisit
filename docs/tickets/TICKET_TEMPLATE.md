@@ -4,6 +4,19 @@ Status: Draft
 
 Spec: `docs/specs/example.md`
 
+Codex profile: terra-medium
+
+<!--
+Codex profile must be one of: luna-low, terra-medium, sol-high, sol-highest.
+terra-medium is the default. See AGENTS.md's "Codex execution profiles"
+section for the definitions and selection rule. Before moving Status to
+Ready, confirm the profile is still appropriate for the finalized ticket.
+Add a line "Profile reason: <one sentence>" below Codex profile only when
+the profile is non-default (or when a reason is genuinely useful). The
+profile is execution metadata only — it must never influence acceptance
+criteria, scope, ticket size, or dependencies.
+-->
+
 ## Goal
 
 Describe one small, coherent outcome.
