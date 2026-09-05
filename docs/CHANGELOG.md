@@ -655,3 +655,61 @@ Verified: `npm test` (172/172) and `npm run build` re-run after every edit;
 grepped the whole repo (excluding this changelog, which stays historical
 narrative and was left untouched) for any remaining `` `repo/ `` reference
 in a doc or `.claude/commands/*` file — none found.
+
+## WI-004: Apple-style swipe actions on transaction rows
+
+Requested directly: make transaction rows' swipe-to-reveal actions look and
+feel more like iOS's native swipe actions. Went through eleven live-checked
+revisions in one continuous pass before landing — see
+`docs/specs/swipe-to-reveal-transaction-actions.md`'s Revisions 4-11 for the
+full blow-by-blow; this entry summarizes the shipped result and the notable
+defects caught along the way.
+
+**Shipped design**: Edit and Delete are 40×40px solid-color circles
+(`var(--color-expense)`/white for Delete, `var(--color-border)`/
+`var(--color-text)` for Edit) matching the category icon avatar's own
+sizing, draggable from anywhere on the row's content — `.tx-row-inner`
+(icon + category + note + amount) translates as one rigid block via
+`transform: translateX()`, clipping at the row's own edge rather than
+squeezing text, with `.tx-row-actions` repositioned as an independent
+sibling behind it. Dragging past the normal-open point (`REVEAL = 108`)
+grows Delete from its resting circle into a pill then a full-row bar as the
+drag approaches a 65%-of-row-width commit threshold, where releasing fires
+the existing `deleteTx`/Undo-toast flow immediately (no new confirm
+dialog). Both circles pop in independently as the row first opens (each
+gated by its own position, not a shared progress value) with a
+"never-render-more-than-actually-revealed" scaling rule applied
+consistently through every phase of the drag, including the full-bar
+growth — plus a small `var(--space-xs)` resting margin so the fully-
+expanded bar never sits flush against the row's edges or leaves a sliver
+of leftover content peeking out.
+
+**Two real defects caught and fixed during this pass, worth remembering**:
+1. A first-pass e2e test used `page.mouse.move()`/`down()`/`up()` to
+   simulate a touch drag. Playwright's synthetic mouse events carry
+   `pointerType: "mouse"`, which fired the row's pre-existing (unrelated)
+   desktop hover-to-reveal handler before the drag even started, silently
+   pre-opening the row and pushing the test's own drag past the delete
+   threshold — deleting the row and breaking every assertion after it. Any
+   e2e test simulating a touch gesture on this component must dispatch
+   synthetic `pointerType: "touch"` `PointerEvent`s directly, never
+   `page.mouse.*`.
+2. Reintroducing a "content slides to reveal a panel behind it" shape (this
+   app tried and abandoned that exact shape once before, per this file's
+   earlier swipe-to-reveal history) needed care to avoid repeating the
+   original click-swallowing/icon-clipping bugs: the fix was making the
+   *entire* sliding content box (`.tx-row-inner`) the thing that
+   transforms, as one unit — a CSS transform moves an element's hit-testing
+   region together with its paint, so there's no leftover untransformed
+   parent to swallow clicks the way a narrower child sliding under a wider
+   static parent once did.
+
+Verified live in a real browser at essentially every revision (Playwright
+against a served `dist/` build, not just visual screenshots — including a
+real `.click()` after a real drag to prove the click-swallowing regression
+class didn't return, and zoomed-in screenshots at fine-grained drag offsets
+to catch two separate "renders larger than actually-revealed space" defects
+that were invisible at a glance but showed up plainly once inspected
+closely). `npm test` (172/172) and `npm run test:e2e` (17/17, including a
+new test covering the whole-row touch drag, click-through, and full-swipe
+commit) both green throughout.

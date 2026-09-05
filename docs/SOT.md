@@ -47,7 +47,15 @@ cross-device sync, GitHub Pages + GitHub Actions for deploy.
 - **PWA/offline**: installable, self-hosted icons/fonts, offline app shell.
 - **Screens**: Home, Transactions, Add/Edit (bottom sheet on mobile, full
   page on desktop), Insights, Settings (Manage sections use swipe-to-reveal
-  actions + shared bottom sheet, same pattern as transaction rows).
+  actions + shared bottom sheet). Transaction rows' swipe actions
+  (`src/screens/tx-row.js`) got an Apple-style visual pass in WI-004: 40px
+  circular Edit/Delete matching the category icon avatar, whole-row drag
+  surface, full-swipe-to-delete with an Apple-style pop-in/grow animation.
+  Settings' Manage rows (`src/screens/manage-row-swipe.js`) already had a
+  whole-row drag surface but still use the pre-WI-004 look otherwise
+  (smaller circular buttons, no full-swipe-to-delete) — WI-005 (not yet
+  started) carries WI-004's visual language over to them; until then the
+  two surfaces intentionally look different, not a bug.
 
 See `README.md` for the user-facing version of this list, and
 `CLAUDE.md`'s Architecture section for how each of these is actually built.
@@ -81,15 +89,22 @@ flags what a future agent needs to know exists, not how it works.
 
 ## Active work
 
-None — `docs/tickets/active/` is currently empty.
+- WI-005 — Apple-style swipe actions on Settings' Manage rows: not yet
+  started (Ready). Carries WI-004's visual language (below) over to
+  `src/screens/manage-row-swipe.js`.
 
 ## Recently completed
 
+- WI-004 — Apple-style swipe actions on transaction rows: 40px circular
+  Edit/Delete matching the category icon avatar, whole-row drag surface,
+  full-swipe-to-delete with a pop-in/grow animation. Went through eleven
+  live-checked revisions; see `docs/CHANGELOG.md`'s WI-004 entry and
+  `docs/specs/swipe-to-reveal-transaction-actions.md`'s Revisions 4-11 for
+  the full history.
 - WI-003 — Transactions "Clear all filters" action: a Clear-filters button
   in the active-filter chips row (`#txActiveChips`), reusing the existing
   `clearTxFilters()`.
 - WI-002 — Move Add-sheet commit preview to the top.
-- WI-001 — Transactions search bar restyle.
 
 (Keep this list to the last few tickets; full history is
 `docs/tickets/completed/` and `docs/CHANGELOG.md`.)

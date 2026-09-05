@@ -404,34 +404,32 @@
 
   .tx-date-group { padding: 14px 4px 4px; font-size: 12px; font-weight: 700; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.02em; }
   .tx-date-group:first-child { padding-top: 4px; }
-  .tx-row-wrap { position: relative; overflow: hidden; border-bottom: 1px solid var(--color-divider); }
+  .tx-row-wrap { position: relative; overflow: hidden; border-bottom: 1px solid var(--color-divider); touch-action: pan-y; user-select: none; }
   .tx-row-wrap:last-child { border-bottom: none; }
   .tx-row-wrap .info { min-width: 0; flex: 1; }
   .tx-row-wrap .cat { font-size: 15px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tx-row-wrap .meta { font-size: 12px; color: var(--color-muted); margin-top: 2px; }
   .tx-row-wrap .amt { font-size: 16px; font-weight: 700; flex-shrink: 0; }
-  .tx-row-inner { display: flex; align-items: stretch; touch-action: pan-y; user-select: none; }
+  .tx-row-inner { display: flex; align-items: stretch; width: 100%; position: relative; z-index: 1; background: var(--color-card); transition: transform 240ms cubic-bezier(.22,1,.36,1); }
+  .tx-row-inner.dragging { transition: none; }
   .tx-lead { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; padding: 12px 4px 12px 4px; }
-  /* .tx-trail-group (amount + Edit/Delete) reveals by expanding its own
-     width, not by sliding -- closed, its width is set (in JS) to exactly
-     the amount's natural width, so .tx-lead's flex:1 gets the row's full
-     remaining space and category/note are never truncated more than they
-     need to be at rest. Open adds exactly REVEAL (88px, the actions'
-     width) to that, and overflow:hidden clips the actions portion
-     whenever the group is narrower than its full content -- so Edit/
-     Delete are genuinely absent from layout and non-interactive at rest,
-     no pointer-events trick needed. Because .tx-lead recomputes its flex
-     box every frame as the group's width transitions, category/note
-     visibly (and only) squeeze to make room while the row is actually
-     opening -- this trades pure transform-only compositing (see the
-     swipe-to-reveal spec's earlier revisions) for a width transition,
-     deliberately, to get "full text at rest" right. .tx-trail and
-     .tx-row-actions both need flex-shrink:0 so they're clipped by the
-     group's overflow, never squished, as its width changes. */
-  .tx-trail-group { display: flex; align-items: center; flex-shrink: 0; overflow: hidden; transition: width 240ms cubic-bezier(.22,1,.36,1); }
-  .tx-trail-group.dragging { transition: none; }
+  /* The amount stays in the same rigid block as the icon/category/note.
+     .tx-row-inner translates as one unit; the wrapper clips its leading
+     edge instead of shrinking text to reveal the actions behind it. */
+  .tx-trail-group { display: flex; align-items: stretch; flex-shrink: 0; }
   .tx-trail { display: flex; align-items: center; flex-shrink: 0; padding: 12px 0 12px 8px; cursor: grab; }
-  .tx-row-actions { display: flex; align-items: center; flex-shrink: 0; gap: 4px; padding: 12px 12px; }
+  .tx-row-actions { position: absolute; z-index: 0; top: 0; right: 0; bottom: 0; display: flex; align-items: center; width: 108px; gap: 4px; padding: 0 12px; }
+  .tx-row-actions .tx-swipe-action {
+    width: 40px; height: 40px; min-width: 40px; padding: 0;
+    border-radius: 20px; box-shadow: none; transform: scale(0); transform-origin: right center;
+    transition: transform 240ms cubic-bezier(.22,1,.36,1);
+  }
+  .tx-row-actions.dragging .tx-swipe-action { transition: none; }
+  .tx-row-actions .tx-swipe-edit { background: var(--color-border); color: var(--color-text); }
+  .tx-row-actions .tx-swipe-delete { background: var(--color-expense); color: #fff; }
+  .tx-row-actions.full-swipe .tx-swipe-edit { opacity: 0; pointer-events: none; }
+  .tx-row-actions.full-swipe { inset: 0; width: auto; gap: 0; padding: 0; }
+  .tx-row-actions.full-swipe .tx-swipe-delete { position: absolute; z-index: 1; }
   /* Per-row date column + table header row -- both exist in markup at
      every width (tx-row.js always renders .tx-date-cell; transactions.js
      always renders .tx-table-head) but stay hidden except in the
@@ -1191,13 +1189,12 @@
        txRowHtml/.tx-row-wrap markup, is completely unaffected at any width.
        Each row is its own single-row grid rather than one big table grid,
        matching the header's grid-template-columns exactly so columns line
-       up -- .tx-row-inner and .tx-trail-group (both otherwise-meaningful
-       wrappers for the mobile flex/width-animation layout) are collapsed
-       with display:contents so their children (.tx-lead, .tx-trail,
-       .tx-row-actions) become direct grid items alongside .tx-date-cell,
-       with no DOM or JS changes needed. */
+       up -- .tx-row-inner and .tx-trail-group (mobile's sliding-content
+       wrappers) are collapsed with display:contents so their children
+       (.tx-lead, .tx-trail, .tx-row-actions) become direct grid items
+       alongside .tx-date-cell, with no DOM or JS changes needed. */
     .tx-list-card .tx-table-head {
-      display: grid; grid-template-columns: 100px 1fr 110px 84px; column-gap: 12px;
+      display: grid; grid-template-columns: 100px 1fr 110px 108px; column-gap: 12px;
       padding: 10px 4px 8px; font-size: 12px; font-weight: 700; color: var(--color-muted);
       text-transform: uppercase; letter-spacing: 0.02em; border-bottom: 1px solid var(--color-divider);
     }
@@ -1205,18 +1202,18 @@
     .tx-list-card .tx-date-group { display: none; }
     .tx-list-card .tx-date-cell { display: block; align-self: center; padding: 12px 4px; font-size: 13px; color: var(--color-muted); }
     .tx-list-card .tx-row-wrap {
-      display: grid; grid-template-columns: 100px 1fr 110px 84px; column-gap: 12px;
+      display: grid; grid-template-columns: 100px 1fr 110px 108px; column-gap: 12px;
       overflow: visible;
     }
     .tx-list-card .tx-row-inner, .tx-list-card .tx-trail-group { display: contents; }
     /* Actions are always visible as their own column here, not gated
-       behind the mobile hover/swipe reveal -- .tx-trail-group's inline
-       width (set by tx-row.js's wireTxRowActions/openRowTo/closeRow) has
-       no effect once it's display:contents (it no longer has a box for a
-       width to apply to), so that JS keeps running harmlessly rather than
-       needing a desktop-specific branch. */
+       behind the mobile hover/swipe reveal. The mobile transform is inert
+       once .tx-row-inner is display:contents, so the shared JS can run
+       without a desktop-specific branch. */
     .tx-list-card .tx-trail { justify-content: flex-end; padding: 12px 0; cursor: default; }
-    .tx-list-card .tx-row-actions { justify-content: center; padding: 12px 8px; }
+    .tx-list-card .tx-row-actions { position: static; justify-content: center; padding: 0 12px; }
+    .tx-list-card .tx-row-actions .tx-swipe-action { transform: none; }
+    .tx-list-card .tx-row-actions.full-swipe { inset: auto; width: auto; gap: 0; padding: 0; }
 
     /* — Settings: list-left/detail-right instead of one long stacked page —
        .settings-block's own 480px cap (meant for a single narrow mobile

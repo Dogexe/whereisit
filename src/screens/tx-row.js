@@ -6,7 +6,8 @@ import { categories, accounts } from "../state.js";
 import { editTx, deleteTx } from "./add.js";
 import { L } from "../i18n.js";
 
-const REVEAL = 88; // exactly the actions group's width: 12+30+4+30+12
+const REVEAL = 108; // 12px padding + 40px action + 4px gap + 40px action + 12px padding
+const DELETE_COMMIT_RATIO = 0.65;
 const PEEK_KEY = "expense_tracker_swipe_peek_shown_v1";
 
 // Stage 5 of docs/specs/custom-categories.md: the last two display
@@ -59,11 +60,11 @@ function txRowHtml(t, viewingAccountId) {
           <div class="tx-trail">
             <div class="amt" style="color:${amountColor}">${sign}${fmtMoney(t.amount)}</div>
           </div>
-          <div class="tx-row-actions">
-            <button type="button" class="btn btn-icon" data-edit="${t.id}" aria-label="${escapeHtml(L().editAria)}">${EDIT_ICON}</button>
-            <button type="button" class="btn btn-icon" style="color:var(--color-expense-700)" data-delete="${t.id}" aria-label="${escapeHtml(L().deleteAria)}">${DELETE_ICON}</button>
-          </div>
         </div>
+      </div>
+      <div class="tx-row-actions">
+        <button type="button" class="btn btn-icon tx-swipe-action tx-swipe-edit" data-edit="${t.id}" aria-label="${escapeHtml(L().editAria)}">${EDIT_ICON}</button>
+        <button type="button" class="btn btn-icon tx-swipe-action tx-swipe-delete" data-delete="${t.id}" aria-label="${escapeHtml(L().deleteAria)}">${DELETE_ICON}</button>
       </div>
     </div>`;
   }
@@ -89,11 +90,11 @@ function txRowHtml(t, viewingAccountId) {
           <div class="tx-trail">
             <div class="amt" style="color:${amountColor}">${sign}${fmtMoney(t.amount)}</div>
           </div>
-          <div class="tx-row-actions">
-            <button type="button" class="btn btn-icon" data-edit="${t.id}" aria-label="${escapeHtml(L().editAria)}">${EDIT_ICON}</button>
-            <button type="button" class="btn btn-icon" style="color:var(--color-expense-700)" data-delete="${t.id}" aria-label="${escapeHtml(L().deleteAria)}">${DELETE_ICON}</button>
-          </div>
         </div>
+      </div>
+      <div class="tx-row-actions">
+        <button type="button" class="btn btn-icon tx-swipe-action tx-swipe-edit" data-edit="${t.id}" aria-label="${escapeHtml(L().editAria)}">${EDIT_ICON}</button>
+        <button type="button" class="btn btn-icon tx-swipe-action tx-swipe-delete" data-delete="${t.id}" aria-label="${escapeHtml(L().deleteAria)}">${DELETE_ICON}</button>
       </div>
     </div>`;
 }
@@ -108,68 +109,125 @@ export function groupedTxRowsHtml(txs, viewingAccountId) {
     ${g.items.map((t) => txRowHtml(t, viewingAccountId)).join("")}`).join("");
 }
 
-// .tx-trail-group (amount + Edit/Delete) reveals by expanding its own
-// width from "just the amount" to "amount + REVEAL", not by sliding --
-// see the CSS comment on .tx-trail-group for why: it's what lets
-// .tx-lead reclaim the full row width at rest instead of always
-// reserving room for actions it isn't showing.
 let openRow = null;
+function setRevealOffset(rowEl, offset) {
+  const inner = rowEl.querySelector(".tx-row-inner");
+  const actions = rowEl.querySelector(".tx-row-actions");
+  const swipeButtons = rowEl.querySelectorAll(".tx-swipe-action");
+  const deleteButton = rowEl.querySelector("[data-delete]");
+  if (!actions) {
+    if (inner) inner.style.transform = `translateX(${-offset}px)`;
+    return;
+  }
+  // Each action begins its pop-in only when the translated row has uncovered
+  // that action's own slot. This keeps Edit from silently scaling up behind
+  // the opaque content layer and then appearing already large.
+  const isStaticActionColumn = getComputedStyle(actions).position === "static";
+  swipeButtons.forEach((button) => {
+    const revealStart = parseFloat(button.dataset.revealStart || "0");
+    const revealEnd = parseFloat(button.dataset.revealEnd || String(REVEAL));
+    const localProgress = Math.max(0, Math.min(1, (offset - revealStart) / (revealEnd - revealStart)));
+    button.style.transform = isStaticActionColumn ? "" : `scale(${localProgress})`;
+  });
+  const fullSwipe = offset > REVEAL && !isStaticActionColumn;
+  actions.classList.toggle("full-swipe", fullSwipe);
+  if (!fullSwipe || !deleteButton) {
+    if (inner) inner.style.transform = `translateX(${-offset}px)`;
+    if (deleteButton) {
+      deleteButton.style.width = "";
+      deleteButton.style.height = "";
+      deleteButton.style.right = "";
+      deleteButton.style.top = "";
+    }
+    return;
+  }
+  const commitThreshold = parseFloat(rowEl.dataset.deleteCommitThreshold || "0");
+  const rowWidth = parseFloat(rowEl.dataset.rowWidth || "0");
+  const rowHeight = parseFloat(rowEl.dataset.rowHeight || "0");
+  const fullSwipeMargin = parseFloat(getComputedStyle(rowEl).getPropertyValue("--space-xs")) || 8;
+  const progress = Math.min(1, (offset - REVEAL) / (commitThreshold - REVEAL));
+  const maxWidth = rowWidth - fullSwipeMargin * 2;
+  const maxHeight = rowHeight - fullSwipeMargin * 2;
+  const width = 40 + (maxWidth - 40) * progress;
+  const height = 40 + (maxHeight - 40) * progress;
+  const right = 12 + (fullSwipeMargin - 12) * progress;
+  // Clear the whole row beneath the inset bar, including its leading margin.
+  // REVEAL remains the continuous phase-boundary floor.
+  const revealOffset = Math.max(REVEAL, width + right + fullSwipeMargin);
+  if (inner) inner.style.transform = `translateX(${-revealOffset}px)`;
+  deleteButton.style.width = width + "px";
+  deleteButton.style.height = height + "px";
+  deleteButton.style.right = right + "px";
+  deleteButton.style.top = ((rowHeight - height) / 2) + "px";
+}
 function closeRow(rowEl) {
-  const group = rowEl.querySelector(".tx-trail-group");
-  const base = parseFloat(rowEl.dataset.trailWidth || "0");
-  if (group) group.style.width = base + "px";
+  setRevealOffset(rowEl, 0);
   rowEl.dataset.open = "0";
   if (openRow === rowEl) openRow = null;
 }
 function openRowTo(rowEl) {
   if (openRow && openRow !== rowEl) closeRow(openRow);
-  const base = parseFloat(rowEl.dataset.trailWidth || "0");
-  rowEl.querySelector(".tx-trail-group").style.width = (base + REVEAL) + "px";
+  setRevealOffset(rowEl, REVEAL);
   rowEl.dataset.open = "1";
   openRow = rowEl;
 }
 
 export function wireTxRowActions() {
   document.querySelectorAll(".tx-row-wrap").forEach((rowEl) => {
-    const group = rowEl.querySelector(".tx-trail-group");
-    const handle = rowEl.querySelector(".tx-trail"); // drag surface is just the amount, so it never fights Edit/Delete's own clicks
-    // Measured once, before any drag/width override -- the amount's own
-    // natural width, so the group can start at exactly that (no reserved
-    // dead space for actions) and only grow by REVEAL when opened.
-    const naturalWidth = handle.getBoundingClientRect().width;
-    rowEl.dataset.trailWidth = String(naturalWidth);
-    group.style.width = naturalWidth + "px";
+    const inner = rowEl.querySelector(".tx-row-inner");
+    const rowRect = rowEl.getBoundingClientRect();
+    const deleteCommitThreshold = rowRect.width * DELETE_COMMIT_RATIO;
+    rowEl.dataset.deleteCommitThreshold = String(deleteCommitThreshold);
+    rowEl.dataset.rowWidth = String(rowRect.width);
+    rowEl.dataset.rowHeight = String(rowRect.height);
+    const actions = rowEl.querySelector(".tx-row-actions");
+    actions?.querySelectorAll(".tx-swipe-action").forEach((button) => {
+      // offsetLeft is measured from the actions panel's left edge; convert it
+      // to the reveal distance measured inward from the row's right edge.
+      button.dataset.revealStart = String(actions.clientWidth - (button.offsetLeft + button.offsetWidth));
+      button.dataset.revealEnd = String(actions.clientWidth - button.offsetLeft);
+    });
     let dragging = false, startX = 0, startOffset = 0, moved = false;
 
-    handle.addEventListener("pointerdown", (e) => {
+    rowEl.addEventListener("pointerdown", (e) => {
+      if (e.target.closest(".tx-row-actions")) return;
       dragging = true; moved = false;
       startX = e.clientX;
       startOffset = rowEl.dataset.open === "1" ? REVEAL : 0;
-      group.classList.add("dragging");
-      handle.setPointerCapture(e.pointerId);
+      inner.classList.add("dragging");
+      rowEl.querySelector(".tx-row-actions")?.classList.add("dragging");
+      rowEl.setPointerCapture(e.pointerId);
     });
-    handle.addEventListener("pointermove", (e) => {
+    rowEl.addEventListener("pointermove", (e) => {
       if (!dragging) return;
       const delta = startX - e.clientX; // dragging left grows the reveal
       if (Math.abs(delta) > 4) moved = true;
       const raw = startOffset + delta;
-      let clamped;
-      if (raw < 0) clamped = -Math.sqrt(-raw) * 2;
-      else if (raw > REVEAL) clamped = REVEAL + Math.sqrt(raw - REVEAL) * 2;
-      else clamped = raw;
-      group.style.width = (naturalWidth + clamped) + "px";
+      const clamped = raw < 0 ? -Math.sqrt(-raw) * 2 : raw;
+      setRevealOffset(rowEl, clamped);
     });
     function endDrag(e) {
       if (!dragging) return;
       dragging = false;
-      group.classList.remove("dragging");
+      inner.classList.remove("dragging");
+      rowEl.querySelector(".tx-row-actions")?.classList.remove("dragging");
       const delta = startX - (e.clientX || 0);
       const finalOffset = startOffset + delta;
+      if (finalOffset > deleteCommitThreshold) {
+        deleteTx(rowEl.dataset.id);
+        return;
+      }
       if (!moved && rowEl.dataset.open === "1") { closeRow(rowEl); return; }
       if (finalOffset > REVEAL / 2) openRowTo(rowEl); else closeRow(rowEl);
     }
-    handle.addEventListener("pointerup", endDrag);
-    handle.addEventListener("pointercancel", endDrag);
+    rowEl.addEventListener("pointerup", endDrag);
+    rowEl.addEventListener("pointercancel", () => {
+      if (!dragging) return;
+      dragging = false;
+      inner.classList.remove("dragging");
+      rowEl.querySelector(".tx-row-actions")?.classList.remove("dragging");
+      if (startOffset > REVEAL / 2) openRowTo(rowEl); else closeRow(rowEl);
+    });
 
     // desktop hover fallback (mouse only, so real touch swiping is untouched)
     rowEl.addEventListener("pointerenter", (e) => {

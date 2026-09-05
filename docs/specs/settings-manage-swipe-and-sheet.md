@@ -1,6 +1,6 @@
 # Spec: swipe actions + bottom-sheet forms for Settings' Manage section
 
-Status: **All 5 sections done and live-verified — this feature is complete.** Requested directly: "in settings make edit delete tool in swipe action like in transaction and all items in manage shall extends from bottom like add." Stages 1-4 (shared infra, Budgets, Bills+Categories, Accounts) shipped as planned; Goals (originally its own stage) needed its own implementation since `goalCardHtml` never shared `manageRowHtml`'s code path — documented under its own heading below.
+Status: **All 5 sections done and live-verified — this feature is complete.** Requested directly: "in settings make edit delete tool in swipe action like in transaction and all items in manage shall extends from bottom like add." Stages 1-4 (shared infra, Budgets, Bills+Categories, Accounts) shipped as planned; Goals (originally its own stage) needed its own implementation since `goalCardHtml` never shared `manageRowHtml`'s code path — documented under its own heading below. **A new "Revision: Apple-style actions" section (below) is specced but not yet implemented** — tracked as `docs/tickets/active/WI-005.md`.
 
 ## Goal
 
@@ -64,6 +64,79 @@ The one section that couldn't reuse `manageRowHtml()`/`manageSwipeWrapHtml()`'s 
 **A recurring tooling note worth recording**: the browser automation's `left_click_drag` action intermittently failed to register as a swipe specifically on the Goals card (three consecutive attempts at recomputed, verified-correct coordinates all left the row closed), while the identical technique worked reliably on Budgets/Categories/Accounts rows earlier in the same session. Isolated by dispatching a synthetic `PointerEvent` sequence directly via JS instead, which immediately succeeded and proved the drag *code* was correct — the failure was specific to that one tool call in that one nested-iframe context, not a real bug. Recorded here rather than chased further, since the live drag gesture was already independently confirmed working on four of the five sections via the exact same tool.
 
 Full regression pass at the end of all 5 stages: `npm test` (136/136) and `npm run test:e2e` (9/9) both green.
+
+## Revision: Apple-style circular actions + full-swipe-to-delete
+
+Same request and interview as `docs/specs/swipe-to-reveal-transaction-actions.md`'s
+own "Revision 4", **as corrected by that same file's "Revision 5"** (circular
+40px actions matching the category icon, instead of Revision 4's full-height
+rectangles — Revision 4's rectangle shape never shipped) — read both
+sections first; this one only states what carries over unchanged and what's
+different for Manage rows' N-button, whole-row-drag shape. Manage rows have
+no equivalent of a "category icon avatar" of their own, so "match the
+category icon" means the same fixed 40px circle Revision 5 defines for
+transaction rows, for visual consistency between the two surfaces.
+
+**Carries over unchanged from Revision 5**: 40×40px circles (`border-radius:
+20px`), Delete = solid `var(--color-expense)` background + white icon, Edit
+(and Accounts' Archive/Unarchive, see below) = solid `var(--color-border)`
+background + `var(--color-text)` icon, icon-only (no visible label),
+full-swipe fires the section's existing delete flow immediately relying on
+the existing Undo toast (no new confirm step), no new collapse/exit
+animation, circle-grows-into-pill-then-fills-the-row full-swipe visual as
+the drag approaches the commit threshold. The whole row is already the drag
+surface here (decision 5 above, predates this correction) — no change
+needed for that part, unlike transaction rows which needed Revision 5 to
+add it.
+
+**Different for Manage rows**:
+
+- **Reveal width formula updates to match the 40px circle**:
+  `manageSwipeWrapHtml`'s `reveal = 20 + actionCount * 34` (the old
+  30px-circle math) becomes `reveal = 20 + actionCount * 44` (`40` per
+  circle + `4` gap, mirroring transaction rows' `12 + 40 + 4 + 40 + 12`
+  formula's own per-circle-plus-gap shape). For the 3-action Accounts case
+  (Edit, Archive/Unarchive, Delete), that's `152px`.
+- **Archive/Unarchive (Accounts' third action) gets the same neutral
+  treatment as Edit** — `var(--color-border)` background, `var(--color-text)`
+  icon — differentiated from Edit only by its own icon, since it's not a
+  destructive action and this app isn't introducing a third color for it.
+- **Full-swipe commit threshold** uses the same 65%-of-row-width rule as
+  transaction rows, measured against `.manage-row-wrap`'s own width (the
+  whole row is already the drag surface here per decision 5 above, so no
+  extra measurement step is needed beyond what `wireManageRowSwipe` already
+  reads). Committing always deletes regardless of button count — Delete is
+  always the last/rightmost action in every section's `actionsHtml`, so
+  "the rightmost action grows to fill the swipe" and "full swipe always
+  means delete" both hold the same way they do for transaction rows.
+- **Goals**: only Edit/Delete sit inside the swipe wrapper (Contribute
+  stays outside it, per decision 2 above, unchanged) — so Goals gets the
+  2-circle case, same as transaction rows, not the 3-button case.
+
+### Out of scope (this revision)
+
+- Everything `docs/specs/swipe-to-reveal-transaction-actions.md`'s own
+  Revision 4 and Revision 5 "Out of scope" sections already list.
+- Any change to `manageSwipeWrapHtml`'s function signature beyond the
+  reveal-width formula, or to `wireManageRowSwipe`'s drag-threshold logic
+  beyond adding the full-swipe commit check.
+- Any change to the desktop (1024px+) Settings layout — unaffected, exactly
+  as every prior stage in this spec.
+
+### Verification plan (this revision)
+
+Same real-browser checks as the transaction-row Revision 5 verification
+plan, repeated per section (Budgets, Bills, Categories, Goals at 2 buttons;
+Accounts at 3 buttons), at mobile width (<1024px):
+
+1. 40px circles render correctly for every section's actual button count,
+   no clipping, correct in light and dark mode.
+2. Full swipe past the 65%-of-row-width threshold deletes immediately with
+   the existing Undo toast, for at least one section with 2 buttons and
+   Accounts (3 buttons).
+3. Releasing between the reveal point and the commit threshold snaps back
+   to fully open, not closed, not deleted.
+4. Desktop (1024px+) confirmed pixel-unchanged for every section.
 
 ## Explicitly out of scope
 
