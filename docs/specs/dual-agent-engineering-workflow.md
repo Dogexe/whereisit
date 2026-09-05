@@ -21,6 +21,10 @@ and release practices.
 - Claude's first review is read-only and separates confirmed defects from
   optional suggestions. Codex verifies findings before changing code.
 - Existing repository test and release SOPs remain authoritative.
+- `CLAUDE.md` and `AGENTS.md` are self-contained for this repository — no
+  path assumes a parent workspace directory, so a standalone clone works
+  unmodified. The outer workspace's own copies are thin pointers back to
+  these, not byte-identical mirrors (see `workflows/sync-agent-entry-docs.md`).
 
 ## Acceptance criteria
 
@@ -39,7 +43,10 @@ and release practices.
 ## Verification
 
 - Check all referenced files and directories exist.
-- Confirm the outer and repository `AGENTS.md` copies match.
-- Confirm the outer and repository `CLAUDE.md` copies match.
+- `CLAUDE.md` and `AGENTS.md` are self-contained for a standalone clone of
+  this repository (no path assumes a parent workspace directory).
+- The outer, uncommitted workspace copies of `CLAUDE.md`/`AGENTS.md` are thin
+  pointers to this repo's own copies, not byte-identical mirrors — see
+  `workflows/sync-agent-entry-docs.md`.
 - Run `npm test` and `npm run build`.
 - Inspect the complete diff for unrelated changes.

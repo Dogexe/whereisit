@@ -5,7 +5,7 @@ The gate to run right before pushing to `main` and right after — `ship-feature
 1. **Clean tree.** `git status` — confirm nothing unintended is staged and nothing intended was left uncommitted. If a user reports a documented fix isn't visible on the real site, this (an uncommitted backlog) has been the actual cause before, not the fix itself — check here first.
 2. **Local gate, before CI's.** `npm test` and `npm run test:e2e` — catch a failure here rather than waiting on Actions to report it; CI runs the same two.
 3. **Production build.** `npm run build` (matches CI's `NODE_ENV=production`) — confirms `check:sprite` and the bundle both succeed locally.
-4. **Docs current**: `CLAUDE.md` mirrored (`sync-claude-md.md`), `docs/CHANGELOG.md` has an entry, the relevant `docs/specs/*.md` reflects what actually shipped.
+4. **Docs current**: outer-workspace pointers still route correctly if this change moved/renamed anything they reference (`sync-agent-entry-docs.md`), `docs/CHANGELOG.md` has an entry, the relevant `docs/specs/*.md` reflects what actually shipped.
 5. **Push**, then confirm the deploy workflow itself succeeded rather than assuming green-push-means-deployed:
    ```
    gh run list --workflow=deploy.yml --limit 1

@@ -595,3 +595,63 @@ instead into the dedicated workflow-defaults pass above. `npm test` (172/172)
 and `npm run build` re-run independently by the reviewer; live-verified
 against built `dist/` (DOM order, hide/show on amount changes, the Transfer
 from→to branch, desktop unaffected).
+
+## Agent-workflow audit: standalone-clone paths and CLAUDE.md/AGENTS.md duplication
+
+An audit (requested directly, no application code touched) found that
+`CLAUDE.md` and `AGENTS.md` referred to their own repository's files with a
+`repo/` prefix throughout (`repo/src/`, `repo/docs/WORKFLOW.md`,
+`repo/workflows/`, etc.), and one line hardcoded this machine's absolute
+path (`E:/project/incomeexpenses/repo/dist`) into the documented `python -m
+http.server` command. Since both files are committed at this repo's own
+root, those paths silently break for anyone cloning `whereisit` standalone —
+`repo/src/` resolves nowhere when `src/` is already at the clone's root.
+Root cause: both files were kept byte-identical to a second, outer copy one
+directory above (`E:\project\incomeexpenses\CLAUDE.md`/`AGENTS.md`, outside
+this git repo, auto-loaded for a session rooted at that wider local
+workspace) — a single path scheme can't be simultaneously correct for a
+session rooted at the repo root and one rooted a level above it, so "keep
+them identical" and "make the committed copy standalone-correct" were
+mutually exclusive as designed.
+
+Fixed by ending the byte-identical-mirror model: `repo/CLAUDE.md` and
+`repo/AGENTS.md` are now fully self-contained and repo-root-relative (every
+`repo/` prefix dropped, the `http.server` example made relative), and the
+outer copies became short pointer files ("the real guidance is in
+`repo/CLAUDE.md`/`repo/AGENTS.md`, read that instead") rather than
+duplicates — see `workflows/sync-agent-entry-docs.md` (replacing
+`sync-claude-md.md`, which only ever covered the `CLAUDE.md` half of this
+even though `AGENTS.md` carried the identical mirroring instruction).
+`docs/specs/dual-agent-engineering-workflow.md`'s verification criteria,
+which had asked to confirm the two copies "match," were updated to match
+the new model instead.
+
+Also fixed while auditing: `AGENTS.md` cited a `sync-Codex-md.md` file that
+never existed (the real file was `sync-claude-md.md`) — a leftover from an
+incomplete Claude→Codex find/replace when `AGENTS.md` was first derived from
+`CLAUDE.md`; `docs/specs/landing-page.md`'s three `repo/landing/index.html`
+references (that page isn't built yet, so zero runtime risk); and
+`.claude/commands/maintain.md` scoping its ponytail-audit to `repo/src/`
+instead of `src/`.
+
+Also cut the ~80%-duplicated content between `CLAUDE.md` and `AGENTS.md`:
+`AGENTS.md` previously repeated the entire Architecture section, Standing
+CSS/layout lessons, and Supabase schema section verbatim (differing only by
+a "Claude Code"/"Codex" swap). `AGENTS.md` is now a short pointer — required
+reading order (`AGENTS.md` → `CLAUDE.md` → `docs/WORKFLOW.md` → assigned
+ticket → originating spec → relevant code/tests) plus Codex's concrete
+constraints (one ticket at a time, don't invent requirements, don't expand
+scope, don't weaken tests, don't refactor unrelated code, inspect the
+complete diff, report verification performed and unresolved risks) — instead
+of a duplicate of `CLAUDE.md`. `CLAUDE.md` gained an explicit "Claude Code's
+role" framing (clarify → investigate → spec → tickets → independent
+read-only review; stop after `Ready` tickets unless asked to implement)
+consolidating language that was previously split across both files.
+`docs/WORKFLOW.md` needed no path fixes (it was already repo-relative
+throughout) — only a step-3 heading tweak ("Implement and verify one ticket
+with Codex") to make the verify stage explicit in the lifecycle text.
+
+Verified: `npm test` (172/172) and `npm run build` re-run after every edit;
+grepped the whole repo (excluding this changelog, which stays historical
+narrative and was left untouched) for any remaining `` `repo/ `` reference
+in a doc or `.claude/commands/*` file — none found.

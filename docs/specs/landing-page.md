@@ -1,7 +1,7 @@
 # Spec: Marketing landing page
 
 Status: **built and verified live in the browser**
-(`repo/landing/index.html`, `scripts/build.mjs`). Scoped via `/spec`
+(`landing/index.html`, `scripts/build.mjs`). Scoped via `/spec`
 before building ad hoc, per this project's working rules — a landing
 page isn't part of any existing roadmap item (module split, sync
 passes, UI/UX pass are all in-app work; this is the first
@@ -54,7 +54,7 @@ multi-section marketing site.
    respect `prefers-color-scheme` reasonably rather than looking broken
    in a dark browser (exact treatment decided during the design pass).
 6. **Build integration**: standalone static file, no esbuild bundling.
-   New `repo/landing/index.html` (self-contained: its own `<style>`
+   New `landing/index.html` (self-contained: its own `<style>`
    block and a small inline `<script>` for the TH/EN toggle — no
    separate `.css`/`.js` files needed given the minimal scope). Added
    to `scripts/build.mjs` as one more `cpSync` call:
@@ -121,7 +121,7 @@ After implementing:
 
 There's no separate design file for this page — the implementation
 *is* the design artifact — so this section documents the shipped
-`repo/landing/index.html` as the spec of record, plus the open items
+`landing/index.html` as the spec of record, plus the open items
 from two follow-up review passes (a `visual-critique` pass and a
 `heuristic-evaluation` pass) that should be resolved before this is
 tagged as release-ready rather than draft.

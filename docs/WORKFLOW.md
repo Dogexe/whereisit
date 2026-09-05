@@ -82,7 +82,7 @@ dependencies, and out-of-scope work, and is marked `Ready` only once its
 requirements are unambiguous. Claude stops here — implementation starts only
 once the maintainer explicitly delegates it.
 
-## 3. Implement one ticket with Codex
+## 3. Implement and verify one ticket with Codex
 
 Start a Codex task with:
 

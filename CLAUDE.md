@@ -2,64 +2,69 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-A copy of this file is committed at `repo/CLAUDE.md` (18+ docs/comments
-inside `repo/` cite "CLAUDE.md" by name, and a fresh clone of just that repo
-needs a real file there to find). This outer copy stays the one Claude Code
-actually auto-loads for a session started at this directory. When editing
-either copy, mirror the change into the other one in the same pass; they're
-expected to read identically.
-
 For the full narrative history of past feature passes, redesigns, and bug-fix
 rounds (what was tried, what got reverted, why a design shape was picked over
-another) — see `repo/docs/CHANGELOG.md`. This file only holds current-state
+another) — see `docs/CHANGELOG.md`. This file only holds current-state
 facts a session needs before touching code; don't add pass-by-pass writeups
 here again — new entries belong in the changelog, with only a one-line pointer
 added here if the current-state facts actually changed.
 
-## Repository layout
+This file is self-contained for a standalone clone of this repository. If a
+session is instead opened one level up, inside a local workspace that nests
+this repo alongside unrelated sibling projects, that workspace's own entry
+file points back to this one rather than duplicating it — see
+`workflows/sync-agent-entry-docs.md` if you need to touch that pointer.
 
-This working directory holds two independent git repos, not one:
-- `repo/` — the actual app (รายรับ-รายจ่าย / "whereisit"), pushed to `github.com/Dogexe/whereisit`, deployed via GitHub Pages at https://dogexe.github.io/whereisit/. Nearly all work happens here.
-- `profile-repo/` — GitHub profile README only, pushed to `github.com/Dogexe/Dogexe`. A one-line README pointing at the app; rarely touched.
+## About this repository
 
-Feature specs (written before building, updated with what actually shipped) live in `repo/docs/specs/`. Full project history lives in `repo/docs/CHANGELOG.md`.
+This is รายรับ-รายจ่าย / "whereisit", a personal income/expense tracker,
+pushed to `github.com/Dogexe/whereisit` and deployed via GitHub Pages at
+https://dogexe.github.io/whereisit/.
 
-## Development workflow
+Feature specs (written before building, updated with what actually shipped)
+live in `docs/specs/`. Full project history lives in `docs/CHANGELOG.md`.
 
-For non-trivial features and significant bugs, follow `repo/docs/WORKFLOW.md`:
-clarify → spec → tickets → implement → independent review → fix → maintainer
-merge. Claude Code owns requirements clarification, specs, ticket decomposition,
-and read-only first review. Codex is the default implementation agent for one
-`Ready` ticket at a time. Do not jump from an ambiguous request directly to
-implementation, and separate confirmed review defects from optional suggestions.
-`repo/docs/WORKFLOW.md`'s "Standing defaults" section is the source of truth
-for the minimum `/spec` starting prompt and the proportional verification
-matrix — don't restate them here. One rule worth calling out because it's
-easy to slip on: after writing the spec and creating `Ready` tickets, Claude
-stops — it does not start a Codex implementation task unless the maintainer
-explicitly asks for that delegation.
+## Claude Code's role, and the development workflow
 
-`repo/workflows/` holds repeatable dev-process SOPs (`ship-feature.md`, `sync-claude-md.md`, `release-check.md`) — read the relevant one before a multi-step change instead of re-deriving the process each session. `repo/tools/` holds small standalone scripts for a specific recurring check; currently just `check-sprite-svg.mjs` (also run automatically inside `npm run build`, guarding the documented `icons/sprite.svg` XML-comment failure mode below). These aren't a general framework — add a new workflow/tool only for a process or check that's actually recurred, not speculatively.
+Claude Code's primary responsibilities in this repository are requirements
+clarification, investigation, specification, ticket decomposition, and
+independent code review — not implementation. For non-trivial features and
+significant bugs, follow `docs/WORKFLOW.md`: clarify → spec → tickets →
+implement → verify → independent review → review fixes → narrow re-review →
+maintainer merge. Codex is the default implementation agent for one `Ready`
+ticket at a time. Do not jump from an ambiguous request directly to
+implementation. `docs/WORKFLOW.md`'s "Standing defaults" section is the
+source of truth for the minimum `/spec` starting prompt and the proportional
+verification matrix — don't restate them here. One rule worth calling out
+because it's easy to slip on: after writing the spec and creating `Ready`
+tickets, Claude stops — it does not start a Codex implementation task unless
+the maintainer explicitly asks for that delegation.
+
+Independent review starts read-only: findings are reported as confirmed
+defects, kept separate from optional suggestions, before Claude edits
+anything. Codex verifies each finding against the code before fixing it —
+a Claude finding is not automatically correct.
+
+`workflows/` holds repeatable dev-process SOPs (`ship-feature.md`, `sync-agent-entry-docs.md`, `release-check.md`) — read the relevant one before a multi-step change instead of re-deriving the process each session. `tools/` holds small standalone scripts for a specific recurring check; currently just `check-sprite-svg.mjs` (also run automatically inside `npm run build`, guarding the documented `icons/sprite.svg` XML-comment failure mode below). These aren't a general framework — add a new workflow/tool only for a process or check that's actually recurred, not speculatively.
 
 ## Running locally
 
-Source lives in `repo/src/`; `repo/index.html` is a thin HTML shell — no inline `<style>` or `<script>`, just `<link rel="stylesheet" href="./styles.css">` and `<script type="module" src="./main.js"></script>`. There's a real build step (esbuild).
+Source lives in `src/`; `index.html` is a thin HTML shell — no inline `<style>` or `<script>`, just `<link rel="stylesheet" href="./styles.css">` and `<script type="module" src="./main.js"></script>`. There's a real build step (esbuild).
 
 ```
-cd repo
 npm install       # first time only
 npm run build     # bundles src/main.js -> dist/main.js, copies index.html/styles.css/manifest.json/sw.js/icons/ into dist/
 ```
-Then serve `dist/` over HTTP (not `file://` — the service worker and manifest need a real origin):
+Then serve `dist/` over HTTP from the repository root (not `file://` — the service worker and manifest need a real origin):
 ```
-python -m http.server 8792 --directory E:/project/incomeexpenses/repo/dist --bind 127.0.0.1
+python -m http.server 8792 --directory dist --bind 127.0.0.1
 ```
-This exact command is wired up in `.claude/launch.json` (already pointed at `dist/`) — but you must run `npm run build` first, since `dist/` is gitignored and generated, not checked in.
+You must run `npm run build` first, since `dist/` is gitignored and generated, not checked in.
 
 There's no linter or typecheck command, but there are two automated test layers — **don't trust a stale doc's silence on this over grepping `package.json`/the repo directly.**
 
-1. **Unit tests** (Node's built-in runner, no added dependency): `npm test` runs everything under `repo/tests/`, and CI runs it before `npm run build` on every push to `main` (see `.github/workflows/deploy.yml`) so a failing test blocks deploy. Covers pure logic extracted into its own module (`src/merge.js`, `src/pending.js`, `src/watermark.js`, `src/import.js`, `derived.js`, `utils.js`) — not screens/DOM/Supabase network calls, which the e2e layer covers instead.
-2. **E2E tests** (Playwright, `@playwright/test` devDependency, `repo/e2e/`): `npm run test:e2e` builds `dist/` then runs the suite against it via `scripts/serve.mjs` (a tiny Node static server, so CI doesn't need a second language runtime just to serve files) — see `playwright.config.js`. Separate CI workflow, `.github/workflows/e2e.yml`, runs on every PR (not just push to `main`) so a screen regression is caught before merge. First run needs browsers installed once: `npx playwright install --with-deps chromium`. The whole suite runs fully offline and signed-out — `e2e/fixtures.js` disables the service worker and serves a local, SRI-matching copy of the pinned supabase-js CDN file rather than hitting the real CDN or a real Supabase project — so **no spec exercises real Google sign-in or any signed-in UI state**; that gap is only closable by a live manual browser check or a throwaway Supabase test account (see `repo/docs/CHANGELOG.md`'s "Categories upsert onConflict investigation" entry for the technique). Current coverage: `home.spec.js`, `nav.spec.js` (mobile tab bar + desktop sidebar), `dark-mode.spec.js`, `filters.spec.js`, `transactions-crud.spec.js`, `pin-lock.spec.js`, `transfers.spec.js`, `csv-import.spec.js`, `accounts.spec.js`, `category-nesting.spec.js`.
+1. **Unit tests** (Node's built-in runner, no added dependency): `npm test` runs everything under `tests/`, and CI runs it before `npm run build` on every push to `main` (see `.github/workflows/deploy.yml`) so a failing test blocks deploy. Covers pure logic extracted into its own module (`src/merge.js`, `src/pending.js`, `src/watermark.js`, `src/import.js`, `derived.js`, `utils.js`) — not screens/DOM/Supabase network calls, which the e2e layer covers instead.
+2. **E2E tests** (Playwright, `@playwright/test` devDependency, `e2e/`): `npm run test:e2e` builds `dist/` then runs the suite against it via `scripts/serve.mjs` (a tiny Node static server, so CI doesn't need a second language runtime just to serve files) — see `playwright.config.js`. Separate CI workflow, `.github/workflows/e2e.yml`, runs on every PR (not just push to `main`) so a screen regression is caught before merge. First run needs browsers installed once: `npx playwright install --with-deps chromium`. The whole suite runs fully offline and signed-out — `e2e/fixtures.js` disables the service worker and serves a local, SRI-matching copy of the pinned supabase-js CDN file rather than hitting the real CDN or a real Supabase project — so **no spec exercises real Google sign-in or any signed-in UI state**; that gap is only closable by a live manual browser check or a throwaway Supabase test account (see `docs/CHANGELOG.md`'s "Categories upsert onConflict investigation" entry for the technique). Current coverage: `home.spec.js`, `nav.spec.js` (mobile tab bar + desktop sidebar), `dark-mode.spec.js`, `filters.spec.js`, `transactions-crud.spec.js`, `pin-lock.spec.js`, `transfers.spec.js`, `csv-import.spec.js`, `accounts.spec.js`, `category-nesting.spec.js`.
 
 Run both (`npm test` and `npm run test:e2e`) after any change that touches a screen — the two layers cover disjoint ground.
 
@@ -69,7 +74,7 @@ Run both (`npm test` and `npm run test:e2e`) after any change that touches a scr
 
 **"Live-verified" in this repo's past-pass writeups (`docs/CHANGELOG.md`) means verified against a local `dist/` build, not that the change was committed or deployed**, unless stated otherwise. If a user reports a documented fix isn't visible on the real site, check `git status`/`git log` for an uncommitted backlog before assuming the fix itself is wrong — this has happened once already (see the changelog's "Type-toggle spacing" entry).
 
-## Architecture (`repo/src/`)
+## Architecture (`src/`)
 
 The app is a hand-rolled SPA with no framework, fully split into modules (this was a staged effort — see `docs/CHANGELOG.md`'s "Module-split status" entry for the history, now complete). `main.js` is boot-only (~73 lines): registers each screen's render function with the router, then kicks off `loadFromStorage()`/`applyTheme()`/`renderScreen()`, wires the tabbar, sync intervals, the Supabase auth listener, service worker registration, and PWA install-prompt listeners. Everything else lives in `categories.js`, `i18n.js`, `utils.js`, `state.js`, `storage.js`, `theme.js`, `derived.js`, `sync.js`, `merge.js`, `pending.js`, `watermark.js`, `paginate.js`, `account.js`, `accounts.js`, `import.js`, `toast.js`, `pwa-install.js`, `error-report.js`, `push.js`, `sheets-export.js`, and `screens/` (`router.js`, `tx-row.js`, `period-picker.js`, `manage-row-swipe.js`, `import-sheet.js`, `home.js`, `transactions.js`, `add.js`, `insights.js`, `settings.js`).
 
@@ -86,9 +91,9 @@ The app is a hand-rolled SPA with no framework, fully split into modules (this w
 - **Auth** (`sync.js` owns the client/state; the listener is in `main.js`'s boot): Supabase Google OAuth. `SUPABASE_URL`/`SUPABASE_ANON_KEY` are hardcoded at the top of `sync.js` — intentional, access is enforced by RLS scoped to `user_id`, not by hiding this key. `sb.auth.onAuthStateChange` (in `main.js`) is the single source of truth for `currentUser` (via `setCurrentUser`, which also bumps `syncEpoch`). `signInWithGoogle`/`signOutUser` check the SDK's returned `error` and show a toast on failure — keep the try/catch if you touch these, since both are called fire-and-forget.
 - **`hasLiveInputRisk()`** (`sync.js`, imported back into `main.js`): guards against a background sync's re-render clobbering an in-progress form (Add screen/sheet open, an inline Settings edit form open, focus in an input on the current screen). Any new periodic/background re-render must consult this before calling `renderScreen()`.
 - **i18n** (`i18n.js`): `STRINGS` is `{ key: [th, en] }`; `LANGS.th`/`LANGS.en` are derived from it and `L()` returns the active language's dict. Add new user-facing text as a new `STRINGS` entry, not an inline literal.
-- **Categorization** (`categories.js`): `CATEGORY_KEYWORDS` maps Thai/English substrings to a category id (resolved once against the fixed `DEFAULT_CATEGORIES` list at module load, never the live renamable `categories` array), checked against the note field as the user types (`guessCategory`). `state.categoryManual` stops re-guessing once the user has picked one manually. Categories are full user CRUD (rename/icon/delete, including built-ins), synced across devices, with a pre-delete "in use" guard — see `repo/docs/specs/custom-categories.md`.
-- **Accounts** (`accounts.js`, `derived.js`'s `computeBalance`/`defaultAccountId`): every transaction belongs to exactly one account (`account_id`), with an opening balance for real bank/card-statement reconciliation. Transfers between the user's own accounts are `type: "transfer"` transactions using `account_id` (from) + `to_account_id` (to) rather than two linked rows. **Any code branching on transaction type must handle all three types explicitly (income/expense/transfer)** — a two-way ternary that defaults to "not X" is a latent bug the moment transfer exists as a third case; this has bitten `computeBalance()`, `filteredTxList()`, and a filter-chip label function, all now fixed with explicit three-way handling. See `repo/docs/specs/multi-account-support.md` and `repo/docs/specs/account-transfers.md`.
-- **CSV import** (`import.js`, `screens/import-sheet.js`): a pure, RFC4180-ish CSV parser plus a multi-step (file → column mapping → review → commit) sheet flow. Category resolution: an exact name match on a mapped Category column resolves via `findCategoryId`; no match keeps the raw text with `categoryId: null` (degrading like any stale/renamed category); no column mapped falls through to `guessCategory`. Dedupe is per-account, decided by the *caller*, not baked into `buildImportPlan`. Never auto-creates categories or imports transfers. See `repo/docs/specs/csv-import.md`.
+- **Categorization** (`categories.js`): `CATEGORY_KEYWORDS` maps Thai/English substrings to a category id (resolved once against the fixed `DEFAULT_CATEGORIES` list at module load, never the live renamable `categories` array), checked against the note field as the user types (`guessCategory`). `state.categoryManual` stops re-guessing once the user has picked one manually. Categories are full user CRUD (rename/icon/delete, including built-ins), synced across devices, with a pre-delete "in use" guard — see `docs/specs/custom-categories.md`.
+- **Accounts** (`accounts.js`, `derived.js`'s `computeBalance`/`defaultAccountId`): every transaction belongs to exactly one account (`account_id`), with an opening balance for real bank/card-statement reconciliation. Transfers between the user's own accounts are `type: "transfer"` transactions using `account_id` (from) + `to_account_id` (to) rather than two linked rows. **Any code branching on transaction type must handle all three types explicitly (income/expense/transfer)** — a two-way ternary that defaults to "not X" is a latent bug the moment transfer exists as a third case; this has bitten `computeBalance()`, `filteredTxList()`, and a filter-chip label function, all now fixed with explicit three-way handling. See `docs/specs/multi-account-support.md` and `docs/specs/account-transfers.md`.
+- **CSV import** (`import.js`, `screens/import-sheet.js`): a pure, RFC4180-ish CSV parser plus a multi-step (file → column mapping → review → commit) sheet flow. Category resolution: an exact name match on a mapped Category column resolves via `findCategoryId`; no match keeps the raw text with `categoryId: null` (degrading like any stale/renamed category); no column mapped falls through to `guessCategory`. Dedupe is per-account, decided by the *caller*, not baked into `buildImportPlan`. Never auto-creates categories or imports transfers. See `docs/specs/csv-import.md`.
 - **Derived data** (`derived.js`): all the pure computations screens read from — `computeBudgets`, `computeBreakdown`, `computeBalance`, bill-due-date math, sparkline/pie-chart SVG builders. Pure meaning no side effects; if a function needs to render, toast, save, or sync, it doesn't belong here (see `markBillPaid`, in `screens/home.js` for exactly this reason). `localDateIso()`/`localMonthKey()`/`localIsoFromDate()` (`utils.js`, re-exported as `monthKeyOf` from `derived.js`) are the canonical "today"/"this month" helpers — every "today" computation must go through one of these, never `new Date().toISOString().slice(...)`, which converts to UTC first and reads as yesterday for several hours after local midnight for any user east of UTC (e.g. Bangkok). `state.js` is a deliberate, narrow exception (it can't import `utils.js` without creating a circular import) — it computes its own local-date defaults inline.
 - **Error reporting** (`error-report.js`): global `window` `error`/`unhandledrejection` handlers, fire-and-forget inserts into a Supabase `error_logs` table, capped at 20 per page session. Deliberately no read access from the app's own key — read via the Supabase dashboard.
 - **Bill reminders** (`push.js`, a Supabase Edge Function + `pg_cron`): `enableBillReminders()`/`disableBillReminders()` only ever fire from a real click handler, never on load. `supabase/functions/send-bill-reminders/index.ts` ports `derived.js`'s `nextBillDueDate`/`daysUntilBillDue`/`billDueCycle` **verbatim**, kept in sync by hand — its own doc comment says so. VAPID keys live in Supabase Vault, never committed; the public key is a plain constant in `push.js` (not a secret, same treatment as `SUPABASE_ANON_KEY`).
@@ -109,7 +114,7 @@ Worth remembering before touching swipe/reveal interactions or grid layouts agai
 
 ## Supabase schema (inferred from code — no migrations checked in before the Bill reminders pass)
 
-Tables: `transactions`, `budgets`, `bills`, `goals`, `categories`, `accounts`, `push_subscriptions`, `error_logs`. See the `*ToRow`/`rowTo*` function pairs in `src/sync.js` for exact field mapping (e.g. `tx_date` not `date`, `limit_amount` not `limit`). Since not every table has a checked-in migration (some were created ad hoc against the live project and only documented here — `repo/supabase/migrations/` only exists from the Bill reminders pass onward), cross-check actual column names/types against the live Supabase project before assuming these mapper functions are exhaustive.
+Tables: `transactions`, `budgets`, `bills`, `goals`, `categories`, `accounts`, `push_subscriptions`, `error_logs`. See the `*ToRow`/`rowTo*` function pairs in `src/sync.js` for exact field mapping (e.g. `tx_date` not `date`, `limit_amount` not `limit`). Since not every table has a checked-in migration (some were created ad hoc against the live project and only documented here — `supabase/migrations/` only exists from the Bill reminders pass onward), cross-check actual column names/types against the live Supabase project before assuming these mapper functions are exhaustive.
 
 - `transactions`/`budgets`/`bills`/`goals`/`categories`/`accounts`/`push_subscriptions` all have `id`, `user_id`, `deleted`, `updated_at`, plus table-specific columns, and a real FK to `auth.users(id)` with `ON DELETE CASCADE` (confirmed via `pg_constraint` introspection) — only `error_logs` is the exception (`NO ACTION`, nullable `user_id`, by design). `categories` uniquely has a **composite** `(id, user_id)` primary key, since its built-in categories intentionally share one fixed id across every user; every other table (including `accounts`, confirmed by direct introspection before building it) uses a plain single-column `id`. `pushRows()` in `sync.js` passes `{ onConflict: "id,user_id" }` only for `categories`.
 - `transactions.type` allows `"income"`/`"expense"`/`"transfer"` (widened from just the first two). A transfer uses `account_id` as the source and `to_account_id` as the destination; `category` is `""` for a transfer (the column has a real `NOT NULL` constraint, found only by testing a live push, not from any schema doc). `account_id`/`to_account_id` are composite FKs to `accounts(id, user_id)` (`ON DELETE RESTRICT`, added in `20260903150000_transfer_account_fk_and_indexes.sql` after a post-migration security audit) — a transaction can only reference an account owned by that same row's own `user_id`, closing a gap where nothing previously stopped a row from citing a nonexistent or foreign account id. This was never a cross-user *read* gap (RLS on `transactions` keys visibility to the row's own `user_id`, never to `account_id`/`to_account_id`), only a self-integrity one. `categories.parent_id` has the same composite-FK shape against `categories(id, user_id)`, added earlier in `20260902120000_category_parent_id.sql` — see that migration's own comment for why a plain `parent_id → categories(id)` FK would have been wrong given the composite primary key below.
