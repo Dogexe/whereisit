@@ -27,6 +27,25 @@ test("transactions filter sheet opens, closes, and narrows the list", async ({ p
   await expect(page.locator("#txFilterSheetBackdrop")).toBeHidden();
 });
 
+test("active filter clear button clears all filters and search", async ({ page }) => {
+  await page.goto("/");
+  const categoryId = await addTransaction(page, { type: "income", note: "e2e clear filters " + Date.now(), amount: "500" });
+
+  await expect(page.locator("#clearTxActiveFiltersBtn")).toHaveCount(0);
+  await page.locator("#openTxFiltersBtn").click();
+  await page.locator('label.tab-opt:has(input[name="tx-type-filter"][value="income"])').click();
+  await page.locator(`[data-filter-cat="${categoryId}"]`).check();
+  await page.keyboard.press("Escape");
+  await page.locator("#txSearchInput").fill("text to clear");
+  await expect(page.locator("#clearTxActiveFiltersBtn")).toBeVisible();
+
+  await page.locator("#clearTxActiveFiltersBtn").click();
+  await expect(page.locator("#clearTxActiveFiltersBtn")).toHaveCount(0);
+  await expect(page.locator("#txSearchInput")).toHaveValue("");
+  await expect(page.locator("#txFiltersBadge")).toBeHidden();
+  await expect(page.locator("#txListContainer")).toContainText("e2e clear filters");
+});
+
 test("insights filter sheet opens, closes, and narrows the breakdown", async ({ page }) => {
   await page.goto("/");
   const noteA = "e2e cat A " + Date.now();

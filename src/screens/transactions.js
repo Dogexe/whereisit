@@ -205,8 +205,11 @@ function renderActiveFilterChips() {
     const max = state.txFilterAmountMax != null ? fmtMoney(state.txFilterAmountMax) : "";
     chips.push({ key: "amount", label: `${l.filterChipAmount}: ${min}–${max}` });
   }
-  container.innerHTML = chips.map((c) => `<button type="button" class="filter-chip" data-remove-filter="${c.key}">${escapeHtml(c.label)} ×</button>`).join("");
+  container.innerHTML = chips.map((c) => `<button type="button" class="filter-chip" data-remove-filter="${c.key}">${escapeHtml(c.label)} ×</button>`).join("") +
+    (chips.length > 0 ? `<button type="button" class="filter-chip" id="clearTxActiveFiltersBtn">${escapeHtml(l.clearFiltersBtn)}</button>` : "");
   container.querySelectorAll("[data-remove-filter]").forEach((btn) => btn.addEventListener("click", () => removeFilterChip(btn.getAttribute("data-remove-filter"))));
+  const clearBtn = document.getElementById("clearTxActiveFiltersBtn");
+  if (clearBtn) clearBtn.addEventListener("click", clearTxFilters);
 }
 // Chips only ever render while the sheet is closed (its backdrop covers
 // the whole screen when open), so a full re-render here is safe -- no

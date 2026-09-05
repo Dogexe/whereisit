@@ -81,7 +81,17 @@ flags what a future agent needs to know exists, not how it works.
 
 ## Active work
 
-None — `docs/tickets/active/` is currently empty.
+- WI-003 — Transactions "Clear all filters" action (`docs/tickets/active/WI-003.md`),
+  status Ready. Chips-row Clear button implemented in
+  `src/screens/transactions.js` (`renderActiveFilterChips()`). First
+  independent review found the spec's open-filter-sheet clearing scenario
+  unreachable by any real user interaction; spec and ticket revised to drop
+  that requirement (see the spec's "Filter sheet reachability" note). The
+  e2e suite's synthetic-click coverage for that dropped scenario has been
+  removed and replaced with a real-click test
+  (`e2e/filters.spec.js`, "active filter clear button clears all filters
+  and search"), which passes along with the rest of the suite. Narrow
+  re-review completed and approved; ticket remains active pending merge.
 
 ## Recently completed
 
