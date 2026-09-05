@@ -12,10 +12,11 @@ path here assumes anything outside `whereisit/`.
 ## Read in this order
 
 1. This file.
-2. `CLAUDE.md` — architecture, module boundaries, persistence/sync design,
-   the Supabase schema, and every standing implementation lesson this
-   project has learned the hard way. Read this before touching `src/`; it is
-   not restated here to avoid the two files drifting apart.
+2. `CLAUDE.md` — always-loaded invariants and routing, plus the two docs it
+   points to for detail: `docs/ARCHITECTURE.md` (module boundaries, screens,
+   standing implementation lessons) and `docs/SYNC.md` (persistence/sync
+   design and the Supabase schema). Read these before touching `src/`; not
+   restated here to avoid the files drifting apart.
 3. `docs/SOT.md` — a compact summary of what's actually true about the
    product and its technical state right now. Read this for fast context;
    it points back at `CLAUDE.md`/specs/tickets for detail rather than

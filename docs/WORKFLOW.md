@@ -187,7 +187,10 @@ permanent project memory.
 
 | Artifact | Owns |
 | --- | --- |
-| `CLAUDE.md` | Architecture, invariants, project-specific engineering knowledge |
+| `CLAUDE.md` | Always-loaded invariants, Claude's role, and routing to the docs below |
+| `docs/ARCHITECTURE.md` | Module boundaries, screens/UI plumbing, standing implementation lessons |
+| `docs/SYNC.md` | Persistence, sync, auth, and the Supabase schema |
+| `docs/TESTING.md` | What each test layer covers |
 | `AGENTS.md` | Codex entry rules and implementation behavior |
 | `docs/SOT.md` | Concise current project/product reality |
 | `docs/WORKFLOW.md` | Engineering lifecycle and agent handoffs |
