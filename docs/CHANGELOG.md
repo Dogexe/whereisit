@@ -713,3 +713,108 @@ that were invisible at a glance but showed up plainly once inspected
 closely). `npm test` (172/172) and `npm run test:e2e` (17/17, including a
 new test covering the whole-row touch drag, click-through, and full-swipe
 commit) both green throughout.
+
+## Type-selector icon/color spec, and confirming the Add-sheet keyboard-open ghosting bug
+
+Two things reported together in one message: "why type selector doesnt use
+chips ui like categories and account" (a question, investigated and
+answered directly) and a screenshot showing stray "Expense/Income/Transfer"
+text rendering above the Add sheet's drag handle. Followed the clarify →
+spec → ticket workflow, one question at a time, before touching anything.
+
+**Type selector stays a segmented control, not chips** (WI-006,
+`docs/specs/type-selector-icon-color.md`): confirmed this matches how
+comparable apps (Money Lover, Wallet, Monefy) handle a fixed 2-3-value
+enum — chips are for Category/Account's open-ended, growing lists. The
+real, fixable mismatch is that Type has no icon/color while Category/
+Account do. Fix: add icons reusing this app's *own* existing conventions
+(`arrow-down-left`/`arrow-up-right` already used for income/expense on
+Home's stat cards, `arrow-right-left` already used for transfer rows) and
+extend `rowTone()` (`categories.js`) to a genuine three-way split instead
+of its current income-vs-everything-else shape — a real, separate latent
+bug this surfaced: `rowTone("transfer")` has always silently fallen into
+the same branch as `rowTone("expense")`, the exact "three-way type
+branching" mistake `CLAUDE.md` already warns about, just never visible
+until something needed to render all three side by side.
+
+**The ghosting bug required a real device to confirm, not just code
+reading** (WI-007, `docs/specs/add-sheet-keyboard-open-ghosting.md`).
+First attempt: manually replicating `syncSheetToViewport()`'s exact effect
+in a desktop Chrome devtools session (setting the same backdrop/sheet
+inline styles it would compute for a shrunk `visualViewport`) did **not**
+reproduce anything — the sticky header stayed correctly positioned. That
+ruled out the resize math as the culprit, but desktop Chrome has no real
+on-screen keyboard to test the actual trigger. The user recorded their
+phone reproducing it (`/watch` skill, frame-extracted at 2fps/1024px);
+frames confirmed the Type field's segmented-control content (text, then
+just its background pill) paints above the sheet's own rounded top edge
+and above the sticky header for roughly 1-1.5 seconds while the keyboard
+is opening after the Note field is focused, self-correcting once the
+keyboard settles. Root cause is narrowed to the interaction between
+`syncSheetToViewport()`'s synchronous inline-style resize on
+`visualViewport resize` and the browser's own native scroll-focused-
+input-into-view happening at the same moment (the exact interaction
+`syncSheetToViewport()` was originally written to tame) — not yet pinned
+to the precise paint/compositor mechanism, left for implementation with
+real on-device inspection. **Lesson for future sessions**: any bug tied to
+`visualViewport`/on-screen-keyboard behavior cannot be verified by
+resizing a desktop browser window or devtools device-mode — it needs a
+real device or an emulator with a genuine virtual keyboard.
+
+No code changed this pass — both items are `Ready` tickets
+(`docs/tickets/active/WI-006.md`, `WI-007.md`) awaiting Codex
+implementation.
+
+## WI-006 implemented: Type-selector icons/colors, and a dark-mode contrast trap the spec walked into
+
+Codex (GPT-5.6 Terra, medium — the ticket's `terra-medium` profile)
+implemented WI-006 (`docs/tickets/completed/WI-006.md`); Claude reviewed read-only in
+a real browser. Icons landed as specced (`arrow-up-right`/
+`arrow-down-left`/`arrow-right-left`, reusing Home's and `tx-row.js`'s own
+existing conventions) and `rowTone()` became a genuine three-way branch.
+
+**The spec's own acceptance criterion contained the bug.** It called for
+`--color-chart-5` as the transfer foreground on a `--color-chart-5-tint`
+background. Measured on the rendered control, the active segment came out
+at expense 4.89:1, income 4.86:1, transfer **1.66:1** in dark mode (and
+4.24:1 in light, also under AA). Cause: `theme.js:67` brightens
+`--color-chart-5` to `#4fd6c4` for dark mode, while every `*-tint` token
+here mixes toward *white* in both themes — so the foreground got lighter
+while its background stayed near-white. `styles.css`'s
+`--color-income-tint-fg` comment documents this exact trap and the exact
+fix, and the spec still walked into it. Resolved with a fixed,
+theme-invariant `--color-chart-5-tint-fg: #17665c` (5.78:1 light / 6.32:1
+dark), the same pattern income already used.
+
+**Lesson: a screenshot is not a contrast check.** All three segments
+looked fine at a glance in both themes; the failure only appeared once
+`getComputedStyle` values were run through a real WCAG ratio. Any new
+`tint`/`tint-fg` pairing in this repo should be measured, not eyeballed —
+`e2e/type-selector-icon-color.spec.js` now does exactly that, in both
+themes, as a standing regression.
+
+**Two smaller findings from the same review.** `add.js`'s
+`renderCommitPreview()` turned out to be a third `rowTone()` caller the
+pre-spec grep missed, so the mobile Add sheet's commit-preview avatar goes
+teal for transfers too (expected, no code change of its own — reported
+rather than folded in, per the ticket's Out of scope). And the maintainer
+flagged that the three segments sat too far apart on the desktop form:
+`.tabs.block`'s `justify-content: space-between` with `flex: 0 1 auto`
+cells spread three content-sized pills across the full row. Fixed with
+equal-width cells scoped by `.tabs.block:has(.type-tab-opt)` so no other
+tab row changes — the `styles.css` comment arguing for content-sized cells
+is about rows with uneven labels ("All" beside "Transfer"), which this row
+doesn't have.
+
+**Process note:** the ticket's ~310-320px narrow-width check could not be
+done by hand — browser window resizing wouldn't take in the review
+environment (the window stayed maximized), so only full width was ever
+observed. Rather than keep retrying it manually, it became a Playwright
+viewport test alongside the contrast assertions. Also worth knowing for
+future browser-driven review here: this app blurs itself via
+`applock-ui.js`'s `visibilitychange` handler whenever the tab isn't
+visible, which makes automated screenshots of a background tab useless
+until the `app-blurred` class is neutralized.
+
+`npm test` (173/173), `npm run test:e2e` (18/18), and `npm run build` all
+green, re-run independently of Codex's own reported run.

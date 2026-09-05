@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { topLevelCategories, childrenOf, isParentCategory, ancestorId, eligibleParentOptions, groupedCategories } from "../src/categories.js";
+import { topLevelCategories, childrenOf, isParentCategory, ancestorId, eligibleParentOptions, groupedCategories, rowTone } from "../src/categories.js";
 
 // docs/specs/category-nesting.md stage 1: pure helpers over a category's
 // optional parentId. Stage 2 adds eligibleParentOptions and its own
@@ -14,6 +14,12 @@ const list = [
   { id: "transport", type: "expense", parentId: null, deleted: false },
   { id: "orphan", type: "expense", parentId: "missing-parent", deleted: false }
 ];
+
+test("rowTone: returns explicit income, expense, and transfer tones", () => {
+  assert.deepEqual(rowTone("income"), { bg: "var(--color-income-tint)", color: "var(--color-income-tint-fg)" });
+  assert.deepEqual(rowTone("expense"), { bg: "var(--color-accent-tint)", color: "var(--color-accent)" });
+  assert.deepEqual(rowTone("transfer"), { bg: "var(--color-chart-5-tint)", color: "var(--color-chart-5-tint-fg)" });
+});
 
 test("topLevelCategories: returns only categories with no parentId", () => {
   // "orphan" has a (dangling) parentId set, so it's excluded here even

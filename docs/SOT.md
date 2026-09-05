@@ -92,9 +92,24 @@ flags what a future agent needs to know exists, not how it works.
 - WI-005 — Apple-style swipe actions on Settings' Manage rows: not yet
   started (Ready). Carries WI-004's visual language (below) over to
   `src/screens/manage-row-swipe.js`.
+- WI-007 — Fix Add sheet content ghosting above the header when the
+  keyboard opens: not yet started (Ready), root cause confirmed via a
+  real-device recording but not yet pinned to an exact mechanism. See
+  `docs/specs/add-sheet-keyboard-open-ghosting.md`.
 
 ## Recently completed
 
+- WI-006 — Icon + color on the Add form's Type segmented control.
+  `rowTone()` (`categories.js`) now branches on all three transaction
+  types explicitly instead of income-vs-everything-else, so `transfer`
+  has its own teal tone everywhere `rowTone()` is used — the Type
+  control, transfer transaction rows, and the Add sheet's commit
+  preview. **Standing lesson worth carrying forward:** any `*-tint`
+  token here mixes toward white in *both* themes, so its foreground must
+  be a fixed dark hex (`--color-income-tint-fg`,
+  `--color-chart-5-tint-fg`), never a token `theme.js` brightens for dark
+  mode — doing the latter shipped a 1.66:1 label that looked fine in a
+  screenshot. See `docs/specs/type-selector-icon-color.md`.
 - WI-004 — Apple-style swipe actions on transaction rows: 40px circular
   Edit/Delete matching the category icon avatar, whole-row drag surface,
   full-swipe-to-delete with a pop-in/grow animation. Went through eleven

@@ -93,6 +93,11 @@
        tint circle" pattern -- categories.js's rowTone()/GOAL_TONES. */
     --color-income-tint-fg: #147a54;
     --color-expense: #ef4b3a; --color-expense-700: #c22f22; --color-expense-tint: color-mix(in srgb, var(--color-expense) 12%, white);
+    --color-chart-5-tint: color-mix(in srgb, var(--color-chart-5) 12%, white);
+    /* This tint stays near-white in both themes, so its foreground must
+       stay dark instead of following the chart color's dark-mode brightening.
+       #17665c measures 5.78:1 in light and 6.32:1 in dark mode. */
+    --color-chart-5-tint-fg: #17665c;
     --color-warning: #ec9f2e; --color-warning-text: #93630f; --color-warning-tint: color-mix(in srgb, var(--color-warning) 15%, white);
     /* .hero-card-negative's own gradient, deliberately NOT --color-expense/
        -700 -- those measure only 3.66:1 (light mode's lighter gradient
@@ -263,6 +268,13 @@
   }
   .tab-opt input { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
   .tab-opt:has(input:checked) { background: var(--color-card); color: var(--color-text); box-shadow: var(--shadow-xs); }
+  /* Type has three similarly sized fixed choices, unlike the shared tabs'
+     potentially uneven labels, so equal cells close its wide desktop gaps. */
+  .tabs.block:has(.type-tab-opt) { justify-content: initial; }
+  .type-tab-opt { flex: 1 1 0; gap: 5px; padding: 8px 6px; }
+  .type-tab-opt .icon { flex-shrink: 0; }
+  .type-tab-opt span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .type-tab-opt:has(input:checked) { background: var(--tab-active-bg); color: var(--tab-active-color); }
 
   /* docs/specs/category-icon-chips.md -- the chip row sits above the
      original <select>, which stays in the DOM (not removed) as the

@@ -80,7 +80,12 @@ export function guessCategory(note, type) {
 // Deduped defensively even though today's 16 defaults happen to use 16
 // distinct icons.
 export const CATEGORY_ICON_CHOICES = Array.from(new Set(DEFAULT_CATEGORIES.map((c) => c.icon)));
-export function rowTone(type) { return type === "income" ? { bg: "var(--color-income-tint)", color: "var(--color-income-tint-fg)" } : { bg: "var(--color-accent-tint)", color: "var(--color-accent)" }; }
+export function rowTone(type) {
+  if (type === "income") return { bg: "var(--color-income-tint)", color: "var(--color-income-tint-fg)" };
+  if (type === "expense") return { bg: "var(--color-accent-tint)", color: "var(--color-accent)" };
+  if (type === "transfer") return { bg: "var(--color-chart-5-tint)", color: "var(--color-chart-5-tint-fg)" };
+  return { bg: "var(--color-accent-tint)", color: "var(--color-accent)" };
+}
 
 // Stage 2 of docs/specs/custom-categories.md: transactions/budgets/bills
 // are moving from storing a category by name to referencing it by a

@@ -256,13 +256,17 @@ function renderCommitPreview() {
 // this reordering too.
 function addFormFieldsHtml(l, isEditing, opts = {}) {
   const isSheet = !!opts.hideBottomButtons;
+  const typeOption = (type, label, iconName) => {
+    const tone = rowTone(type);
+    return `<label class="tab-opt type-tab-opt" style="--tab-active-bg:${tone.bg};--tab-active-color:${tone.color}"><input type="radio" name="form-type" value="${type}" ${state.formType === type ? "checked" : ""}>${icon(iconName, 'width="15" height="15"')}<span>${escapeHtml(label)}</span></label>`;
+  };
   const typeField = `
       <div class="field">
         <label>${escapeHtml(l.typeLabel)}</label>
         <div class="tabs block" role="radiogroup">
-          <label class="tab-opt"><input type="radio" name="form-type" value="expense" ${state.formType === "expense" ? "checked" : ""}>${escapeHtml(l.expenseLabel)}</label>
-          <label class="tab-opt"><input type="radio" name="form-type" value="income" ${state.formType === "income" ? "checked" : ""}>${escapeHtml(l.incomeLabel)}</label>
-          <label class="tab-opt"><input type="radio" name="form-type" value="transfer" ${state.formType === "transfer" ? "checked" : ""}>${escapeHtml(l.transferLabel)}</label>
+          ${typeOption("expense", l.expenseLabel, "arrow-up-right")}
+          ${typeOption("income", l.incomeLabel, "arrow-down-left")}
+          ${typeOption("transfer", l.transferLabel, "arrow-right-left")}
         </div>
       </div>`;
   // Same #txDateText/#txDateNative wiring either way (wireAddForm doesn't
