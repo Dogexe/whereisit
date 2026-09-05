@@ -94,7 +94,9 @@ function renderManageSheet() {
           <h3>${escapeHtml(active.title)}</h3>
           <button type="button" class="filter-sheet-close-btn" id="manageSheetClose" aria-label="${escapeHtml(l.closeAria)}">&times;</button>
         </div>
-        ${active.formFn()}
+        <div class="sheet-body">
+          ${active.formFn()}
+        </div>
       </div>
     </div>`;
   $("manageSheetClose").addEventListener("click", dismiss);

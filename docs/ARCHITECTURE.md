@@ -83,7 +83,7 @@ install-prompt listeners. Everything else lives in `categories.js`,
   sheet already calls exactly those two methods at exactly the right
   open/close moments, so nothing else needs a second call site.
   `sheetGrabberHtml()` renders the drag-handle pill as the header's first
-  child (`position: absolute` inside the header's own `position: sticky`
+  child (`position: absolute` inside the header's own `position: relative`
   box); `wireSheetDrag(handle, sheetEl, onDismiss)` wires an actual
   swipe-down-to-dismiss gesture to it, mirroring `tx-row.js`'s
   pointer-capture/rubber-band-clamp technique adapted to one vertical axis.
@@ -96,13 +96,15 @@ install-prompt listeners. Everything else lives in `categories.js`,
   function that already re-wires their close button and focus trap, not a
   one-time setup call. `createFocusTrap()`'s `activate()` also calls
   `syncSheetToViewport()` (also piggybacked, same reasoning as
-  scroll-lock), which sizes the open backdrop/sheet to
+  scroll-lock), which sizes the open backdrop and non-scrolling outer sheet to
   `window.visualViewport` instead of the static `inset:0`/`80vh` CSS —
   without this, opening the on-screen keyboard (which shrinks only the
   *visual* viewport on most mobile browsers, not the *layout* viewport
   `vh`/`fixed` are relative to) made the browser's native "scroll focused
-  input into view" behavior drag the sheet's own sticky header off-screen
-  along with it. A module-level `visualViewport` `resize`/`scroll` listener
+  input into view" behavior drag the sheet header off-screen along with it.
+  Every sheet now renders that header outside an inner `.sheet-body`
+  scrollport, keeping the viewport-resized outer box separate from the box
+  Chrome scrolls. A module-level `visualViewport` `resize`/`scroll` listener
   keeps this synced live while a sheet stays open across an actual keyboard
   show/hide, not just at the moment it opens.
 - **i18n** (`i18n.js`): `STRINGS` is `{ key: [th, en] }`; `LANGS.th`/

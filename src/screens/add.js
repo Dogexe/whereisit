@@ -239,7 +239,7 @@ function renderCommitPreview() {
 // screen-title vs. a sheet header+close button) and what happens after
 // save/cancel differ between the two callers.
 // opts.hideBottomButtons: the mobile sheet (renderAddSheet) puts Save/Cancel
-// in a sticky header instead (see below) -- easier to reach one-handed and
+// in a non-scrolling header instead (see below) -- easier to reach one-handed and
 // never gets covered by the on-screen keypad the way a bottom-of-form button
 // can. Desktop's full-page renderAdd() has no such button and keeps the
 // original bottom buttons.
@@ -333,7 +333,7 @@ function addFormFieldsHtml(l, isEditing, opts = {}) {
     ? [commitPreviewField, amountField, typeField, categoryField, accountField, transferSwapField, transferToField, dateField, noteField]
     : [typeField, dateField, categoryField, accountField, transferSwapField, transferToField, amountField, noteField];
   return `
-    <form class="add-form" id="addForm" autocomplete="off">
+    <form class="add-form${isSheet ? " sheet-body" : ""}" id="addForm" autocomplete="off">
       ${fieldsInOrder.join("")}
       ${bottomButtons}
     </form>
@@ -450,7 +450,7 @@ function wireAddForm({ onSaved, onCancelled }) {
     if (guess) { state.formCategoryId = guess; $("txCategory").value = guess; renderCategoryChips(); }
   });
   // Nullish-safe: the sheet variant (opts.hideBottomButtons) never renders
-  // #cancelEditBtn at all -- its Cancel action lives in the sticky header
+  // #cancelEditBtn at all -- its Cancel action lives in the non-scrolling header
   // instead (see renderAddSheet()'s own #addSheetCancel wiring).
   if (isEditing) $("cancelEditBtn")?.addEventListener("click", onCancelled);
   $("addForm").addEventListener("submit", function (e) {
@@ -541,8 +541,9 @@ function renderAddSheet() {
   // real phone with the keypad up (entering the amount), the bottom of a
   // tall form can sit behind the keyboard entirely, making a bottom-only
   // Save button unreachable without dismissing the keypad first. The header
-  // is `position: sticky` (styles.css) so both stay visible while scrolling
-  // the form, mirroring the Cancel/Save pattern from Apple's own Sheets HIG.
+  // sits outside the scrolling #addForm.sheet-body (styles.css), so both stay
+  // visible while the form scrolls, mirroring the Cancel/Save pattern from
+  // Apple's own Sheets HIG.
   // Save is a plain `form="addForm"` button, not a JS click handler -- it
   // triggers the exact same native submit (and thus the exact same
   // validation/submit-handler code path in wireAddForm below) as pressing

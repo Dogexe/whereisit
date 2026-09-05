@@ -212,27 +212,29 @@ function insightsFilterSheetHtml() {
           <h3>${escapeHtml(l.filtersBtn)}</h3>
           <button type="button" class="filter-sheet-close-btn" id="insightsFilterSheetClose" aria-label="${escapeHtml(l.closeAria)}">&times;</button>
         </div>
-        <div class="field">
-          <div class="filter-field-label"><span>${escapeHtml(l.customDateLabel)}</span>${hasCustomRange() ? `<button type="button" id="insightsClearRangeBtn">${escapeHtml(l.clearBtn)}</button>` : ""}</div>
-          <div class="kind-toggle">
-            <button type="button" class="${kind === "single" ? "active" : ""}" data-insights-custom-kind="single">${escapeHtml(l.singleDayLabel)}</button>
-            <button type="button" class="${kind === "range" ? "active" : ""}" data-insights-custom-kind="range">${escapeHtml(l.dateRangeLabel)}</button>
-          </div>
-          ${kind === "single" ? `
-            <div class="input-wrap">${icon("calendar", 'style="color:var(--color-accent)"')}<input type="date" id="insightsSingleDate" value="${state.insightsFilterDateFrom === state.insightsFilterDateTo ? escapeHtml(state.insightsFilterDateFrom) : ""}"></div>
-            <div class="field-hint">${escapeHtml(l.singleDayHint)}</div>
-          ` : `
-            <div class="amount-range-row">
-              <input type="date" class="input" aria-label="${escapeHtml(l.dateFromLabel)}" id="insightsRangeFrom" value="${escapeHtml(state.insightsFilterDateFrom)}">
-              <span>–</span>
-              <input type="date" class="input" aria-label="${escapeHtml(l.dateToLabel)}" id="insightsRangeTo" value="${escapeHtml(state.insightsFilterDateTo)}">
+        <div class="sheet-body">
+          <div class="field">
+            <div class="filter-field-label"><span>${escapeHtml(l.customDateLabel)}</span>${hasCustomRange() ? `<button type="button" id="insightsClearRangeBtn">${escapeHtml(l.clearBtn)}</button>` : ""}</div>
+            <div class="kind-toggle">
+              <button type="button" class="${kind === "single" ? "active" : ""}" data-insights-custom-kind="single">${escapeHtml(l.singleDayLabel)}</button>
+              <button type="button" class="${kind === "range" ? "active" : ""}" data-insights-custom-kind="range">${escapeHtml(l.dateRangeLabel)}</button>
             </div>
-            <div class="field-hint">${escapeHtml(l.dateRangeHint)}</div>
-          `}
-        </div>
-        <div class="field">
-          <label>${escapeHtml(l.categoryLabel)}</label>
-          <div class="filter-checkbox-list">${checkboxRows}</div>
+            ${kind === "single" ? `
+              <div class="input-wrap">${icon("calendar", 'style="color:var(--color-accent)"')}<input type="date" id="insightsSingleDate" value="${state.insightsFilterDateFrom === state.insightsFilterDateTo ? escapeHtml(state.insightsFilterDateFrom) : ""}"></div>
+              <div class="field-hint">${escapeHtml(l.singleDayHint)}</div>
+            ` : `
+              <div class="amount-range-row">
+                <input type="date" class="input" aria-label="${escapeHtml(l.dateFromLabel)}" id="insightsRangeFrom" value="${escapeHtml(state.insightsFilterDateFrom)}">
+                <span>–</span>
+                <input type="date" class="input" aria-label="${escapeHtml(l.dateToLabel)}" id="insightsRangeTo" value="${escapeHtml(state.insightsFilterDateTo)}">
+              </div>
+              <div class="field-hint">${escapeHtml(l.dateRangeHint)}</div>
+            `}
+          </div>
+          <div class="field">
+            <label>${escapeHtml(l.categoryLabel)}</label>
+            <div class="filter-checkbox-list">${checkboxRows}</div>
+          </div>
         </div>
       </div>
     </div>`;

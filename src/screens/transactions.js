@@ -266,34 +266,36 @@ function filterSheetHtml() {
           <h3>${escapeHtml(l.filtersBtn)}</h3>
           <button type="button" class="filter-sheet-close-btn" id="txFilterSheetClose" aria-label="${escapeHtml(l.closeAria)}">&times;</button>
         </div>
-        <div class="field">
-          <label>${escapeHtml(l.typeLabel)}</label>
-          <div class="tabs block" role="radiogroup">
-            <label class="tab-opt"><input type="radio" name="tx-type-filter" value="all" ${state.txFilterType === "all" ? "checked" : ""}>${escapeHtml(l.filterAll)}</label>
-            <label class="tab-opt"><input type="radio" name="tx-type-filter" value="income" ${state.txFilterType === "income" ? "checked" : ""}>${escapeHtml(l.incomeLabel)}</label>
-            <label class="tab-opt"><input type="radio" name="tx-type-filter" value="expense" ${state.txFilterType === "expense" ? "checked" : ""}>${escapeHtml(l.expenseLabel)}</label>
-            <label class="tab-opt"><input type="radio" name="tx-type-filter" value="transfer" ${state.txFilterType === "transfer" ? "checked" : ""}>${escapeHtml(l.transferLabel)}</label>
+        <div class="sheet-body">
+          <div class="field">
+            <label>${escapeHtml(l.typeLabel)}</label>
+            <div class="tabs block" role="radiogroup">
+              <label class="tab-opt"><input type="radio" name="tx-type-filter" value="all" ${state.txFilterType === "all" ? "checked" : ""}>${escapeHtml(l.filterAll)}</label>
+              <label class="tab-opt"><input type="radio" name="tx-type-filter" value="income" ${state.txFilterType === "income" ? "checked" : ""}>${escapeHtml(l.incomeLabel)}</label>
+              <label class="tab-opt"><input type="radio" name="tx-type-filter" value="expense" ${state.txFilterType === "expense" ? "checked" : ""}>${escapeHtml(l.expenseLabel)}</label>
+              <label class="tab-opt"><input type="radio" name="tx-type-filter" value="transfer" ${state.txFilterType === "transfer" ? "checked" : ""}>${escapeHtml(l.transferLabel)}</label>
+            </div>
           </div>
-        </div>
-        <div class="field">
-          <label>${escapeHtml(l.dateLabel)}</label>
-          <div class="filter-row" id="txPeriodPickerRow" style="margin-bottom:0"></div>
-        </div>
-        <div class="field" id="txCustomDateField"></div>
-        <div class="field">
-          <label>${escapeHtml(l.categoryLabel)}</label>
-          <div class="filter-checkbox-list">${checkboxRows}</div>
-        </div>
-        <div class="field">
-          <label>${escapeHtml(l.accountLabel)}</label>
-          <div class="filter-checkbox-list">${accountCheckboxRows}</div>
-        </div>
-        <div class="field">
-          <label>${escapeHtml(l.amountLabel)}</label>
-          <div class="amount-range-row">
-            <input type="number" class="input" id="sheetAmountMin" placeholder="${escapeHtml(l.amountMinPlaceholder)}" value="${state.txFilterAmountMin ?? ""}">
-            <span>–</span>
-            <input type="number" class="input" id="sheetAmountMax" placeholder="${escapeHtml(l.amountMaxPlaceholder)}" value="${state.txFilterAmountMax ?? ""}">
+          <div class="field">
+            <label>${escapeHtml(l.dateLabel)}</label>
+            <div class="filter-row" id="txPeriodPickerRow" style="margin-bottom:0"></div>
+          </div>
+          <div class="field" id="txCustomDateField"></div>
+          <div class="field">
+            <label>${escapeHtml(l.categoryLabel)}</label>
+            <div class="filter-checkbox-list">${checkboxRows}</div>
+          </div>
+          <div class="field">
+            <label>${escapeHtml(l.accountLabel)}</label>
+            <div class="filter-checkbox-list">${accountCheckboxRows}</div>
+          </div>
+          <div class="field">
+            <label>${escapeHtml(l.amountLabel)}</label>
+            <div class="amount-range-row">
+              <input type="number" class="input" id="sheetAmountMin" placeholder="${escapeHtml(l.amountMinPlaceholder)}" value="${state.txFilterAmountMin ?? ""}">
+              <span>–</span>
+              <input type="number" class="input" id="sheetAmountMax" placeholder="${escapeHtml(l.amountMaxPlaceholder)}" value="${state.txFilterAmountMax ?? ""}">
+            </div>
           </div>
         </div>
       </div>

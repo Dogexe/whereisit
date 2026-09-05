@@ -68,7 +68,7 @@ export function importSheetHtml() {
           <h3>${escapeHtml(l.importBtn)}</h3>
           <button type="button" class="filter-sheet-close-btn" id="importSheetClose" aria-label="${escapeHtml(l.closeAria)}">&times;</button>
         </div>
-        <div id="importSheetBody"></div>
+        <div class="sheet-body" id="importSheetBody"></div>
       </div>
     </div>`;
 }

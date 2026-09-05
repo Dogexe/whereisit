@@ -25,18 +25,20 @@ export function exportSheetHtml() {
           <h3>${escapeHtml(l.exportBtn)}</h3>
           <button type="button" class="filter-sheet-close-btn" id="exportSheetClose" aria-label="${escapeHtml(l.closeAria)}">&times;</button>
         </div>
-        <button type="button" class="toggle-row" id="exportCsvBtn">
-          ${iconAvatar("download", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
-          <span class="label">${escapeHtml(l.exportCsvBtn)}</span>
-        </button>
-        <button type="button" class="toggle-row" id="exportJsonBtn">
-          ${iconAvatar("download", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
-          <span class="label">${escapeHtml(l.exportJsonBtn)}</span>
-        </button>
-        <button type="button" class="toggle-row" id="exportSheetsBtn">
-          ${iconAvatar("table", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
-          <span class="label">${escapeHtml(l.exportSheetsBtn)}</span>
-        </button>
+        <div class="sheet-body">
+          <button type="button" class="toggle-row" id="exportCsvBtn">
+            ${iconAvatar("download", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+            <span class="label">${escapeHtml(l.exportCsvBtn)}</span>
+          </button>
+          <button type="button" class="toggle-row" id="exportJsonBtn">
+            ${iconAvatar("download", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+            <span class="label">${escapeHtml(l.exportJsonBtn)}</span>
+          </button>
+          <button type="button" class="toggle-row" id="exportSheetsBtn">
+            ${iconAvatar("table", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+            <span class="label">${escapeHtml(l.exportSheetsBtn)}</span>
+          </button>
+        </div>
       </div>
     </div>`;
 }

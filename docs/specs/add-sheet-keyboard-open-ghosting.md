@@ -1,6 +1,7 @@
 # Spec: Add sheet's Type-tabs content ghosts above the header when the keyboard opens
 
-Status: **root cause investigated, not yet fixed**. Reported directly with
+Status: **attempt 1 shipped and disproven on-device, not yet fixed** (see
+Investigation — `contain: paint` is ruled out). Reported directly with
 a screenshot ("visible text... above drag handle"), then confirmed live via
 a real-device screen recording (see Investigation below) before writing
 this spec, per this repo's "difficult/intermittent bug" workflow.
@@ -59,6 +60,33 @@ single-frame flicker), then is gone by the next second.
   promotion/demotion timing, a stale painted layer, or something else).
   Left for implementation to pin down with real on-device inspection
   tools, per the acceptance criteria below.
+- **`contain: paint` on the sheet does NOT fix this — ruled out on the real
+  device, do not retry it.** Attempt 1 (commit `81cb197`) scoped
+  `contain: paint` to `#addSheetBackdrop .filter-sheet`, deployed it, and
+  the maintainer reproduced the ghosting unchanged on the same phone.
+  This is a strong negative result, not just a failed guess: with paint
+  containment active it is spec-impossible for a *descendant* to paint
+  outside the sheet's box, so whatever is on screen above the sheet's
+  rounded top edge is very likely **a stale compositor texture of the
+  sheet from an earlier frame**, not a live paint escaping a clip. That
+  explains all four known facts at once — no desktop repro (no real
+  compositor/keyboard interaction), self-corrects in ~1s (next full
+  repaint), persists across several extracted frames (a whole composited
+  frame, not a flicker), and immunity to clipping CSS (no clip applies to
+  a snapshot). Any further fix aimed at *clipping* is aimed at the wrong
+  layer.
+- Following from that: the remaining suspect is that `.filter-sheet` plays
+  three roles simultaneously — the `overflow-y: auto` scrollport, the
+  element `syncSheetToViewport()` mutates inline, and the element Chrome
+  runs native scroll-into-view on. Attempt 2 splits those roles by moving
+  the header out of the scrollport: `.filter-sheet` stops scrolling, and a
+  new `.sheet-body` wrapper inside it becomes the scroll container, so the
+  resized element and the scrolled element are no longer the same box.
+  This requires a markup change, because four of the six sheets (Export,
+  Insights, Settings/Manage, Transactions) currently render the header
+  plus several loose sibling `.field` blocks directly under
+  `.filter-sheet`, with no single body element to make scrollable; only
+  Add (`#addForm`) and Import (`#importSheetBody`) already have one.
 
 ## Constraints on the fix
 

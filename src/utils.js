@@ -144,15 +144,18 @@ function unlockPageScroll() {
 // relative to) exactly as tall as before -- so .filter-sheet-backdrop's
 // `inset: 0` still claimed the pre-keyboard full height, and the browser's
 // own "scroll the focused input into view" behavior had to scroll the
-// *whole* fixed-position sheet (sticky header, Save button, and all) up and
+// *whole* fixed-position sheet (header, Save button, and all) up and
 // off-screen to bring a bottom-of-form field above the keyboard, instead of
 // just scrolling that field within the sheet's own small remaining space.
 // The visualViewport API (broad support: Safari 13+, Chrome 62+) reports
 // the real, keyboard-adjusted visible height directly; syncing the backdrop
 // (and the sheet's own max-height, proportionally) to it means the
 // browser's native scroll-into-view only ever has to move the input within
-// a backdrop that's already the correct, smaller size -- the sticky header
-// stays inside that same visible area throughout, never pushed off top.
+// .sheet-body, whose outer sheet is already the correct, smaller size. The
+// non-scrolling header stays inside that same visible area throughout,
+// never pushed off top. The max-height deliberately remains on the outer
+// sheet so the element resized here and the inner element scrolled by the
+// browser are separate boxes.
 function syncSheetToViewport(backdrop) {
   if (!backdrop || !window.visualViewport) return;
   const vv = window.visualViewport;
