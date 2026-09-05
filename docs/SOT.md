@@ -74,6 +74,15 @@ See `README.md` for the user-facing version of this list, and
   for the full module map).
 - **Runtime assumption**: real HTTP origin required (not `file://`) for the
   service worker and manifest to work.
+- **Bottom sheets**: all six render `.filter-sheet` as a *non-scrolling*
+  shell containing a non-scrolling `.filter-sheet-header` plus an inner
+  `.sheet-body` that is the only scrollport. `syncSheetToViewport()`'s
+  inline `max-height` deliberately stays on the outer shell, so the box
+  being resized and the box the browser scrolls are never the same element
+  — that separation is the fix for WI-007 and is load-bearing, not
+  incidental. `.sheet-body` also carries matched negative margins and
+  padding so its clip box reaches the shell's edges; without that, child
+  focus outlines and chip rows get sliced.
 
 Full detail for all of the above lives in `CLAUDE.md` — this section only
 flags what a future agent needs to know exists, not how it works.
@@ -92,12 +101,21 @@ flags what a future agent needs to know exists, not how it works.
 - WI-005 — Apple-style swipe actions on Settings' Manage rows: not yet
   started (Ready). Carries WI-004's visual language (below) over to
   `src/screens/manage-row-swipe.js`.
-- WI-007 — Fix Add sheet content ghosting above the header when the
-  keyboard opens: not yet started (Ready), root cause confirmed via a
-  real-device recording but not yet pinned to an exact mechanism. See
-  `docs/specs/add-sheet-keyboard-open-ghosting.md`.
 
 ## Recently completed
+
+- WI-007 — Add sheet content ghosting above the header when the keyboard
+  opens: **fixed and device-confirmed.** Every sheet's header now sits
+  outside an inner `.sheet-body` scrollport (see Current technical state
+  above). **Standing lesson worth carrying forward:** the bug came from
+  one element playing three roles at once — the `overflow` scrollport, the
+  box `syncSheetToViewport()` resizes inline, and the box Chrome runs
+  native scroll-into-view on — which produced a stale composited frame,
+  not a clipping failure. Two dead ends are recorded in
+  `docs/specs/add-sheet-keyboard-open-ghosting.md` and worth not repeating:
+  desktop resize simulation never reproduces this, and `contain: paint`
+  does nothing (its no-op is what proved the artifact was a stale texture
+  rather than content escaping a clip).
 
 - WI-006 — Icon + color on the Add form's Type segmented control.
   `rowTone()` (`categories.js`) now branches on all three transaction

@@ -818,3 +818,72 @@ until the `app-blurred` class is neutralized.
 
 `npm test` (173/173), `npm run test:e2e` (18/18), and `npm run build` all
 green, re-run independently of Codex's own reported run.
+
+## WI-007: the Add-sheet keyboard-open ghosting, and what two failed clips taught
+
+**Fixed, device-confirmed.** The symptom: for ~1-1.5s while the on-screen
+keyboard animated open, the Add sheet's Type content painted *above* the
+sheet's own rounded top edge and above its sticky header, over the dimmed
+backdrop. It self-corrected once the keyboard settled.
+
+**Attempt 1 (`contain: paint`, `81cb197`) failed — and the failure is the
+most useful thing in this entry.** The theory was that content from a
+previous layout was escaping the sheet's overflow clip during the resize.
+Paint containment was scoped to the Add sheet, shipped, and the maintainer
+reproduced the ghosting completely unchanged. That is a *strong* negative
+result rather than a wasted round: with paint containment active it is
+spec-impossible for a descendant to paint outside its box, so the artifact
+could not be content escaping a clip. It had to be **a stale composited
+frame of the sheet from an earlier moment** — which no clipping CSS can
+touch. Every fact fit that: no desktop repro, self-corrects at the next
+full repaint, survives several extracted frames, immune to containment.
+
+**Attempt 2 (`cc5005f`) fixed it by splitting one element's three jobs.**
+`.filter-sheet` was simultaneously the `overflow-y: auto` scrollport, the
+box `syncSheetToViewport()` mutates inline during the `visualViewport`
+resize, and the box Chrome runs native scroll-into-view on when a field is
+focused — all three at the same instant. Now the sheet is a non-scrolling
+shell, an inner `.sheet-body` is the only scrollport, and the header is a
+plain non-scrolling sibling (`position: relative`, still the containing
+block for `.sheet-grabber`). The inline `max-height` deliberately stays on
+the outer shell: **if it moved to the body, the resized box and the
+scrolled box would be the same element again and the whole change would be
+cosmetic.** Applied to all six sheets, which needed markup — only Add
+(`#addForm`) and Import (`#importSheetBody`) already had a single body
+element; Export, Insights, Settings/Manage and Transactions rendered loose
+sibling `.field` blocks directly under `.filter-sheet`.
+
+**Then attempt 2's own regression (`3fa3c56`), reported with a phone
+photo.** Making `.sheet-body` the scrollport made it the clip box, and it
+had no padding of its own where the old scroller had 20px. Anything
+painting outside a child's border box got sliced: `.input-wrap:focus-within`'s
+`outline: 2px solid` + `outline-offset: 1px` lost its left/right segments,
+and chip rows were cut mid-pill at the body's top edge — 16px below the
+header divider, with bare card background above, where the old sticky
+header used to hide that cut behind its opaque background. Fixed with
+matched negative margins and padding on `.sheet-body`, extending its clip
+box to the shell's edges without moving any content.
+
+**Lesson: a failed fix that rules out a whole class of cause is worth
+shipping.** Three rounds of static code reading never distinguished "content
+escaping a clip" from "stale composited frame"; one deployed no-op did it in
+minutes. When a bug only reproduces on real hardware, an experiment that can
+*falsify* a mechanism beats more reasoning about the code.
+
+**Second lesson: check that a check can fail.** Round 1's review caught an
+e2e assertion (`type.bottom <= header.top || type.top >= header.bottom`)
+that the buggy state itself satisfied — content painting above the header
+meets the first disjunct — so it could never have failed for this bug.
+`getBoundingClientRect()` reports layout geometry and never paint clipping,
+so no DOM assertion can observe this symptom at all; the spec now says so
+plainly instead of implying coverage. The final clipping fix was verified
+the opposite way: measured in a real browser at phone width, *and* confirmed
+falsifiable by zeroing the new margin/padding to reproduce the clip.
+
+Two dead ends recorded in `docs/specs/add-sheet-keyboard-open-ghosting.md`
+so nobody burns a round on them again: desktop resize simulation does not
+reproduce this bug, and `contain: paint` does nothing for it.
+
+`npm test` (173/173), `npm run test:e2e` (24/24 — the ghosting spec grew
+from 1 test to 6, one per sheet), and `npm run build` all green, re-run
+independently of Codex's own reported runs.
