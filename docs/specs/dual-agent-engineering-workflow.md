@@ -25,6 +25,12 @@ and release practices.
   path assumes a parent workspace directory, so a standalone clone works
   unmodified. The outer workspace's own copies are thin pointers back to
   these, not byte-identical mirrors (see `workflows/sync-agent-entry-docs.md`).
+- `docs/SOT.md` is a persistent, compact "current state" summary, added so a
+  fresh agent session can recover product/technical reality quickly without
+  reading the full changelog. It is not a second changelog, spec, or
+  backlog — see `docs/WORKFLOW.md`'s Document ownership table. A meaningful
+  merge's post-merge step now includes updating it when current reality
+  actually changed.
 
 ## Acceptance criteria
 

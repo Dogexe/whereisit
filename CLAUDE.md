@@ -24,6 +24,17 @@ https://dogexe.github.io/whereisit/.
 Feature specs (written before building, updated with what actually shipped)
 live in `docs/specs/`. Full project history lives in `docs/CHANGELOG.md`.
 
+## Read in this order for planning/investigation
+
+1. This file.
+2. `docs/SOT.md` — a compact summary of what's actually true about the
+   product and its technical state right now, so you don't have to
+   reconstruct it from `docs/CHANGELOG.md`'s full history.
+3. `docs/WORKFLOW.md` — the full lifecycle and the minimum `/spec` prompt.
+4. Only then, load relevant specs under `docs/specs/` and relevant code as
+   the task requires — don't read every spec, every ticket, or the full
+   changelog by default.
+
 ## Claude Code's role, and the development workflow
 
 Claude Code's primary responsibilities in this repository are requirements

@@ -10,7 +10,14 @@ This repository uses three clear roles:
 
 The normal path is:
 
-`clarify → spec → tickets → implement → review → fix → maintainer merge`
+`read current truth → clarify → spec → tickets → implement → verify →
+independent review → fix → re-review → maintainer merge → update
+persistent project state → next session starts fresh`
+
+**Chat is temporary working context. The repository contains durable
+shared memory and current truth.** Anything worth a future session
+knowing belongs in `CLAUDE.md`, `docs/SOT.md`, a spec, a ticket, or the
+changelog — not only in the conversation that produced it.
 
 ## Standing defaults
 
@@ -136,9 +143,47 @@ The maintainer inspects the diff and decides whether to commit and push. Before
 and after pushing to `main`, follow `workflows/release-check.md`; pushing deploys
 the application.
 
-After the change is merged, update the ticket status to `Completed` and move it
-from `docs/tickets/active/` to `docs/tickets/completed/`. Keep the originating
-spec and `docs/CHANGELOG.md` current with what actually shipped.
+After the change is merged:
+
+1. Update the ticket status to `Completed` and move it from
+   `docs/tickets/active/` to `docs/tickets/completed/`.
+2. Update `docs/SOT.md` if the merge changed current product or technical
+   reality — a new capability, a changed technical assumption, a resolved
+   limitation, or a change to what's active. Skip this for a meaningless
+   internal refactor that doesn't change anything worth knowing about
+   current state.
+3. Update `docs/CHANGELOG.md` and the originating spec only per their
+   existing policies — the changelog when the repository's changelog
+   policy says to, the spec only when the settled durable specification
+   itself changed (not for every merge that touches its feature).
+
+Source code remains the ultimate executable truth. `docs/SOT.md` is a
+concise human/agent-readable summary of important current reality, not a
+substitute for inspecting the code.
+
+**Fresh-context principle:** a new agent session should be able to recover
+enough context from repository artifacts — `CLAUDE.md`, `docs/SOT.md`,
+specs, tickets, the changelog — without depending on the previous chat.
+Don't preserve long conversational reasoning just because it occurred;
+promote only settled, useful knowledge into the appropriate durable file.
+Rejected ideas and exploratory discussion generally shouldn't become
+permanent project memory.
+
+## Document ownership
+
+| Artifact | Owns |
+| --- | --- |
+| `CLAUDE.md` | Architecture, invariants, project-specific engineering knowledge |
+| `AGENTS.md` | Codex entry rules and implementation behavior |
+| `docs/SOT.md` | Concise current project/product reality |
+| `docs/WORKFLOW.md` | Engineering lifecycle and agent handoffs |
+| `docs/specs/` | Durable feature/product behavior |
+| `docs/tickets/` | Small execution contracts |
+| `docs/CHANGELOG.md` | Historical record of meaningful changes |
+| Source code/tests | Executable truth |
+
+If two documents seem to own the same information, fix the ownership rather
+than copying the information into both.
 
 ## Known limitations
 

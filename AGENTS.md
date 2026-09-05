@@ -19,13 +19,17 @@ file points back to this one rather than duplicating it — see
    the Supabase schema, and every standing implementation lesson this
    project has learned the hard way. Read this before touching `src/`; it is
    not restated here to avoid the two files drifting apart.
-3. `docs/WORKFLOW.md` — how work moves end to end (clarify → spec → tickets
+3. `docs/SOT.md` — a compact summary of what's actually true about the
+   product and its technical state right now. Read this for fast context;
+   it points back at `CLAUDE.md`/specs/tickets for detail rather than
+   restating them, and the code is authoritative if the two ever disagree.
+4. `docs/WORKFLOW.md` — how work moves end to end (clarify → spec → tickets
    → implement → verify → independent review → review fixes → narrow
    re-review → maintainer merge), plus the exact build/test commands and the
    proportional verification matrix for each change type.
-4. The assigned ticket under `docs/tickets/active/`.
-5. The ticket's originating spec under `docs/specs/`.
-6. Relevant source and tests for the ticket. Skip `docs/CHANGELOG.md` unless
+5. The assigned ticket under `docs/tickets/active/`.
+6. The ticket's originating spec under `docs/specs/`.
+7. Relevant source and tests for the ticket. Skip `docs/CHANGELOG.md` unless
    historical context is genuinely needed.
 
 ## Codex's responsibilities
