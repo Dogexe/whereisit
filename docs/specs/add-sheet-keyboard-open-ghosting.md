@@ -1,7 +1,10 @@
 # Spec: Add sheet's Type-tabs content ghosts above the header when the keyboard opens
 
-Status: **attempt 1 shipped and disproven on-device, not yet fixed** (see
-Investigation — `contain: paint` is ruled out). Reported directly with
+Status: **fixed on-device by attempt 2** — moving each sheet's header out
+of the scrollport (`.sheet-body`) eliminated the ghosting, confirmed by the
+maintainer on the affected phone. Attempt 1 (`contain: paint`) was shipped
+and disproven first; see Investigation, and do not retry it. Reported
+directly with
 a screenshot ("visible text... above drag handle"), then confirmed live via
 a real-device screen recording (see Investigation below) before writing
 this spec, per this repo's "difficult/intermittent bug" workflow.

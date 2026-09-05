@@ -16,7 +16,7 @@ async function openMobileApp(page) {
   await page.goto("/");
 }
 
-async function expectInnerScrollAndDragDismissal(page, backdropSelector) {
+async function expectInnerScrollAndDragDismissal(page, backdropSelector, { expectInitiallyScrollable = true } = {}) {
   const backdrop = page.locator(backdropSelector);
   const sheet = backdrop.locator(".filter-sheet");
   const header = sheet.locator(":scope > .filter-sheet-header");
@@ -30,6 +30,54 @@ async function expectInnerScrollAndDragDismissal(page, backdropSelector) {
   await expect(header).toHaveCSS("position", "relative");
   await expect(body).toHaveCSS("overflow-y", "auto");
   await expect(body).toHaveCSS("min-height", "0px");
+  await sheet.evaluate((element) => {
+    element.getAnimations().forEach((animation) => animation.finish());
+  });
+  const initialLayout = await body.evaluate((element) => {
+    const sheet = element.parentElement;
+    const header = sheet.querySelector(":scope > .filter-sheet-header");
+    const visibleChildren = [...element.children].filter((child) => child.getClientRects().length > 0);
+    const first = visibleChildren[0];
+    const last = visibleChildren.at(-1);
+    const sheetRect = sheet.getBoundingClientRect();
+    const headerRect = header.getBoundingClientRect();
+    const bodyRect = element.getBoundingClientRect();
+    const firstRect = first.getBoundingClientRect();
+    const lastRect = last.getBoundingClientRect();
+    const sheetStyle = getComputedStyle(sheet);
+    const bodyStyle = getComputedStyle(element);
+    return {
+      bodyPaddingTop: bodyStyle.paddingTop,
+      bodyPaddingRight: bodyStyle.paddingRight,
+      bodyPaddingBottom: bodyStyle.paddingBottom,
+      bodyPaddingLeft: bodyStyle.paddingLeft,
+      bodyTopFromHeaderBottom: bodyRect.top - headerRect.bottom,
+      bodyTopFromSheetTop: bodyRect.top - sheetRect.top,
+      bodyBottomFromSheetBottom: bodyRect.bottom - sheetRect.bottom,
+      firstTopFromHeaderBottom: firstRect.top - headerRect.bottom,
+      firstLeftFromSheetLeft: firstRect.left - sheetRect.left,
+      headerLeftFromSheetLeft: headerRect.left - sheetRect.left,
+      headerRightFromSheetRight: sheetRect.right - headerRect.right,
+      lastBottomFromSheetBottom: sheetRect.bottom - lastRect.bottom,
+      sheetPaddingBottom: sheetStyle.paddingBottom,
+      initiallyScrollable: element.scrollHeight > element.clientHeight
+    };
+  });
+  expect(initialLayout.bodyPaddingTop).toBe("16px");
+  expect(initialLayout.bodyPaddingRight).toBe("20px");
+  expect(initialLayout.bodyPaddingLeft).toBe("20px");
+  expect(initialLayout.bodyPaddingBottom).toBe(initialLayout.sheetPaddingBottom);
+  expect(initialLayout.bodyTopFromHeaderBottom).toBeCloseTo(0, 1);
+  expect(initialLayout.bodyTopFromSheetTop).toBeGreaterThanOrEqual(20);
+  expect(initialLayout.bodyBottomFromSheetBottom).toBeCloseTo(0, 1);
+  expect(initialLayout.firstTopFromHeaderBottom).toBeCloseTo(16, 1);
+  expect(initialLayout.firstLeftFromSheetLeft).toBeCloseTo(20, 1);
+  expect(initialLayout.headerLeftFromSheetLeft).toBeCloseTo(20, 1);
+  expect(initialLayout.headerRightFromSheetRight).toBeCloseTo(20, 1);
+  if (!expectInitiallyScrollable) {
+    expect(initialLayout.initiallyScrollable).toBe(false);
+    expect(initialLayout.lastBottomFromSheetBottom).toBeCloseTo(parseFloat(initialLayout.sheetPaddingBottom), 1);
+  }
   expect(await sheet.evaluate((element) => ({
     containsFocus: element.contains(document.activeElement),
     bodyOverflow: document.body.style.overflow,
@@ -43,9 +91,6 @@ async function expectInnerScrollAndDragDismissal(page, backdropSelector) {
   await expect(backdrop).toHaveCSS("top", "24px");
   await expect(sheet).toHaveCSS("max-height", "160px");
   expect(await body.evaluate((element) => element.style.maxHeight)).toBe("");
-  await sheet.evaluate((element) => {
-    element.getAnimations().forEach((animation) => animation.finish());
-  });
 
   // Force a real overflow on even the short Import/Export bodies. Scrolling
   // the body must leave its sibling header stationary.
@@ -61,6 +106,20 @@ async function expectInnerScrollAndDragDismissal(page, backdropSelector) {
   expect(scrollMetrics.scrollHeight).toBeGreaterThan(scrollMetrics.clientHeight);
   expect(scrollMetrics.scrollTop).toBeGreaterThan(0);
   expect(await header.evaluate((element) => element.getBoundingClientRect().top)).toBeCloseTo(headerTop, 1);
+
+  const endClearance = await body.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+    const last = [...element.children].filter((child) => child.getClientRects().length > 0).at(-1);
+    const bodyRect = element.getBoundingClientRect();
+    const lastRect = last.getBoundingClientRect();
+    return {
+      actual: bodyRect.bottom - lastRect.bottom,
+      expected: parseFloat(getComputedStyle(element).paddingBottom),
+      remainingScroll: element.scrollHeight - element.clientHeight - element.scrollTop
+    };
+  });
+  expect(endClearance.remainingScroll).toBeLessThanOrEqual(1);
+  expect(endClearance.actual).toBeGreaterThanOrEqual(endClearance.expected - 1);
 
   // Exercise wireSheetDrag() through the grabber on the outer sheet while
   // the independent body scrollport is scrolled.
@@ -92,6 +151,7 @@ test("Add sheet separates viewport sizing, body scrolling, focus trapping, and d
     const style = getComputedStyle(element);
     return {
       borderTopLeftRadius: style.borderTopLeftRadius,
+      borderTopRightRadius: style.borderTopRightRadius,
       gap: style.gap,
       paddingTop: style.paddingTop,
       paddingRight: style.paddingRight,
@@ -99,11 +159,49 @@ test("Add sheet separates viewport sizing, body scrolling, focus trapping, and d
     };
   })).toEqual({
     borderTopLeftRadius: "20px",
+    borderTopRightRadius: "20px",
     gap: "16px",
     paddingTop: "8px",
     paddingRight: "20px",
     paddingBottom: "20px"
   });
+
+  const noteInput = page.locator("#txNote");
+  await noteInput.focus();
+  const focusRingGeometry = await noteInput.locator("xpath=parent::*").evaluate((inputWrap) => {
+    const scrollport = inputWrap.closest(".sheet-body");
+    const wrapStyle = getComputedStyle(inputWrap);
+    const bodyStyle = getComputedStyle(scrollport);
+    const wrapRect = inputWrap.getBoundingClientRect();
+    const bodyRect = scrollport.getBoundingClientRect();
+    const outlineBleed = parseFloat(wrapStyle.outlineWidth) + parseFloat(wrapStyle.outlineOffset);
+    return {
+      paddingLeft: bodyStyle.paddingLeft,
+      paddingRight: bodyStyle.paddingRight,
+      outlineWidth: wrapStyle.outlineWidth,
+      outlineOffset: wrapStyle.outlineOffset,
+      outline: {
+        top: wrapRect.top - outlineBleed,
+        right: wrapRect.right + outlineBleed,
+        bottom: wrapRect.bottom + outlineBleed,
+        left: wrapRect.left - outlineBleed
+      },
+      clip: {
+        top: bodyRect.top + parseFloat(bodyStyle.borderTopWidth),
+        right: bodyRect.right - parseFloat(bodyStyle.borderRightWidth),
+        bottom: bodyRect.bottom - parseFloat(bodyStyle.borderBottomWidth),
+        left: bodyRect.left + parseFloat(bodyStyle.borderLeftWidth)
+      }
+    };
+  });
+  expect(focusRingGeometry.paddingLeft).toBe("20px");
+  expect(focusRingGeometry.paddingRight).toBe("20px");
+  expect(focusRingGeometry.outlineWidth).toBe("2px");
+  expect(focusRingGeometry.outlineOffset).toBe("1px");
+  expect(focusRingGeometry.outline.left).toBeGreaterThanOrEqual(focusRingGeometry.clip.left);
+  expect(focusRingGeometry.outline.right).toBeLessThanOrEqual(focusRingGeometry.clip.right);
+  expect(focusRingGeometry.outline.top).toBeGreaterThanOrEqual(focusRingGeometry.clip.top);
+  expect(focusRingGeometry.outline.bottom).toBeLessThanOrEqual(focusRingGeometry.clip.bottom);
 
   // Literal Tab is required here: setting focus directly would skip the
   // focus trap's keydown path. #txNote is the form's final focusable control,
@@ -144,12 +242,12 @@ test("Export sheet scrolls its body and dismisses from the outer sheet", async (
   await openMobileApp(page);
   await navBtn(page, "settings").click();
   await page.locator("#openExportSheetBtn").click();
-  await expectInnerScrollAndDragDismissal(page, "#exportSheetBackdrop");
+  await expectInnerScrollAndDragDismissal(page, "#exportSheetBackdrop", { expectInitiallyScrollable: false });
 });
 
 test("Import sheet scrolls its body and dismisses from the outer sheet", async ({ page }) => {
   await openMobileApp(page);
   await navBtn(page, "settings").click();
   await page.locator("#openImportSheetBtn").click();
-  await expectInnerScrollAndDragDismissal(page, "#importSheetBackdrop");
+  await expectInnerScrollAndDragDismissal(page, "#importSheetBackdrop", { expectInitiallyScrollable: false });
 });

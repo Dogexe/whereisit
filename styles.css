@@ -543,9 +543,14 @@
      syncSheetToViewport() updates and the transform that wireSheetDrag()
      updates. Its inner body is the only scrollport, so Chrome's native
      scroll-into-view no longer scrolls the same box being resized while the
-     keyboard opens. min-height:0 is required for this flex child to shrink
-     below its content height and actually scroll. */
+     keyboard opens. Matched negative margins and padding extend that
+     scrollport's clip box to the shell edges without moving its content,
+     leaving room for child outlines and hiding top-edge clipping directly
+     below the header divider. min-height:0 is required for this flex child
+     to shrink below its content height and actually scroll. */
   .sheet-body {
+    margin: -16px -20px calc(-20px - env(safe-area-inset-bottom, 0px));
+    padding: 16px 20px calc(20px + env(safe-area-inset-bottom, 0px));
     flex: 1 1 auto; min-height: 0; overflow-y: auto;
     display: flex; flex-direction: column; gap: 16px;
   }
