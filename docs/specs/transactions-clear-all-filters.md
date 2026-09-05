@@ -1,13 +1,12 @@
 # Spec: Transactions "Clear all filters" action
 
-Status: Implemented in `src/screens/transactions.js`
-(`renderActiveFilterChips()`), not yet re-verified against this revision.
-First independent review (see `docs/tickets/active/WI-003.md`) found that
-this spec's original decision 4 described a user interaction the app cannot
+Status: **built and live-verified** — `src/screens/transactions.js`
+(`renderActiveFilterChips()`); e2e-tested (`e2e/filters.spec.js`). Shipped
+as `docs/tickets/completed/WI-003.md`. First independent review found this
+spec's original decision 4 described a user interaction the app cannot
 actually produce; decision 4 and the verification plan below were revised
-accordingly — see "Filter sheet reachability" under Key decisions. Pending:
-`e2e/filters.spec.js` still needs its synthetic-click coverage for the
-dropped scenario removed, then a narrow re-review.
+accordingly — see "Filter sheet reachability" under Key decisions — before
+the e2e coverage was finalized and the ticket re-reviewed and approved.
 
 ## Context
 
@@ -38,7 +37,7 @@ way to reduce filters is removing one active-filter chip at a time via the
    button's behavior exactly — one shared reset function, no second
    search-preserving variant.
 4. **Filter sheet reachability** (revised after first review — see
-   `docs/tickets/active/WI-003.md`'s Review notes): the chips-row Clear
+   `docs/tickets/completed/WI-003.md`'s Review notes): the chips-row Clear
    button is reachable only while the filter sheet is *closed*, by design,
    and that's fine — there is no requirement to support or test "clear
    clicked while the sheet is open."
