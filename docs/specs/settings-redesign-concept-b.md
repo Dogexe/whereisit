@@ -1,5 +1,16 @@
 # Spec: Settings screen redesign (Concept B — refined single page)
 
+> **Partially superseded by
+> `docs/specs/settings-chatgpt-style-navigation.md`.** That spec
+> reverses this one's "Concept A (grouped navigation / drill-down
+> sub-pages) was previewed earlier and explicitly not chosen" decision
+> — the maintainer chose drill-down sub-pages deliberately, from a
+> reference screenshot — and retires the `<details>` collapsible Manage
+> groups and `state.settingsGroupOpen` described below. Everything else
+> here (the `.toggle-row` / `.list-card` row primitives, the
+> `syncHelp` removal, the two-separate-export-rows decision) still
+> holds. Read this file for history, that one for intent.
+
 Status: **built and verified live in the browser** (`src/screens/settings.js`,
 `src/styles.css`, `src/i18n.js`, `src/state.js`). Concept A (grouped
 navigation / drill-down sub-pages) was previewed earlier and explicitly

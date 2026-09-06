@@ -1,6 +1,6 @@
 # Current State
 
-Last updated: 2026-09-05
+Last updated: 2026-09-06
 
 This file answers one question: **what is actually true about whereisit
 right now?** It is not architecture (`CLAUDE.md`), not history
@@ -51,11 +51,10 @@ cross-device sync, GitHub Pages + GitHub Actions for deploy.
   (`src/screens/tx-row.js`) got an Apple-style visual pass in WI-004: 40px
   circular Edit/Delete matching the category icon avatar, whole-row drag
   surface, full-swipe-to-delete with an Apple-style pop-in/grow animation.
-  Settings' Manage rows (`src/screens/manage-row-swipe.js`) already had a
-  whole-row drag surface but still use the pre-WI-004 look otherwise
-  (smaller circular buttons, no full-swipe-to-delete) — WI-005 (not yet
-  started) carries WI-004's visual language over to them; until then the
-  two surfaces intentionally look different, not a bug.
+  Settings' Manage rows (`src/screens/manage-row-swipe.js`) match this
+  exactly as of WI-005 — same circles, same full-swipe, same
+  translate-the-content mechanism. The two surfaces are now deliberately
+  identical; any visual difference between them is a bug, not a choice.
 
 See `README.md` for the user-facing version of this list, and
 `CLAUDE.md`'s Architecture section for how each of these is actually built.
@@ -98,11 +97,40 @@ flags what a future agent needs to know exists, not how it works.
 
 ## Active work
 
-- WI-005 — Apple-style swipe actions on Settings' Manage rows: not yet
-  started (Ready). Carries WI-004's visual language (below) over to
-  `src/screens/manage-row-swipe.js`.
+- WI-008 / WI-009 / WI-010 — Settings redesign to a ChatGPT-style
+  screen: sub-page navigation with real history entries (WI-008), then
+  the centered-profile / grouped-card / flat-icon / red-Log-out visual
+  language (WI-009), then expand-in-place Appearance / Accent / Language
+  rows (WI-010). All three Ready, none started, strictly ordered. Spec:
+  `docs/specs/settings-chatgpt-style-navigation.md`. Two things a fresh
+  session should know up front: this **reverses** the "drill-down
+  sub-pages explicitly not chosen" decision recorded in
+  `docs/specs/settings-redesign-concept-b.md` (reversed deliberately by
+  the maintainer, with a reference screenshot), and the WI-005 ordering
+  dependency is already satisfied — it shipped first, as intended, so
+  WI-008 is clear to start.
 
 ## Recently completed
+
+- WI-005 — Apple-style swipe actions on Settings' Manage rows:
+  **shipped.** Budgets/Bills/Goals/Categories/Accounts rows now use the
+  same language as transaction rows — 40px circular actions, whole-row
+  drag, full-swipe-to-delete. **The two surfaces no longer differ**, which
+  retires the "intentionally look different, not a bug" note that used to
+  sit in Implemented capabilities above. Both now share one mechanism:
+  an absolutely positioned actions layer beneath an opaque content layer
+  that translates over it, with leftward drag linear (only over-closing is
+  damped). **Standing lesson worth carrying forward:** this ticket was
+  written before WI-004 shipped and encoded an early draft of it, so the
+  first implementation run built a design that never existed and had to be
+  thrown away — when a ticket's job is to carry over another ticket's
+  work, re-derive its concrete values from that ticket's *shipped code*
+  before dispatching. A second lesson from its review: for motion work,
+  assert the target end-state value, not merely that the property moved —
+  a damping bug left the Delete pill reaching 154px of a 298px target
+  while every test passed, because the commit path used the undamped
+  offset and only the visual was starved. See `docs/CHANGELOG.md`'s WI-005
+  entry.
 
 - WI-007 — Add sheet content ghosting above the header when the keyboard
   opens: **fixed and device-confirmed.** Every sheet's header now sits
