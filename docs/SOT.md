@@ -97,16 +97,16 @@ flags what a future agent needs to know exists, not how it works.
 
 ## Active work
 
-- WI-011 / WI-010 — the remaining Settings redesign tickets. **WI-008
-  (sub-page navigation with real history entries) and WI-009 (centered
+- WI-011 — the last remaining Settings redesign ticket. **WI-008
+  (sub-page navigation with real history entries), WI-009 (centered
   profile, grouped cards in a deliberate hierarchy, flat chrome icons,
-  Privacy policy row, red Log out row) have shipped** — see
-  `docs/CHANGELOG.md`. Still open, in this order: WI-011 (sub-page
-  chrome — hide the bottom tab bar while a sub-page is open and move the
-  section's Add button into a bottom-right FAB), then WI-010
-  (expand-in-place Appearance / Accent color / Language rows). Spec:
+  Privacy policy row, red Log out row), and WI-010 (expand-in-place
+  Appearance / Accent color / Language rows) have all shipped** — see
+  `docs/CHANGELOG.md`. Still open: WI-011 (sub-page chrome — hide the
+  bottom tab bar while a sub-page is open and move the section's Add
+  button into a bottom-right FAB). Spec:
   `docs/specs/settings-chatgpt-style-navigation.md`, whose decisions 9
-  and 10 cover WI-011. Worth knowing up front: this spec **reverses** the
+  and 10 cover it. Worth knowing up front: this spec **reverses** the
   "drill-down sub-pages explicitly not chosen" decision recorded in
   `docs/specs/settings-redesign-concept-b.md`, reversed deliberately by
   the maintainer with a reference screenshot.
@@ -125,16 +125,40 @@ flags what a future agent needs to know exists, not how it works.
   makes each violation a defect by this repo's own review classification
   rather than a matter of taste.
 
-- WI-012 — make `npm run test:e2e` fail honestly when its browser cannot
-  be launched. Raised because an implementing agent reported the e2e
-  suite as failed three times during WI-008/WI-009 when it in fact
-  passed 27/27 from the same tree. The cause is the agent sandbox, not
-  this repository, so the ticket is scoped to making "no tests ran"
-  unmistakable rather than to fixing the sandbox. **Until it lands, treat
-  an agent's self-reported e2e result as unverified and re-run the suite
-  independently.**
-
 ## Recently completed
+
+- WI-012 — make `npm run test:e2e` fail honestly when its browser cannot
+  be launched: **shipped.** `scripts/check-playwright-browser.mjs` now
+  launches Chromium through Playwright's own resolution before the suite
+  starts, exiting non-zero with "no tests were run," the expected
+  browser path, and the install command instead of letting a missing
+  browser masquerade as failing tests. `AGENTS.md`/`docs/TESTING.md`
+  record the underlying sandbox limitation so a future agent reports it
+  as **not run**, not failed — this was raised because an implementing
+  agent reported the e2e suite as failed three times during WI-008/WI-009
+  when it in fact passed 27/27 from the same tree. **Standing lesson
+  worth carrying forward:** the review caught the script importing
+  `chromium` from `"playwright"`, an undeclared package that only
+  resolved because npm hoists it as `@playwright/test`'s own transitive
+  dependency — a phantom-dependency risk. Fixed to import from
+  `@playwright/test` instead, the package this repo actually declares.
+
+- WI-010 — expand-in-place Appearance / Accent color / Language rows:
+  **shipped.** The Display group's three rows now show a collapsed value
+  line and a rotating chevron (reusing `chevron-right`, rotated via CSS,
+  rather than adding a new sprite symbol), expanding in place to reveal
+  the existing `.tabs`/`.tab-opt` controls — matching
+  `docs/specs/settings-chatgpt-style-navigation.md`'s mockup order
+  (Appearance, Accent color, Language, Hide amounts). Appearance is
+  Light/Dark radio options over the existing `state.dark` boolean, no new
+  persisted field. **Standing lesson worth carrying forward:** review
+  caught two token/pattern violations a build+test pass alone would not
+  — an inverted `:has()` selector that silently dropped the divider
+  between Language and Hide amounts (the wrong row lost it), and an
+  accent-dot color hardcoded as hex duplicating `theme.js`'s
+  `--color-accent` token instead of just reading the token. Both were
+  confirmed by checking real computed styles in a live browser, not by
+  reading the CSS. See `docs/CHANGELOG.md`'s WI-010 entry.
 
 - WI-005 — Apple-style swipe actions on Settings' Manage rows:
   **shipped.** Budgets/Bills/Goals/Categories/Accounts rows now use the

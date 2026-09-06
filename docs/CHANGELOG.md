@@ -1121,3 +1121,81 @@ Verification for a documentation-only change: `npm test` (173/173) and
 `npm run build` both green, and an empty `git diff` across `src/`,
 `styles.css`, `index.html`, `e2e/`, `tests/`, `docs/SOT.md`, and this file's
 existing entries. `npm run test:e2e` was not run — no screen changed.
+
+## WI-010: expand-in-place Appearance / Accent color / Language rows
+
+The third ticket of `docs/specs/settings-chatgpt-style-navigation.md`. The
+Display group's Appearance, Accent color, and Language rows turned into
+disclosure rows: a collapsed row shows the current value as a subtitle plus
+a `chevron-right` icon rotated 90°/-90° via CSS (down when collapsed, up
+when expanded) rather than adding a new `chevron-down` sprite symbol, and
+tapping it reveals the existing `.tabs`/`.tab-opt` radio control in place.
+Row order now matches the spec's own mockup exactly — Appearance, Accent
+color, Language, Hide amounts — which is a visible reorder from the
+previous Language-first layout. Appearance is Light/Dark radio options
+layered over the existing `state.dark` boolean; no new persisted field, and
+expansion state is transient DOM state that resets on re-render by design
+(not a revival of the deleted `state.settingsGroupOpen`).
+
+**Two defects the implementing pass's own build+test run did not catch,
+both found by checking real computed styles in a live browser rather than
+reading the CSS.** First, `.settings-disclosure:has(+ .toggle-row) {
+border-bottom: none; }` strips a divider from whichever disclosure row
+sits immediately before a `.toggle-row` sibling — with the new row order
+that's the **Language** row, not the actual last row (Hide amounts, which
+the pre-existing `.toggle-row:last-child` rule already handles correctly).
+The divider between Language and Hide amounts silently vanished. Second,
+the accent-color dot hardcoded `#cd4805`/`#6247ea` per option, duplicating
+`theme.js`'s `ACCENT.coral.base`/`purple.base` — the same values already
+live in `--color-accent` at runtime. Since the dot only ever needs to show
+the *currently selected* accent, it was simplified to
+`background: var(--color-accent)` with no per-name classes at all, which
+both fixes the duplication and removes a future drift risk if the theme's
+base hex is ever retuned. Both fixes verified: `npm test` (173/173),
+`npm run build`, and `npm run test:e2e` (28/28) green, plus the divider's
+computed `border-bottom` re-checked live.
+
+**Lesson worth carrying forward:** a CSS selector that reads as "remove the
+divider before the next `.toggle-row`" is easy to misjudge as "remove the
+divider from the last row" when the two coincide in an earlier row order —
+they stopped coinciding the moment this ticket reordered the rows. Neither
+`npm test` nor `npm run test:e2e` caught it because no test asserted divider
+presence; only reading real computed style in the browser did.
+
+## WI-012: make `npm run test:e2e` fail honestly when its browser is unavailable
+
+Raised during WI-008/WI-009 review, where an implementing agent reported
+the e2e suite as failed three times when it had in fact passed 27/27 from
+the same tree — the agent's sandbox couldn't see the installed Playwright
+Chromium, `python`, or write to `docs/tickets/active/`, three unrelated
+capabilities failing together pointing at the sandbox rather than at
+Playwright or this repository. `npm run test:e2e` now runs
+`scripts/check-playwright-browser.mjs` after the build and before
+Playwright starts: it launches Chromium through Playwright's own
+resolution (honoring `PLAYWRIGHT_BROWSERS_PATH`) and, on failure, exits
+non-zero with a message that states plainly that no tests were run, names
+the expected browser path, and gives the exact `npx playwright install
+chromium` command — without ever auto-installing anything itself.
+`AGENTS.md` gained an "E2E sandbox limitation" subsection, cross-referenced
+from `docs/TESTING.md`, recording that an agent which cannot launch the
+browser must report e2e as **not run**, not failed.
+
+**A defect the implementing pass's own verification did not surface.** The
+preflight script imported `chromium` from `"playwright"` — a package this
+repository never declares as a dependency (only `@playwright/test` is, in
+`package.json`). It resolved only because npm hoists `playwright` into
+`node_modules` as `@playwright/test`'s own transitive dependency; had that
+dependency tree ever shifted, the script would have failed with a
+confusing `MODULE_NOT_FOUND` instead of the clean message it exists to
+produce — and it sidestepped the ticket's own "don't add a dependency"
+constraint by leaning on an undeclared one instead. Fixed to import from
+`"@playwright/test"` instead, confirmed to re-export the identical
+`chromium` object with both `.launch()` and `.executablePath()` working —
+a one-line change, no dependency added. Reverified with a real browser:
+`npm test` (173/173), `npm run build`, and `npm run test:e2e` (28/28) all
+green with the corrected import.
+
+**Lesson worth carrying forward:** an import that resolves today isn't
+proof it's declared — a flat `node_modules` will happily hoist a
+transitive dependency into something that imports cleanly, right up until
+the dependency tree that put it there changes.
