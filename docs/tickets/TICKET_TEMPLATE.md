@@ -45,6 +45,16 @@ See docs/UX.md for the rules these lines point at.
 
 ## Verification
 
+<!--
+This checklist is the full handoff gate — run it once before first review.
+During a review-fix round, start with focused verification for each
+confirmed defect and rerun this full list only when docs/WORKFLOW.md's
+full-gate escalation criteria are met (including cumulative risk across
+multiple defects in one round). Docs-only and test-only fixes follow the
+carve-outs defined there. The maintainer can always request the full gate
+regardless of these rules.
+-->
+
 - [ ] Relevant automated tests are added or updated.
 - [ ] `npm test`
 - [ ] `npm run test:e2e` if a screen changes.

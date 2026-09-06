@@ -52,12 +52,17 @@ not review. Concretely, on every ticket:
   typography, radius, icon, or interaction primitive unless the ticket
   explicitly requires it, and don't copy a pattern listed there as known
   UI debt.
-- Run the verification the ticket requires — `docs/WORKFLOW.md`'s
-  proportional matrix is the source of truth (`npm test` for pure logic,
-  add `npm run build` for state/storage/sync, add `npm run test:e2e` for
-  anything touching a screen).
-- Inspect the complete diff before finishing — a clean test run is not proof
-  nothing unrelated changed.
+- While implementing, run the narrowest test that exercises the change you
+  just made; don't rerun the full unit/e2e/build suite after every small
+  edit, don't reread a large unchanged file just to reorient, and don't
+  reprint the full diff repeatedly while iterating.
+- Before first handoff to review, run the ticket's complete required
+  verification gate — `docs/WORKFLOW.md`'s proportional matrix is the
+  source of truth (`npm test` for pure logic, add `npm run build` for
+  state/storage/sync, add `npm run test:e2e` for anything touching a
+  screen). This is the one full run the reviewer relies on.
+- Inspect the complete diff once before finishing — a clean test run is not
+  proof nothing unrelated changed.
 - Report what verification was actually performed and any unresolved risks;
   don't claim a check happened that didn't.
 
@@ -66,6 +71,16 @@ yourself before fixing it — a Claude finding is not automatically correct.
 Fix confirmed defects, and explain in the ticket's Review notes why any
 finding was rejected. Don't adopt optional suggestions unless the ticket
 requires them, and don't fold in unrelated cleanup.
+
+Start with focused verification for each confirmed defect; rerun the full
+gate only per `docs/WORKFLOW.md`'s escalation criteria (material app-code
+change, shared state/persistence/sync, a shared UI primitive, broad
+regression risk, a stale gate, or a multi-defect round that's cumulatively
+no longer narrow) — that section is the source of truth for exactly when to
+escalate. Documentation-only fixes never need the full suite rerun; a
+test-only fix may stay focused unless it changes the coverage or behavior
+the ticket's acceptance criteria rely on. The maintainer can always request
+the full gate regardless of these rules.
 
 ## Running and testing locally
 

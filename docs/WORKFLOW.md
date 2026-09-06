@@ -64,6 +64,17 @@ restate them in the prompt.
   | Screen / UI | `npm test` + `npm run test:e2e` + `npm run build` |
   | Anything this project's own rules call out | add the real-browser or deployed check they require |
 
+Full verification is a gate, not an inner loop. Run the complete
+proportional matrix once, before the first handoff to review — that run is
+what the reviewer relies on. While implementing, and while fixing review
+findings, run the narrowest test/check that exercises the change; don't
+rerun the full matrix after every small edit.
+
+"Docs-only" means no application code, tests, build config, workflow
+config, or other runtime-affecting file changed. A change meeting that bar
+needs no test run at all unless it alters a documented command or behavior
+other tooling depends on.
+
 ## Choose the smallest useful path
 
 ### Tiny, obvious fix
@@ -163,8 +174,26 @@ keeps its implementation context instead of re-deriving it:
 ```text
 Verify every finding against the implementation. Fix confirmed defects only;
 do not adopt optional suggestions unless the ticket requires them. Add regression
-coverage where appropriate, then rerun the ticket's verification.
+coverage where appropriate.
 ```
+
+Start with the narrowest check that exercises each confirmed defect and fix
+it. A test-only change may stay on focused verification through the round,
+but rerun the relevant broader suite before completion if it changes the
+coverage or behavior the ticket's acceptance criteria rely on.
+
+Rerun the ticket's full verification gate before completion when the fix
+(or the round as a whole) materially changed application code, touched
+shared state/persistence/sync, touched a shared UI primitive, carries broad
+regression risk, or left the original gate run no longer representative of
+the diff. Judge a review-fix round with multiple confirmed defects
+cumulatively, not fix-by-fix: several individually-narrow fixes across
+different files or behaviors can together make the original gate stale even
+if no single fix would have on its own. When in doubt — or whenever the
+maintainer asks for it, regardless of these rules — run the full gate.
+
+A documentation-only fix never needs the full suite rerun — say so
+explicitly in the ticket's Review notes.
 
 Claude may then perform a narrow final re-review of the previously confirmed
 defects and the ticket's acceptance criteria.
