@@ -97,18 +97,28 @@ flags what a future agent needs to know exists, not how it works.
 
 ## Active work
 
-- WI-008 / WI-009 / WI-010 — Settings redesign to a ChatGPT-style
-  screen: sub-page navigation with real history entries (WI-008), then
-  the centered-profile / grouped-card / flat-icon / red-Log-out visual
-  language (WI-009), then expand-in-place Appearance / Accent / Language
-  rows (WI-010). All three Ready, none started, strictly ordered. Spec:
-  `docs/specs/settings-chatgpt-style-navigation.md`. Two things a fresh
-  session should know up front: this **reverses** the "drill-down
-  sub-pages explicitly not chosen" decision recorded in
-  `docs/specs/settings-redesign-concept-b.md` (reversed deliberately by
-  the maintainer, with a reference screenshot), and the WI-005 ordering
-  dependency is already satisfied — it shipped first, as intended, so
-  WI-008 is clear to start.
+- WI-011 / WI-010 — the remaining Settings redesign tickets. **WI-008
+  (sub-page navigation with real history entries) and WI-009 (centered
+  profile, grouped cards in a deliberate hierarchy, flat chrome icons,
+  Privacy policy row, red Log out row) have shipped** — see
+  `docs/CHANGELOG.md`. Still open, in this order: WI-011 (sub-page
+  chrome — hide the bottom tab bar while a sub-page is open and move the
+  section's Add button into a bottom-right FAB), then WI-010
+  (expand-in-place Appearance / Accent color / Language rows). Spec:
+  `docs/specs/settings-chatgpt-style-navigation.md`, whose decisions 9
+  and 10 cover WI-011. Worth knowing up front: this spec **reverses** the
+  "drill-down sub-pages explicitly not chosen" decision recorded in
+  `docs/specs/settings-redesign-concept-b.md`, reversed deliberately by
+  the maintainer with a reference screenshot.
+
+- WI-012 — make `npm run test:e2e` fail honestly when its browser cannot
+  be launched. Raised because an implementing agent reported the e2e
+  suite as failed three times during WI-008/WI-009 when it in fact
+  passed 27/27 from the same tree. The cause is the agent sandbox, not
+  this repository, so the ticket is scoped to making "no tests ran"
+  unmistakable rather than to fixing the sandbox. **Until it lands, treat
+  an agent's self-reported e2e result as unverified and re-run the suite
+  independently.**
 
 ## Recently completed
 

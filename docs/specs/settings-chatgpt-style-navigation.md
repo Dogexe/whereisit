@@ -5,8 +5,9 @@ screenshot of ChatGPT's mobile Settings screen supplied by the
 maintainer, via the `/spec` interview in `docs/WORKFLOW.md`.
 
 Tickets: `WI-008` (navigation model), `WI-009` (visual language),
-`WI-010` (expand-in-place display rows). They are strictly ordered —
-see **Sequencing** below.
+`WI-011` (sub-page chrome: hidden tab bar + Add FAB), `WI-010`
+(expand-in-place display rows). They are strictly ordered — see
+**Sequencing** below.
 
 ## Goal
 
@@ -85,6 +86,32 @@ are not defaults to be re-litigated at implementation time.
    `wireInlineCrud`. Bottom sheets are already this app's mobile form
    pattern (the Add screen uses one).
 
+9. **A Settings sub-page is a full-screen context: the bottom tab bar
+   is hidden while one is open.** Requested by the maintainer after
+   `WI-008` shipped. A sub-page is a pushed history entry with its own
+   back arrow, so leaving the tab bar visible offers two competing ways
+   out of the same screen and lets a main-tab switch fire the
+   `history.back()`/`popstate` dance from a screen that already has a
+   back arrow. Hiding it makes the back arrow the single exit, matching
+   the reference app. Consequences that are part of this decision, not
+   separate features: `.screen`'s bottom padding, `#toast`'s bottom
+   offset and any other element anchored "above the tab bar" must
+   collapse to the bare safe-area inset while a sub-page is open, or
+   the Undo toast that the existing Manage-row delete raises will sit
+   in dead space. Desktop is unaffected — `.tabbar-wrap` is already
+   `display: none` at 1024px+ and there are no sub-pages there.
+
+10. **The sub-page Add button becomes a floating action button in the
+    bottom-right, not a header button.** Requested by the maintainer,
+    and it supersedes the `+`-in-the-header shown in this spec's own
+    sub-page diagram below. It is a *move*, not an addition: the
+    section's existing `addXBtn` is rendered once, in the FAB, and no
+    `+` remains in the sub-page header. This does not collide with the
+    tab bar's center `+` (add transaction) because by decision 9 the
+    tab bar is not on screen while a sub-page is open. The FAB must
+    clear the last row rather than cover it, and must not sit over a
+    `WI-005` swipe row's revealed action buttons.
+
 ## Target structure
 
 ### Root list (below 1024px)
@@ -137,12 +164,19 @@ are not defaults to be re-litigated at implementation time.
 
 ```
   ┌──────────────────────────┐
-  │ ←   Budgets          +  │   back arrow, title, section's own Add btn
+  │ ←   Budgets              │   back arrow + title only (no + here)
   ├──────────────────────────┤
   │ (the section's existing rows, completely unchanged)
+  │
+  │                     ( + )│   FAB, bottom-right, the section's Add btn
+  └──────────────────────────┘
+     (no bottom tab bar while a sub-page is open)
 ```
 
-The back arrow and the sub-page header exist only below 1024px.
+The back arrow and the sub-page header exist only below 1024px. Per
+decisions 9 and 10 the tab bar is hidden for the whole time a sub-page
+is open, and the section's Add button renders as a bottom-right FAB
+rather than in the header.
 
 ### Desktop (1024px and up)
 
@@ -239,6 +273,11 @@ History handling, all of it inside `settings.js`:
 - **Main tabs remain history-less**, so Back from the Settings *root*
   still exits the app rather than returning to Home. Fixing that is a
   router-wide change and is deliberately not in this spec.
+- **With the tab bar hidden on a sub-page (decision 9), the back arrow
+  and the hardware Back button are the only ways out.** This is
+  intended, and is why the back arrow is never conditional. It does
+  mean a sub-page is one extra tap from any other main tab than it was
+  before.
 
 ## Sequencing
 
@@ -252,7 +291,12 @@ History handling, all of it inside `settings.js`:
    structural only and reviewable as such.
 3. **`WI-009`** — visual language, applied to the structure `WI-008`
    produced.
-4. **`WI-010`** — expand-in-place Appearance / Accent color / Language
+4. **`WI-011`** — sub-page chrome: hide the tab bar while a sub-page is
+   open and move the section's Add button into a bottom-right FAB
+   (decisions 9 and 10). After `WI-009` rather than before, so the FAB
+   and the sub-page header are positioned against the final card
+   metrics instead of being re-tuned twice.
+5. **`WI-010`** — expand-in-place Appearance / Accent color / Language
    rows.
 
 Each ticket must leave `npm test`, `npm run test:e2e` and
