@@ -12,7 +12,7 @@ test("mobile bottom-nav switches screens and updates active state", async ({ pag
   const checks = [
     ["transactions", "#openTxFiltersBtn"],
     ["insights", "#insightsModeTabs"],
-    ["settings", "#darkSwitch"]
+    ["settings", '.settings-disclosure-trigger[aria-controls="appearanceOptions"]']
   ];
   for (const [tab, marker] of checks) {
     await tabbar.locator(`[data-tab="${tab}"]`).click();
@@ -76,7 +76,7 @@ test("desktop sidebar switches screens and updates active state", async ({ page 
     ["transactions", "#openTxFiltersBtn"],
     ["add", "#addForm"],
     ["insights", "#insightsModeTabs"],
-    ["settings", "#darkSwitch"],
+    ["settings", '.settings-disclosure-trigger[aria-controls="appearanceOptions"]'],
     ["home", ".hero-card"]
   ];
   for (const [tab, marker] of checks) {

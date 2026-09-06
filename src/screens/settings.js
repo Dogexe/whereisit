@@ -208,26 +208,44 @@ export function renderSettings() {
       ${desktop || !mobileSubPage ? `<div data-settings-panel="display">
         <div class="settings-section-label">${escapeHtml(l.displaySection)}</div>
         <div class="list-card">
-          <div class="toggle-row">
-            ${icon("languages")}
-            <span class="label">${escapeHtml(l.languageSection)}</span>
-            <div class="tabs" role="radiogroup" style="flex-shrink:0">
-              <label class="tab-opt"><input type="radio" name="lang-switch" value="th" ${state.lang === "th" ? "checked" : ""}>ไทย</label>
-              <label class="tab-opt"><input type="radio" name="lang-switch" value="en" ${state.lang === "en" ? "checked" : ""}>English</label>
+          <div class="settings-disclosure">
+            <button type="button" class="toggle-row settings-disclosure-trigger" aria-expanded="false" aria-controls="appearanceOptions">
+              ${icon("moon")}
+              <span class="settings-disclosure-copy"><span class="settings-disclosure-label">${escapeHtml(l.appearanceLabel)}</span><span class="settings-disclosure-value">${escapeHtml(state.dark ? l.appearanceDarkOpt : l.appearanceLightOpt)}</span></span>
+              ${icon("chevron-right")}
+            </button>
+            <div class="settings-disclosure-control" id="appearanceOptions" hidden>
+              <div class="tabs" role="radiogroup" aria-label="${escapeHtml(l.appearanceLabel)}">
+                <label class="tab-opt"><input type="radio" name="appearance-switch" value="light" ${state.dark ? "" : "checked"}>${escapeHtml(l.appearanceLightOpt)}</label>
+                <label class="tab-opt"><input type="radio" name="appearance-switch" value="dark" ${state.dark ? "checked" : ""}>${escapeHtml(l.appearanceDarkOpt)}</label>
+              </div>
             </div>
           </div>
-          <div class="toggle-row">
-            ${icon("palette")}
-            <span class="label">${escapeHtml(l.accentColorLabel)}</span>
-            <div class="tabs" role="radiogroup" style="flex-shrink:0">
-              <label class="tab-opt"><input type="radio" name="accent-color-switch" value="coral" ${state.accentColor === "coral" ? "checked" : ""}>${escapeHtml(l.accentColorCoralOpt)}</label>
-              <label class="tab-opt"><input type="radio" name="accent-color-switch" value="purple" ${state.accentColor === "purple" ? "checked" : ""}>${escapeHtml(l.accentColorPurpleOpt)}</label>
+          <div class="settings-disclosure">
+            <button type="button" class="toggle-row settings-disclosure-trigger" aria-expanded="false" aria-controls="accentColorOptions">
+              ${icon("palette")}
+              <span class="settings-disclosure-copy"><span class="settings-disclosure-label">${escapeHtml(l.accentColorLabel)}</span><span class="settings-disclosure-value"><span class="settings-accent-dot"></span>${escapeHtml(state.accentColor === "purple" ? l.accentColorPurpleOpt : l.accentColorCoralOpt)}</span></span>
+              ${icon("chevron-right")}
+            </button>
+            <div class="settings-disclosure-control" id="accentColorOptions" hidden>
+              <div class="tabs" role="radiogroup" aria-label="${escapeHtml(l.accentColorLabel)}">
+                <label class="tab-opt"><input type="radio" name="accent-color-switch" value="coral" ${state.accentColor === "coral" ? "checked" : ""}>${escapeHtml(l.accentColorCoralOpt)}</label>
+                <label class="tab-opt"><input type="radio" name="accent-color-switch" value="purple" ${state.accentColor === "purple" ? "checked" : ""}>${escapeHtml(l.accentColorPurpleOpt)}</label>
+              </div>
             </div>
           </div>
-          <div class="toggle-row">
-            ${icon("moon")}
-            <span class="label">${escapeHtml(l.darkModeBtn)}</span>
-            <button type="button" class="switch ${state.dark ? "on" : ""}" id="darkSwitch"><span class="thumb"></span></button>
+          <div class="settings-disclosure">
+            <button type="button" class="toggle-row settings-disclosure-trigger" aria-expanded="false" aria-controls="languageOptions">
+              ${icon("languages")}
+              <span class="settings-disclosure-copy"><span class="settings-disclosure-label">${escapeHtml(l.languageSection)}</span><span class="settings-disclosure-value">${state.lang === "th" ? "ไทย" : "English"}</span></span>
+              ${icon("chevron-right")}
+            </button>
+            <div class="settings-disclosure-control" id="languageOptions" hidden>
+              <div class="tabs" role="radiogroup" aria-label="${escapeHtml(l.languageSection)}">
+                <label class="tab-opt"><input type="radio" name="lang-switch" value="th" ${state.lang === "th" ? "checked" : ""}>ไทย</label>
+                <label class="tab-opt"><input type="radio" name="lang-switch" value="en" ${state.lang === "en" ? "checked" : ""}>English</label>
+              </div>
+            </div>
           </div>
           <div class="toggle-row">
             ${icon(state.hideAmounts ? "eye-off" : "eye")}
@@ -397,9 +415,16 @@ export function renderSettings() {
   document.querySelectorAll(".settings-back-btn").forEach((btn) => btn.addEventListener("click", closeSettingsSubPage));
 
   if ($("authBtn")) $("authBtn").addEventListener("click", () => { currentUser ? signOutUser() : signInWithGoogle(); });
+  document.querySelectorAll(".settings-disclosure-trigger").forEach((trigger) => trigger.addEventListener("click", () => {
+    const control = $(trigger.getAttribute("aria-controls"));
+    const expanded = trigger.getAttribute("aria-expanded") === "true";
+    trigger.setAttribute("aria-expanded", String(!expanded));
+    trigger.parentElement.classList.toggle("expanded", !expanded);
+    control.hidden = expanded;
+  }));
   document.querySelectorAll('input[name="lang-switch"]').forEach((r) => r.addEventListener("change", (e) => { state.lang = e.target.value; saveSettings(); renderChrome(); renderScreen(); }));
-  document.querySelectorAll('input[name="accent-color-switch"]').forEach((r) => r.addEventListener("change", (e) => { state.accentColor = e.target.value; saveSettings(); applyTheme(); }));
-  if ($("darkSwitch")) $("darkSwitch").addEventListener("click", () => { state.dark = !state.dark; saveSettings(); applyTheme(); renderScreen(); });
+  document.querySelectorAll('input[name="accent-color-switch"]').forEach((r) => r.addEventListener("change", (e) => { state.accentColor = e.target.value; saveSettings(); applyTheme(); renderScreen(); }));
+  document.querySelectorAll('input[name="appearance-switch"]').forEach((r) => r.addEventListener("change", (e) => { state.dark = e.target.value === "dark"; saveSettings(); applyTheme(); renderScreen(); }));
   if ($("hideAmountsSwitch")) $("hideAmountsSwitch").addEventListener("click", () => { state.hideAmounts = !state.hideAmounts; saveSettings(); renderScreen(); });
   // ui-ux-pro-max skill audit (Touch & Interaction, priority 2, "Loading
   // Buttons" -- Severity: High in the skill's own dataset): syncNow()

@@ -51,6 +51,7 @@ test("Type selector has contrast-safe transfer tint and fits at narrow and deskt
 
   // Use English so the long "Transfer" label is the narrow-width case.
   await navBtn(page, "settings").click();
+  await page.locator('.settings-disclosure-trigger[aria-controls="languageOptions"]').click();
   await page.locator('label.tab-opt:has(input[name="lang-switch"][value="en"])').click();
   await navBtn(page, "add").click();
   await expect(page.locator("#addSheetBackdrop")).toBeVisible();
@@ -65,7 +66,8 @@ test("Type selector has contrast-safe transfer tint and fits at narrow and deskt
   await page.keyboard.press("Escape");
   await expect(page.locator("#addSheetBackdrop")).toBeHidden();
   await navBtn(page, "settings").click();
-  await page.locator("#darkSwitch").click();
+  await page.locator('.settings-disclosure-trigger[aria-controls="appearanceOptions"]').click();
+  await page.locator('label.tab-opt:has(input[name="appearance-switch"][value="dark"])').click();
   await navBtn(page, "add").click();
   const dark = await transferTypeMetrics(page);
   expect(contrastRatio(dark.color, dark.background), JSON.stringify(dark)).toBeGreaterThanOrEqual(4.5);

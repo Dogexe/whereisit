@@ -45,6 +45,7 @@ const STRINGS = {
   expenseByCategory: ["รายจ่ายตามหมวดหมู่", "Expenses by category"],
   noExpensesPeriod: ["ยังไม่มีรายจ่ายในช่วงนี้", "No expenses yet in this period"], settingsTitle: ["ตั้งค่า", "Settings"],
   personalAccount: ["บัญชีส่วนตัว", "Personal account"], languageSection: ["ภาษา", "Language"],
+  appearanceLabel: ["ลักษณะที่ปรากฏ", "Appearance"], appearanceLightOpt: ["สว่าง", "Light"], appearanceDarkOpt: ["มืด", "Dark"],
   displaySection: ["การแสดงผล", "Display"],
   hideAmountsLabel: ["ซ่อนยอดเงิน", "Hide financial status"],
   accentColorLabel: ["สีธีม", "Accent color"],
