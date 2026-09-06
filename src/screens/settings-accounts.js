@@ -19,7 +19,7 @@ import { manageRowHtml, inlineForm, rerenderSettings } from "./manage-row.js";
 // actionsOverrideHtml parameter.
 export function accountRowHtml(a) {
   const tone = rowTone("expense");
-  const iconHtml = iconAvatar(a.icon, tone.bg, tone.color, "sm", 'width="15" height="15"');
+  const iconHtml = iconAvatar(a.icon, tone.bg, tone.color);
   const l = L();
   const actions = `
     <button type="button" class="btn btn-icon manage-swipe-action manage-swipe-edit" data-edit-account="${a.id}" aria-label="${escapeHtml(l.editAria)}">${EDIT_ICON}</button>

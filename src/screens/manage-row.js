@@ -75,7 +75,7 @@ export function categoryIconAvatar(categoryId, fallbackCategoryName) {
   const tone = rowTone("expense");
   const cat = categories.find((c) => c.id === categoryId);
   const iconName = cat ? cat.icon : iconFor(fallbackCategoryName);
-  return iconAvatar(iconName, tone.bg, tone.color, "sm", 'width="15" height="15"');
+  return iconAvatar(iconName, tone.bg, tone.color);
 }
 // Wraps a set of field inputs with the standard Save/Cancel action row used
 // by every inline add/edit form (budgets, bills, goals, goal contributions).

@@ -145,19 +145,5 @@ export function wireManageRowSwipe(containerEl) {
       group.classList.remove("dragging");
       if (startOffset > reveal / 2) openRowTo(rowEl); else closeRow(rowEl);
     });
-
-    // Desktop mouse fallback is unreachable in practice (this module is
-    // only ever wired below 1024px, and this app has no touch+mouse mixed
-    // device precedent handled differently elsewhere) but mirrors
-    // tx-row.js's own hover fallback for parity, in case a mouse is used
-    // in a narrow/resized desktop browser window.
-    rowEl.addEventListener("pointerenter", (e) => {
-      if (e.pointerType !== "mouse" || dragging) return;
-      openRowTo(rowEl);
-    });
-    rowEl.addEventListener("pointerleave", (e) => {
-      if (e.pointerType !== "mouse" || dragging) return;
-      closeRow(rowEl);
-    });
   });
 }

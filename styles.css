@@ -180,6 +180,10 @@
      safe-area inset plus a fixed breathing-room gap, so it's always
      exactly enough regardless of device. */
   .screen { flex: 1; max-width: 480px; margin: 0 auto; width: 100%; padding: 20px 20px calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 20px); box-sizing: border-box; }
+  /* Settings sub-pages are a full-screen context: their back arrow is the
+     only exit, so the tab bar and its reserved vertical space disappear. */
+  body.settings-subpage-open .tabbar-wrap { display: none; }
+  body.settings-subpage-open .screen { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); }
   .screen-title { font-size: 22px; margin: 4px 0 var(--space-md); }
   /* Fires only on a genuine tab switch (screens/router.js's setTab, which
      re-adds this class after a forced reflow) -- NOT on every renderScreen()
@@ -923,6 +927,30 @@
   .settings-manage-header .label, .settings-security-subpage-header h2 { flex: 1; min-width: 0; font-size: 15px; font-weight: 500; margin: 0; }
   .settings-manage-header > .icon, .settings-manage-header > .settings-item-count { display: none; }
   .settings-manage-body { padding: 0 4px var(--space-sm); }
+  /* All five Manage sub-pages render their rows inside a .manage-rows-card
+     (a plain .list-card, plus overflow:hidden -- see below) nested INSIDE
+     .settings-manage-body -- not applied to .settings-manage-body itself
+     -- specifically so the FAB-clearance bottom padding two lines down
+     stays outside the visual card, in the page background, instead of
+     showing as blank space inside the rounded card (a real defect a
+     maintainer screenshot caught: the first version of this put .list-card
+     directly on .settings-manage-body, so that padding rendered as a
+     large empty area at the card's own bottom, before its rounded
+     corner). docs/specs/settings-manage-rows-card-styling.md. overflow:hidden
+     clips a full-swipe row's square corners to .manage-rows-card's own
+     radius; scoped to this class rather than the shared .list-card rule
+     so every other card in the app (Home, Insights, etc.) is unaffected. */
+  .manage-rows-card { overflow: hidden; }
+  /* Populated Goals is the one exception: it keeps its pre-existing
+     individually-carded .goal-card look (bare .insight-cards, no
+     .manage-rows-card) rather than the other four sections' unified
+     divided list -- a flattened version was tried and reverted per
+     maintainer feedback that separate cards looked better. Only Goals'
+     *empty* state uses .manage-rows-card, so "no goals yet" isn't left
+     floating bare on the page background. See
+     docs/specs/settings-manage-rows-card-styling.md. */
+  body.settings-subpage-open .settings-manage-body { padding-bottom: calc(var(--space-xl) + var(--space-xl) + var(--space-sm) + var(--space-xs)); }
+  .settings-add-fab { position: fixed; right: var(--space-md); bottom: calc(env(safe-area-inset-bottom, 0px) + var(--space-xl)); aspect-ratio: 1; padding: 0; z-index: 20; }
   .settings-layout [data-settings-panel="security"] { display: none; }
   .settings-layout:not([data-mobile-subpage="root"]) [data-settings-panel="display"],
   .settings-layout:not([data-mobile-subpage="root"]) [data-settings-panel="sync"] { display: none; }
@@ -1153,6 +1181,7 @@
     animation: toast-fade-in var(--duration-normal) var(--ease-standard);
     display: flex; align-items: center; justify-content: center; gap: 14px;
   }
+  body.settings-subpage-open .toast { bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); }
   .toast[hidden] { display: none; }
   @keyframes toast-fade-in { from { opacity: 0; transform: translateX(-50%) translateY(8px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
   .toast-undo-btn {

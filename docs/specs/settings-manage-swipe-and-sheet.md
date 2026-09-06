@@ -160,3 +160,53 @@ Accounts at 3 buttons), at mobile width (<1024px):
 - Any change to the desktop (1024px+) Settings layout, forms, or row appearance — every decision above is scoped to below 1024px only.
 - Any change to Transactions' or Home's own swipe rows (`tx-row.js` itself is untouched — this spec adds a sibling module, not a shared refactor of it).
 - A first-time swipe-discovery "peek" animation for Manage rows (Transactions has one, gated on a one-time `localStorage` flag) — not requested, and Manage rows are a much lower-traffic surface than Transactions where a first-time hint matters more.
+
+## Correction: the desktop mouse-hover fallback was removed
+
+Stage 1 (above) mirrored `tx-row.js`'s `pointerenter`/`pointerleave`
+hover-reveal fallback into `wireManageRowSwipe()` "in case a mouse is
+used in a narrow/resized desktop browser window." Found during
+`docs/tickets/active/WI-015.md`'s live verification: this fallback is
+reachable in exactly that scenario, and worse than a no-op there — a
+click that changes the DOM (e.g. drilling into a sub-page) can leave the
+real cursor sitting over a newly-rendered row it never deliberately
+hovered, and browsers resynthesize a `pointerenter` for whatever now sits
+under a stationary cursor after a layout change. That fires
+`openRowTo()`, permanently swiping the row open with no user gesture,
+which is what a maintainer screenshot surfaced as a "stray blank space in
+the card." Removed entirely from `wireManageRowSwipe()`; swipe-to-reveal
+now only ever responds to an actual drag gesture.
+
+### Follow-up correction: removed from `tx-row.js` too, for parity
+
+The paragraph above originally argued this was safe to remove from only
+`wireManageRowSwipe()` because, unlike `tx-row.js`, this module is wired
+solely below 1024px. That argument overlooked `docs/UX.md`'s Motion
+section: *"Swipe-to-reveal is one pattern with two surfaces (transaction
+rows, Settings manage rows) that are contractually identical: ... Any
+visible difference between the two is a bug."* Removing the fallback
+from only one surface created exactly that prohibited asymmetry — caught
+when the maintainer asked whether `docs/UX.md` had been read for this
+work, prompting a proper read of it mid-review.
+
+Investigating whether `tx-row.js`'s copy is actually load-bearing (its
+own transactions list is real desktop-mouse territory, unlike Settings'
+Manage rows) turned up `styles.css`'s `.tx-list-card` desktop override:
+at 1024px+, `.tx-row-actions` becomes `position: static` and Edit/Delete
+render as an always-visible column — this is the "desktop dense-table"
+decision already documented in this spec's own "Mobile-only, matching
+both existing precedents exactly" section. So `tx-row.js`'s hover
+fallback was *never* reachable on the real desktop Transactions table
+either; like the Settings copy, its only reachable audience was the same
+narrow/resized-mouse edge case, with the same phantom-`pointerenter`
+failure mode. Removed from `tx-row.js` for parity. `e2e/transactions-crud.spec.js`'s
+edit/delete tests still pass unchanged because they run at the suite's
+default desktop viewport, where `.tx-list-card`'s static column already
+makes Edit/Delete clickable with no hover involved — confirming their
+`row.hover()` call was already inert before this change, not something
+this removal broke. The one path with no automated coverage either
+before or after this change is Home's recent-activity list (same
+`.tx-row-wrap` markup, not wrapped in `.tx-list-card`) at desktop width
+with a real mouse and no touch — verified live instead: hovering a
+Home recent-activity row no longer reveals its actions, matching
+Settings' Manage rows.

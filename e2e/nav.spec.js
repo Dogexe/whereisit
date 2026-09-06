@@ -45,6 +45,9 @@ test("mobile Settings drills into a real same-URL history entry and browser Back
   await budgetsLink.click();
   await expect(page.locator('[data-settings-section-content="budgets"]')).toBeVisible();
   await expect(page.locator(".manage-row-wrap").first()).toBeVisible();
+  await expect(page.locator(".tabbar-wrap")).toBeHidden();
+  await expect(page.locator("#addBudgetBtn")).toBeVisible();
+  await expect(page.locator(".settings-manage-header #addBudgetBtn")).toHaveCount(0);
   await expect(rootList).toBeHidden();
   expect(page.url()).toBe(urlBefore);
   expect(await page.evaluate(() => history.length)).toBe(historyLengthBefore + 1);

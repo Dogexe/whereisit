@@ -181,6 +181,21 @@ export function renderSettings() {
   const desktop = isDesktopShell();
   const activeSection = state.settingsSubPage || "display";
   const mobileSubPage = !desktop && SETTINGS_SUB_PAGE_IDS.has(state.settingsSubPage) ? state.settingsSubPage : null;
+  // Rendered once and reused for both the desktop (bare) and mobile
+  // (wrapped in a .list-card, see below) markup, so the row content isn't
+  // computed twice per section.
+  const budgetsRowsHtml = budgets.map(budgetRowHtml).join("") || `<div class="empty-note">${escapeHtml(l.noBudgets)}</div>`;
+  const billsRowsHtml = bills.map(billRowHtml).join("") || `<div class="empty-note">${escapeHtml(l.noBills)}</div>`;
+  const categoriesRowsHtml = groupedCategories(categories).map(categoryRowHtml).join("") || `<div class="empty-note">${escapeHtml(l.noCategories)}</div>`;
+  const accountsRowsHtml = accounts.map(accountRowHtml).join("") || `<div class="empty-note">${escapeHtml(l.noAccounts)}</div>`;
+  // Unlike the other four sections, populated Goals keeps its pre-existing
+  // individually-carded .goal-card look (reverted per maintainer feedback:
+  // the unified flattened-row treatment "looked worse" than separate
+  // cards) -- only the empty state renders inside a .manage-rows-card, so
+  // "no goals yet" isn't left floating bare on the page background.
+  const goalsCardsHtml = goals.map(goalCardHtml).join("");
+  const goalsEmptyHtml = `<div class="empty-note">${escapeHtml(l.noGoals)}</div>`;
+  const goalsRowsHtml = `<div class="insight-cards" style="padding-bottom:0">${goalsCardsHtml || goalsEmptyHtml}</div>`;
 
   $("screen").innerHTML = `
     <div class="settings-screen">
@@ -302,12 +317,13 @@ export function renderSettings() {
               ${icon("wallet")}
               <span class="label">${escapeHtml(l.budgetsSection)}</span>
               <span class="settings-item-count">${budgets.length}</span>
-              <button type="button" class="btn btn-icon" id="addBudgetBtn" aria-label="${escapeHtml(l.addBudgetBtn)}">${PLUS_ICON}</button>
+              ${desktop ? `<button type="button" class="btn btn-icon" id="addBudgetBtn" aria-label="${escapeHtml(l.addBudgetBtn)}">${PLUS_ICON}</button>` : ""}
             </div>
             <div class="settings-manage-body">
               <div id="budgetFormSlot">${isDesktopShell() ? budgetFormHtml() : ""}</div>
-              ${budgets.map(budgetRowHtml).join("") || `<div class="empty-note">${escapeHtml(l.noBudgets)}</div>`}
+              ${desktop ? budgetsRowsHtml : `<div class="list-card manage-rows-card">${budgetsRowsHtml}</div>`}
             </div>
+            ${desktop ? "" : `<button type="button" class="btn btn-primary settings-add-fab" id="addBudgetBtn" aria-label="${escapeHtml(l.addBudgetBtn)}">${PLUS_ICON}</button>`}
           </section>` : ""}
           ${desktop || mobileSubPage === "bills" ? `<section class="settings-manage-section" data-settings-section-content="bills">
             <div class="settings-manage-header">
@@ -315,12 +331,13 @@ export function renderSettings() {
               ${icon("receipt")}
               <span class="label">${escapeHtml(l.billsSection)}</span>
               <span class="settings-item-count">${bills.length}</span>
-              <button type="button" class="btn btn-icon" id="addBillBtn" aria-label="${escapeHtml(l.addBillBtn)}">${PLUS_ICON}</button>
+              ${desktop ? `<button type="button" class="btn btn-icon" id="addBillBtn" aria-label="${escapeHtml(l.addBillBtn)}">${PLUS_ICON}</button>` : ""}
             </div>
             <div class="settings-manage-body">
               <div id="billFormSlot">${isDesktopShell() ? billFormHtml() : ""}</div>
-              ${bills.map(billRowHtml).join("") || `<div class="empty-note">${escapeHtml(l.noBills)}</div>`}
+              ${desktop ? billsRowsHtml : `<div class="list-card manage-rows-card">${billsRowsHtml}</div>`}
             </div>
+            ${desktop ? "" : `<button type="button" class="btn btn-primary settings-add-fab" id="addBillBtn" aria-label="${escapeHtml(l.addBillBtn)}">${PLUS_ICON}</button>`}
           </section>` : ""}
           ${desktop || mobileSubPage === "goals" ? `<section class="settings-manage-section" data-settings-section-content="goals">
             <div class="settings-manage-header">
@@ -328,14 +345,17 @@ export function renderSettings() {
               ${icon("target")}
               <span class="label">${escapeHtml(l.goalsSection)}</span>
               <span class="settings-item-count">${goals.length}</span>
-              <button type="button" class="btn btn-icon" id="addGoalBtn" aria-label="${escapeHtml(l.addGoalBtn)}">${PLUS_ICON}</button>
+              ${desktop ? `<button type="button" class="btn btn-icon" id="addGoalBtn" aria-label="${escapeHtml(l.addGoalBtn)}">${PLUS_ICON}</button>` : ""}
             </div>
             <div class="settings-manage-body">
               <div id="goalFormSlot">${state.goalEditId && isDesktopShell() ? goalFormHtml() : ""}</div>
-              <div class="insight-cards" style="padding-bottom:0">
-                ${goals.map(goalCardHtml).join("") || `<div class="empty-note">${escapeHtml(l.noGoals)}</div>`}
-              </div>
+              ${desktop
+                ? goalsRowsHtml
+                : (goals.length
+                    ? `<div class="insight-cards" style="padding-bottom:0">${goalsCardsHtml}</div>`
+                    : `<div class="list-card manage-rows-card">${goalsEmptyHtml}</div>`)}
             </div>
+            ${desktop ? "" : `<button type="button" class="btn btn-primary settings-add-fab" id="addGoalBtn" aria-label="${escapeHtml(l.addGoalBtn)}">${PLUS_ICON}</button>`}
           </section>` : ""}
           ${desktop || mobileSubPage === "categories" ? `<section class="settings-manage-section" data-settings-section-content="categories">
             <div class="settings-manage-header">
@@ -343,12 +363,13 @@ export function renderSettings() {
               ${icon("layout-grid")}
               <span class="label">${escapeHtml(l.categoriesSection)}</span>
               <span class="settings-item-count">${categories.length}</span>
-              <button type="button" class="btn btn-icon" id="addCategoryBtn" aria-label="${escapeHtml(l.addCategoryBtn)}">${PLUS_ICON}</button>
+              ${desktop ? `<button type="button" class="btn btn-icon" id="addCategoryBtn" aria-label="${escapeHtml(l.addCategoryBtn)}">${PLUS_ICON}</button>` : ""}
             </div>
             <div class="settings-manage-body">
               <div id="categoryFormSlot">${isDesktopShell() ? categoryFormHtml() : ""}</div>
-              ${groupedCategories(categories).map(categoryRowHtml).join("") || `<div class="empty-note">${escapeHtml(l.noCategories)}</div>`}
+              ${desktop ? categoriesRowsHtml : `<div class="list-card manage-rows-card">${categoriesRowsHtml}</div>`}
             </div>
+            ${desktop ? "" : `<button type="button" class="btn btn-primary settings-add-fab" id="addCategoryBtn" aria-label="${escapeHtml(l.addCategoryBtn)}">${PLUS_ICON}</button>`}
           </section>` : ""}
           ${desktop || mobileSubPage === "accounts" ? `<section class="settings-manage-section" data-settings-section-content="accounts">
             <div class="settings-manage-header">
@@ -356,12 +377,13 @@ export function renderSettings() {
               ${icon("landmark")}
               <span class="label">${escapeHtml(l.accountsSection)}</span>
               <span class="settings-item-count">${accounts.length}</span>
-              <button type="button" class="btn btn-icon" id="addAccountBtn" aria-label="${escapeHtml(l.addAccountBtn)}">${PLUS_ICON}</button>
+              ${desktop ? `<button type="button" class="btn btn-icon" id="addAccountBtn" aria-label="${escapeHtml(l.addAccountBtn)}">${PLUS_ICON}</button>` : ""}
             </div>
             <div class="settings-manage-body">
               <div id="accountFormSlot">${isDesktopShell() ? accountFormHtml() : ""}</div>
-              ${accounts.map(accountRowHtml).join("") || `<div class="empty-note">${escapeHtml(l.noAccounts)}</div>`}
+              ${desktop ? accountsRowsHtml : `<div class="list-card manage-rows-card">${accountsRowsHtml}</div>`}
             </div>
+            ${desktop ? "" : `<button type="button" class="btn btn-primary settings-add-fab" id="addAccountBtn" aria-label="${escapeHtml(l.addAccountBtn)}">${PLUS_ICON}</button>`}
           </section>` : ""}
         </div>
       </div>` : ""}
@@ -410,7 +432,7 @@ export function renderSettings() {
   }));
   document.querySelectorAll("[data-settings-subpage-link]").forEach((btn) => btn.addEventListener("click", () => {
     openSettingsSubPage(btn.getAttribute("data-settings-subpage-link"));
-    renderSettings();
+    renderScreen();
   }));
   document.querySelectorAll(".settings-back-btn").forEach((btn) => btn.addEventListener("click", closeSettingsSubPage));
 

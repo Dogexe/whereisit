@@ -17,7 +17,7 @@ import { manageRowHtml, inlineForm, rerenderSettings } from "./manage-row.js";
 
 export function categoryRowHtml(c) {
   const tone = rowTone(c.type);
-  const iconHtml = iconAvatar(c.icon, tone.bg, tone.color, "sm", 'width="15" height="15"');
+  const iconHtml = iconAvatar(c.icon, tone.bg, tone.color);
   const sub = c.type === "income" ? L().incomeLabel : L().expenseLabel;
   return manageRowHtml(iconHtml, c.name, sub, null, `data-edit-category="${c.id}"`, `data-delete-category="${c.id}"`, c.parentId ? "manage-row-child" : null);
 }

@@ -2,6 +2,7 @@ import { state } from "../state.js";
 import { L } from "../i18n.js";
 import { currentUser } from "../sync.js";
 import { accountDisplayName } from "../account.js";
+import { isDesktopShell } from "../utils.js";
 
 // Screens are registered at boot (see registerRenderers), not statically
 // imported here -- each screen module needs setTab/renderScreen from this
@@ -55,6 +56,7 @@ export function renderScreen() {
 export function renderChrome() {
   document.title = L().appTitle;
   document.documentElement.lang = state.lang;
+  document.body.classList.toggle("settings-subpage-open", state.tab === "settings" && Boolean(state.settingsSubPage) && !isDesktopShell());
   // .nav-btn covers both #tabbar's (mobile) and #sidebar's (desktop, see
   // styles.css's 1024px breakpoint) buttons -- whichever is actually
   // visible at the current viewport width gets its active state/labels

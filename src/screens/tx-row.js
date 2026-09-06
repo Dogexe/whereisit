@@ -228,16 +228,6 @@ export function wireTxRowActions() {
       rowEl.querySelector(".tx-row-actions")?.classList.remove("dragging");
       if (startOffset > REVEAL / 2) openRowTo(rowEl); else closeRow(rowEl);
     });
-
-    // desktop hover fallback (mouse only, so real touch swiping is untouched)
-    rowEl.addEventListener("pointerenter", (e) => {
-      if (e.pointerType !== "mouse" || dragging) return;
-      openRowTo(rowEl);
-    });
-    rowEl.addEventListener("pointerleave", (e) => {
-      if (e.pointerType !== "mouse" || dragging) return;
-      closeRow(rowEl);
-    });
   });
   document.querySelectorAll("[data-edit]").forEach((btn) => btn.addEventListener("click", () => editTx(btn.getAttribute("data-edit"))));
   document.querySelectorAll("[data-delete]").forEach((btn) => btn.addEventListener("click", () => deleteTx(btn.getAttribute("data-delete"))));
