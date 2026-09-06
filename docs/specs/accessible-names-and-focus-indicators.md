@@ -131,6 +131,12 @@ the native ring is visible and meets the same standard, change nothing and
 record that here. If it is not, give the label the canonical treatment via
 `:has(input:focus-visible)`, the same as Decision 2.2.
 
+**Recorded result:** Manual real-browser checks in light and dark confirmed
+that `button.toggle-row` paints the canonical accent outline despite
+`all: unset` (Decision 2.3), and that the native `.filter-checkbox-row`
+checkbox has a visible focus ring. The checkbox label is therefore left
+unchanged.
+
 ## Verification plan
 
 Both defects are invisible to the existing suite, which drives the app by
