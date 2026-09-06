@@ -27,6 +27,22 @@ Describe one small, coherent outcome.
 - [ ] Requirement 2
 - [ ] Existing related behavior remains unchanged.
 
+## UX / design references
+
+<!--
+UI tickets only — delete this whole section for non-UI work.
+See docs/UX.md for the rules these lines point at.
+-->
+
+- Follow `docs/UX.md`.
+- Match existing: <screen / component / pattern>
+- Reuse: <existing primitive — name the class or helper>
+- New design primitives required by this ticket: none
+  <!-- If not "none", list each one and the spec decision that authorizes
+       it. An explicit "none" makes any new primitive in the diff a defect. -->
+- Mobile (<1024px) behavior: <…>
+- Desktop (>=1024px) behavior: <…>
+
 ## Verification
 
 - [ ] Relevant automated tests are added or updated.

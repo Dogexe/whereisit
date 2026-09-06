@@ -89,6 +89,14 @@ describes outcomes and constraints, not a line-by-line implementation — it
 covers behavior, edge cases, persistence/sync, offline behavior, i18n, UI
 states, testing, and explicit non-goals where relevant.
 
+For a UI feature the spec also carries a short **`## UX constraints`**
+section: follow `docs/UX.md`; name the existing screen/component/pattern
+the feature should match and the existing primitive it reuses; state
+whether any new design primitive is required (and if so, which decision
+authorizes it); and define both mobile and desktop behavior in Thai and
+English. Naming the pattern to reuse is Claude's job at spec time, not
+Codex's at implementation time.
+
 ## 2. Create small tickets
 
 Claude turns the accepted spec into files under `docs/tickets/active/`, using
@@ -127,7 +135,8 @@ Use a fresh Claude session when practical:
 
 ```text
 Review docs/tickets/active/WI-XXX.md against its spec and the current git diff.
-Read CLAUDE.md and docs/SOT.md. Do not modify files.
+Read CLAUDE.md and docs/SOT.md, plus docs/UX.md if a screen changed.
+Do not modify files.
 
 Check acceptance criteria, correctness, regressions, architecture, persistence
 and sync when relevant, test coverage, and scope. Separate confirmed defects
@@ -136,6 +145,15 @@ from optional suggestions.
 
 The first review is read-only so the reviewer remains independent from the
 implementation.
+
+For a UI change, the review also compares the implementation against
+`docs/UX.md` and the surrounding existing UI: visual and behavioral
+consistency, mobile and desktop behavior, Thai and English layout, and any
+unnecessary new CSS variant. **Classify UX findings the same way as any
+other:** a violation of a rule documented in `docs/UX.md` is a *defect*; an
+undocumented subjective preference is a *suggestion*, never a blocker. If a
+finding turns on one of `docs/UX.md`'s open design decisions, it is neither
+— raise it as a decision for the maintainer.
 
 ## 5. Verify and fix findings with Codex
 
@@ -189,6 +207,7 @@ permanent project memory.
 | --- | --- |
 | `CLAUDE.md` | Always-loaded invariants, Claude's role, and routing to the docs below |
 | `docs/ARCHITECTURE.md` | Module boundaries, screens/UI plumbing, standing implementation lessons |
+| `docs/UX.md` | Reusable UX / visual / interaction rules, known UI debt, open design decisions |
 | `docs/SYNC.md` | Persistence, sync, auth, and the Supabase schema |
 | `docs/TESTING.md` | What each test layer covers |
 | `AGENTS.md` | Codex entry rules and implementation behavior |

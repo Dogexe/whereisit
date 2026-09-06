@@ -23,7 +23,12 @@ path here assumes anything outside `whereisit/`.
    restating them, and the code is authoritative if the two ever disagree.
 4. The assigned ticket under `docs/tickets/active/`.
 5. The ticket's originating spec under `docs/specs/`.
-6. Relevant source and tests for the ticket. Skip `docs/CHANGELOG.md` unless
+6. `docs/UX.md` — whenever the ticket carries a "UX / design references"
+   section, or otherwise changes what a screen renders. It is the
+   authoritative source for reusable UX/visual/interaction rules, the
+   known drift that must *not* be copied, and the design decisions that
+   are deliberately still open.
+7. Relevant source and tests for the ticket. Skip `docs/CHANGELOG.md` unless
    historical context is genuinely needed.
 
 Consult `docs/WORKFLOW.md` only when process/handoff details are actually
@@ -42,6 +47,11 @@ not review. Concretely, on every ticket:
   ticket's Review notes rather than building it unasked.
 - Don't weaken or delete an existing test to make a change pass.
 - Don't refactor unrelated code while implementing a ticket.
+- For UI work, follow `docs/UX.md` and reuse the existing screen/component
+  /primitive the ticket names. Don't introduce a new spacing, color,
+  typography, radius, icon, or interaction primitive unless the ticket
+  explicitly requires it, and don't copy a pattern listed there as known
+  UI debt.
 - Run the verification the ticket requires — `docs/WORKFLOW.md`'s
   proportional matrix is the source of truth (`npm test` for pure logic,
   add `npm run build` for state/storage/sync, add `npm run test:e2e` for

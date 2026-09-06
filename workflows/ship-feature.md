@@ -4,7 +4,7 @@ The repeatable process for taking a change from idea to deployed in this repo. S
 
 1. **Scope it.** If this isn't already described in `docs/specs/`, run `/spec` first rather than building ad hoc. Write or update the spec doc with what's decided before touching code.
 2. **Plan verification** for anything multi-step: run `/verify` and decide up front what "done" looks like — which tests must pass, what to check in a real browser.
-3. **Build**, following the module boundaries and standing conventions in `../CLAUDE.md`'s Architecture section (state ownership via setters, the registration pattern for cross-module callbacks, `STRINGS` for user-facing text, the three-way income/expense/transfer handling rule, etc.).
+3. **Build**, following the module boundaries and standing conventions in `../CLAUDE.md`'s Architecture section (state ownership via setters, the registration pattern for cross-module callbacks, `STRINGS` for user-facing text, the three-way income/expense/transfer handling rule, etc.). For anything that renders a screen, also follow `../docs/UX.md` — reuse the existing pattern rather than inventing a new visual or interaction primitive, and don't copy anything it lists as known UI debt.
 4. **Test.**
    - `npm test` — unit tests (`tests/`).
    - `npm run test:e2e` — Playwright (`e2e/`), required for any change touching a screen.

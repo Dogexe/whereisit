@@ -33,11 +33,12 @@ live in `docs/specs/`. Full project history lives in `docs/CHANGELOG.md`.
    needed (the full lifecycle, handoff prompts, the minimum `/spec`
    prompt); not required reading for every session.
 4. Only then, load what the task actually touches: `docs/ARCHITECTURE.md`
-   for module structure/screens/UI plumbing, `docs/SYNC.md` for
-   persistence/sync/auth/Supabase schema, `docs/TESTING.md` for what each
-   test layer covers, relevant specs under `docs/specs/`, and relevant
-   code. Don't read every spec, every ticket, or the full changelog by
-   default.
+   for module structure/screens/UI plumbing, `docs/UX.md` for the reusable
+   UX/visual/interaction rules any change that renders a screen must
+   follow, `docs/SYNC.md` for persistence/sync/auth/Supabase schema,
+   `docs/TESTING.md` for what each test layer covers, relevant specs under
+   `docs/specs/`, and relevant code. Don't read every spec, every ticket,
+   or the full changelog by default.
 
 ## Claude Code's role
 
