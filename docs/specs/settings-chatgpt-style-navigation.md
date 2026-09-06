@@ -200,12 +200,17 @@ History handling, all of it inside `settings.js`:
   retire `.settings-group*` and `.settings-badge-count`; update the
   1024px block's `[data-active]` selectors to the new field's values.
 - **`src/i18n.js`** — new strings only (listed per ticket).
-- **`e2e/helpers.js`, `e2e/accounts.spec.js`, `e2e/pin-lock.spec.js`,
-  `e2e/category-nesting.spec.js`, `e2e/csv-import.spec.js`** — these
-  select `.settings-nav-item[data-settings-section=…]` and
-  `.settings-group[data-group="accounts"] summary .label`, both of
-  which this spec removes or renames. Updating them is part of
-  `WI-008`, not follow-up work.
+- **Seven e2e specs** select `.settings-nav-item[data-settings-section=…]`,
+  `.settings-group[data-group=…]`, or a `<details>`/`summary` element,
+  all of which this spec removes: `e2e/helpers.js`,
+  `e2e/accounts.spec.js`, `e2e/add-sheet-keyboard-ghosting.spec.js`,
+  `e2e/manage-row-swipe.spec.js`, `e2e/pin-lock.spec.js`,
+  `e2e/category-nesting.spec.js`, `e2e/csv-import.spec.js`. Updating
+  them is part of `WI-008`, not follow-up work. `WI-008` carries the
+  per-file line references and the grep to re-derive the list, because
+  this list has already gone stale once: it was written as five files
+  before `WI-005` shipped `e2e/manage-row-swipe.spec.js`, and it had
+  independently missed `add-sheet-keyboard-ghosting.spec.js`.
 
 ## Explicitly out of scope
 
