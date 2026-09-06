@@ -24,7 +24,7 @@ const STRINGS = {
   searchPlaceholder: ["ค้นหารายละเอียด...", "Search notes..."], noResults: ["ไม่พบรายการ", "No transactions found"],
   clearFiltersBtn: ["ล้างตัวกรอง", "Clear filters"],
   filtersBtn: ["ตัวกรอง", "Filters"], filtersBtnAria: ["ตัวกรอง", "Filters"],
-  clearSearchAria: ["ล้างการค้นหา", "Clear search"], closeAria: ["ปิด", "Close"],
+  clearSearchAria: ["ล้างการค้นหา", "Clear search"], closeAria: ["ปิด", "Close"], backAria: ["ย้อนกลับ", "Back"],
   filterChipCategory: ["หมวดหมู่", "Category"], filterChipAmount: ["จำนวนเงิน", "Amount"], filterChipAccount: ["บัญชี", "Account"],
   filterChipType: ["ประเภท", "Type"], filterChipDate: ["วันที่", "Date"],
   amountMinPlaceholder: ["ต่ำสุด", "Min"], amountMaxPlaceholder: ["สูงสุด", "Max"],

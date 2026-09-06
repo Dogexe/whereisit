@@ -112,13 +112,10 @@ export const state = {
   importSheetOpen: false, importStep: "pick", importAccountId: null,
   importMapping: { dateCol: null, amountCol: null, noteCol: null, categoryCol: null, dateFormat: "YYYY-MM-DD" },
   budgetEditId: null, billEditId: null, goalEditId: null, goalContributeId: null, categoryEditId: null, accountEditId: null,
-  settingsGroupOpen: { budgets: false, bills: false, goals: false, categories: false, accounts: false },
-  // Which section is shown in the right-hand panel of Settings' desktop
-  // (1024px+) list-left/detail-right layout -- see styles.css's 1024px
-  // block. Purely a UI-state field, same as settingsGroupOpen (not
-  // persisted to localStorage); has no effect below 1024px, where every
-  // section still just stacks on one page as before.
-  settingsActiveSection: "display"
+  // Below 1024px, the currently open Settings sub-page; null is the root
+  // list. At 1024px+, the same field selects the master-detail pane, with
+  // null selecting Display. UI-only and not persisted.
+  settingsSubPage: null
 };
 export let transactions = [];
 export let budgets = [

@@ -968,3 +968,74 @@ green, re-run independently of Codex's own reported runs. Live-verified at
 (3 actions), and Goals' card variant: content width unchanged during drag,
 `translateX(-offset)` applied, opaque background, every non-Delete action
 hidden during full swipe, and the pill reaching its full target width.
+
+
+## Settings: ChatGPT-style sub-page navigation and visual language (WI-008, WI-009)
+
+The first two tickets of `docs/specs/settings-chatgpt-style-navigation.md`,
+shipped together. This reverses the "drill-down sub-pages explicitly not
+chosen" decision recorded in `settings-redesign-concept-b.md` — reversed
+deliberately by the maintainer during the spec interview, with a reference
+screenshot.
+
+**WI-008 — navigation model.** Settings' five Manage sections and Security
+stopped being inline `<details>` accordions and became real sub-pages with a
+back arrow. `state.settingsActiveSection` was replaced by a single
+responsive field, `state.settingsSubPage` (default `null`), and
+`state.settingsGroupOpen` was deleted along with its `toggle` listeners.
+Below 1024px `null` renders the root list and a section id renders one
+sub-page; at 1024px+ the identical field selects the desktop master–detail
+pane, with `null` selecting Display. This is the app's first
+`pushState`/`popstate` handling, deliberately scoped to Settings sub-pages:
+opening one pushes `{ settingsSubPage: id }` with **no URL argument**, so the
+URL never changes, and the `popstate` handler is the single place that clears
+the field and re-renders. Both the back arrow and a main-tab switch away only
+call `history.back()`. Desktop never pushes history and never shows a back
+arrow.
+
+The ordering race between the back arrow, the hardware Back button and a
+main-tab switch was the reason this ticket carried the `sol-high` profile,
+and it was verified live rather than reasoned about: opening a sub-page,
+switching to Home, then pressing Back leaves the app on Home with
+`history.state` already `null` and no jump back into Settings.
+
+**WI-009 — visual language.** A centered 72px profile header replaced the
+screen title and the left-aligned profile row; sign-out moved out of the
+header into a red Log out row at the bottom, rendered only when signed in.
+The root list is grouped into separate rounded cards in a deliberate
+hierarchy — Display, then Sync & Data, then Manage, then an unlabeled
+App lock + Privacy policy card, then Log out — on the reasoning that
+everyday appearance settings come first, data and device settings next, the
+record types the user manages after that, and rarely-touched account, legal
+and exit rows last. The privacy policy stopped being a footer text link and
+became a real row. Settings' own chrome rows dropped `iconAvatar()`'s tinted
+circle for a flat `icon()` glyph, while the Budget/Bill/Goal/Category/Account
+*data* rows inside each sub-page kept their avatars, where the tint encodes
+real category data rather than decoration.
+
+**A contrast defect the implementing agent's own measurement missed.** WI-009
+requires 4.5:1 for text, and the agent reported "4.66" as passing. That figure
+was the row *icon* measured against the white card — but the section labels
+sit **above** the cards, on the page background (`--color-bg`, `#f6f6f8`),
+which is darker. Measured against the surface they actually render on, the
+labels came to **4.32:1**, below the threshold. Fixed by darkening only that
+label toward the text color, `color-mix(in srgb, var(--color-muted) 92%,
+var(--color-text))`, which adds no new hardcoded color: the palette has no
+intermediate step, since `--color-tertiary` is lighter and worse and
+`--color-text` is far too heavy for a small uppercase label. Light went
+4.32 → 4.82, dark 6.98 → 7.56.
+
+**Lesson: measure a color against the surface it actually renders on, not
+the nearest card.** `settings-spacing-and-contrast.md` already recorded one
+shipped contrast bug from pairing an inverting token with a non-inverting
+background; this is the same family, caught only because the verification
+walked up the DOM for the first opaque ancestor instead of assuming the card.
+A second trap: `color-mix` computes to CSS `color(srgb …)` whose components
+are 0–1, not 0–255, so a contrast script that assumes `rgb()` silently
+produces nonsense for this label.
+
+`npm test` (173/173), `npm run test:e2e` (27/27) and `npm run build` all
+green, re-run independently of the implementing agent's own reported runs —
+which mattered, because those runs did not complete: one died on a provider
+usage limit before verifying anything, and the others reported e2e as failed
+when the suite in fact passed. See `WI-012` for that.

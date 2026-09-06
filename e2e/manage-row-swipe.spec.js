@@ -1,8 +1,8 @@
 import { test, expect } from "./fixtures.js";
 import { navBtn } from "./helpers.js";
 
-async function openManageSection(page, addButtonId) {
-  await page.locator(`#${addButtonId}`).locator("xpath=ancestor::details[1]").locator("summary").click();
+async function openManageSection(page, section) {
+  await page.locator(`[data-settings-subpage-link="${section}"]`).click();
 }
 
 async function dragRowLeft(row, distance, release = true, startFraction = 0.5) {
@@ -37,7 +37,7 @@ test("mobile Manage swipe uses WI-004 circles, opens after a sub-commit full swi
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
   await navBtn(page, "settings").click();
-  await openManageSection(page, "addBudgetBtn");
+  await openManageSection(page, "budgets");
 
   const row = page.locator(".manage-row-wrap", { has: page.locator("[data-delete-budget]") }).first();
   await expect(row).toBeVisible();
@@ -84,7 +84,7 @@ test("mobile Accounts reveals three WI-004-style actions at a 140px reveal width
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
   await navBtn(page, "settings").click();
-  await openManageSection(page, "addAccountBtn");
+  await openManageSection(page, "accounts");
 
   const row = page.locator(".manage-row-wrap", { has: page.locator("[data-delete-account]") }).first();
   await expect(row).toBeVisible();

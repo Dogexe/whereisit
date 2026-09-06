@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures.js";
-import { navBtn, createAccount, fmtMoney } from "./helpers.js";
+import { navBtn, createAccount, fmtMoney, openSettingsSection } from "./helpers.js";
 
 test("creating an account and switching Home's account scope narrows the hero balance and recent activity", async ({ page }) => {
   await page.goto("/");
@@ -29,29 +29,18 @@ test("creating an account and switching Home's account scope narrows the hero ba
   await expect(page.locator(".home-col-main .list-card")).not.toContainText(note);
 });
 
-// Regression coverage for two bugs found in the same Settings Manage
-// redesign pass: "Fix Manage section Add button's click being swallowed by
-// the native disclosure toggle" and "Fix icon picker being inert in the
-// mobile Manage-section sheet" -- both only reproduce below the 1024px
+// Regression coverage for the mobile Manage sheet's icon picker, which only
+// exists below the 1024px
 // desktop-shell breakpoint, where Settings' Manage forms open in
 // #manageSheetContainer instead of expanding inline.
-test("mobile Manage sheet: the Add button opens the form without collapsing the section, and its icon picker responds to clicks", async ({ page }) => {
+test("mobile Manage sheet: the Add button opens the form and its icon picker responds to clicks", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   await navBtn(page, "settings").click();
 
-  const group = page.locator('.settings-group[data-group="accounts"]');
-  // Opens the native <details> accordion via its label -- not
-  // #addAccountBtn itself, which is deliberately excluded from the
-  // disclosure toggle (settings.js's wireInlineCrud preventDefault()).
-  await group.locator("summary .label").click();
-  await expect(group).toHaveJSProperty("open", true);
-
-  // Regression guard: clicking Add on an already-open mobile section used
-  // to snap it shut (the native disclosure toggle firing unprevented)
-  // before the add flow's own sheet ever got a chance to open.
-  await group.locator("#addAccountBtn").click();
-  await expect(group).toHaveJSProperty("open", true);
+  await openSettingsSection(page, "accounts");
+  await expect(page.locator('[data-settings-section-content="accounts"]')).toBeVisible();
+  await page.locator("#addAccountBtn").click();
   await expect(page.locator("#manageSheetBackdrop")).toBeVisible();
 
   const acctName = "e2e mobile acct " + Date.now();

@@ -231,10 +231,8 @@ test("Insights sheet scrolls its body and dismisses from the outer sheet", async
 test("Settings Manage sheet scrolls its body and dismisses from the outer sheet", async ({ page }) => {
   await openMobileApp(page);
   await navBtn(page, "settings").click();
-  const group = page.locator('.settings-group[data-group="accounts"]');
-  await group.locator("summary .label").click();
-  await expect(group).toHaveJSProperty("open", true);
-  await group.locator("#addAccountBtn").click();
+  await page.locator('[data-settings-subpage-link="accounts"]').click();
+  await page.locator("#addAccountBtn").click();
   await expectInnerScrollAndDragDismissal(page, "#manageSheetBackdrop");
 });
 

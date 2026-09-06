@@ -18,7 +18,7 @@ import { renderHome } from "./screens/home.js";
 import { renderTransactions } from "./screens/transactions.js";
 import { renderAdd, resetForm, openAddSheet } from "./screens/add.js";
 import { renderInsights } from "./screens/insights.js";
-import { renderSettings } from "./screens/settings.js";
+import { renderSettings, openSettingsSubPage, closeSettingsSubPage } from "./screens/settings.js";
 
 registerRenderers({
   home: renderHome,
@@ -67,8 +67,7 @@ renderAppLockGate(() => {
   // query param.
   if (billIdFromNotification) {
     state.tab = "settings";
-    state.settingsGroupOpen.bills = true;
-    state.settingsActiveSection = "bills";
+    openSettingsSubPage("bills");
     if (bills.some((b) => b.id === billIdFromNotification)) state.billEditId = billIdFromNotification;
     renderScreen();
     window.history.replaceState(null, "", window.location.pathname);
@@ -88,6 +87,7 @@ document.querySelectorAll(".nav-btn").forEach((btn) => btn.addEventListener("cli
     resetForm();
     if (!isDesktopShell()) { openAddSheet(); return; }
   }
+  if (state.tab === "settings" && tab !== "settings") closeSettingsSubPage();
   setTab(tab);
 }));
 

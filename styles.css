@@ -879,21 +879,16 @@
   .trend-labels div { flex: 1; text-align: center; font-size: 11px; color: var(--color-tertiary); }
 
   /* — settings — */
-  .settings-block { display: flex; flex-direction: column; gap: var(--space-xl); padding-bottom: 24px; max-width: 480px; }
-  /* .settings-layout/.settings-nav/.settings-panels only matter at 1024px+
-     (see that breakpoint below, which turns them into a list-left/
-     detail-right pattern) -- below it .settings-nav stays hidden and
-     .settings-panels reproduces the exact 22px gap the Display/Sync/Manage
-     blocks used to get for free as direct children of .settings-block,
-     before this wrapper existed, so mobile spacing is unchanged. */
+  .settings-block { display: flex; flex-direction: column; gap: var(--space-xl); padding-bottom: var(--space-xl); max-width: 480px; }
+  /* .settings-layout becomes list-left/detail-right at 1024px+. Below
+     that breakpoint, data-mobile-subpage selects the root or one drill-in
+     section while preserving the existing cards and rows. */
   .settings-nav { display: none; }
   .settings-panels { display: flex; flex-direction: column; gap: var(--space-xl); }
-  .settings-section-label { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-tertiary); margin-bottom: var(--space-xs); }
-  .profile-row { display: flex; align-items: center; gap: 14px; }
-  .avatar { width: 52px; height: 52px; border-radius: 50%; background: var(--color-surface); display: flex; align-items: center; justify-content: center; font-weight: 700; font-family: var(--font-sans); font-size: 18px; color: var(--color-tertiary); flex-shrink: 0; object-fit: cover; }
+  .settings-section-label { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: color-mix(in srgb, var(--color-muted) 92%, var(--color-text)); margin-bottom: var(--space-xs); }
+  .settings-profile-header { display: flex; flex-direction: column; align-items: center; gap: var(--space-xs); text-align: center; }
+  .avatar { width: 72px; height: 72px; border-radius: 50%; background: var(--color-surface); display: flex; align-items: center; justify-content: center; font-weight: 700; font-family: var(--font-sans); font-size: 18px; color: var(--color-muted); flex-shrink: 0; object-fit: cover; }
   .profile-name { font-weight: 600; font-size: 15px; }
-  .profile-sub { font-size: 12px; color: var(--color-muted); margin-top: 2px; }
-  .profile-row .btn { margin-left: auto; flex-shrink: 0; }
 
   .toggle-row { display: flex; align-items: center; gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--color-divider); }
   .toggle-row:last-child { border-bottom: none; }
@@ -903,20 +898,31 @@
   button.toggle-row { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 12px; padding: 12px 4px; width: 100%; cursor: pointer; font: inherit; color: inherit; text-align: left; border-bottom: 1px solid var(--color-divider); }
   button.toggle-row:last-child { border-bottom: none; }
 
-  .settings-group { border-bottom: 1px solid var(--color-divider); }
-  .settings-group:last-child { border-bottom: none; }
-  .settings-group summary {
-    list-style: none; display: flex; align-items: center; gap: 12px; padding: 12px 4px; cursor: pointer;
-    border-radius: var(--radius-md); transition: background var(--duration-fast) var(--ease-standard);
+  .settings-screen .toggle-row > .icon, .settings-nav-item > .icon, .settings-manage-header > .icon { color: var(--color-muted); }
+  .settings-drill-row > .icon:last-child, .settings-external-row > .icon:last-child { flex-shrink: 0; }
+  .settings-item-count { font-size: 11px; font-weight: 700; color: var(--color-muted); background: var(--color-surface); border-radius: var(--radius-pill); padding: 0 var(--space-xs); }
+  .settings-external-row { color: var(--color-text); text-decoration: none; }
+  .settings-logout-row, button.settings-logout-row { color: var(--color-expense-700); }
+  .settings-logout-row > .icon { color: var(--color-expense-700) !important; }
+  .settings-manage-section { display: none; }
+  .settings-manage-header, .settings-security-subpage-header {
+    display: flex; align-items: center; gap: 12px; padding: 12px 4px;
   }
-  .settings-group summary:hover { background: var(--color-surface); }
-  .settings-group summary:active { background: var(--color-border); }
-  .settings-group summary .label { flex: 1; min-width: 0; font-size: 15px; font-weight: 500; }
-  .settings-group summary::-webkit-details-marker { display: none; }
-  .settings-group summary > .icon:last-child { margin-left: auto; color: var(--color-tertiary); transition: transform var(--duration-normal) var(--ease-standard); }
-  .settings-group[open] summary > .icon:last-child { transform: rotate(90deg); }
-  .settings-badge-count { font-size: 11px; font-weight: 700; color: var(--color-tertiary); background: var(--color-surface); border-radius: var(--radius-pill); padding: 2px 8px; }
-  .settings-group-body { padding: 0 4px var(--space-sm); }
+  .settings-manage-header .label, .settings-security-subpage-header h2 { flex: 1; min-width: 0; font-size: 15px; font-weight: 500; margin: 0; }
+  .settings-manage-header > .icon, .settings-manage-header > .settings-item-count { display: none; }
+  .settings-manage-body { padding: 0 4px var(--space-sm); }
+  .settings-layout [data-settings-panel="security"] { display: none; }
+  .settings-layout:not([data-mobile-subpage="root"]) [data-settings-panel="display"],
+  .settings-layout:not([data-mobile-subpage="root"]) [data-settings-panel="sync"] { display: none; }
+  .settings-layout:not([data-mobile-subpage="root"]) .settings-mobile-manage-nav { display: none; }
+  .settings-layout[data-mobile-subpage="budgets"] .settings-manage-section[data-settings-section-content="budgets"],
+  .settings-layout[data-mobile-subpage="bills"] .settings-manage-section[data-settings-section-content="bills"],
+  .settings-layout[data-mobile-subpage="goals"] .settings-manage-section[data-settings-section-content="goals"],
+  .settings-layout[data-mobile-subpage="categories"] .settings-manage-section[data-settings-section-content="categories"],
+  .settings-layout[data-mobile-subpage="accounts"] .settings-manage-section[data-settings-section-content="accounts"] { display: block; }
+  .settings-layout[data-mobile-subpage="security"] [data-settings-panel="manage"] { display: none; }
+  .settings-layout[data-mobile-subpage="security"] [data-settings-panel="security"] { display: block; }
+  .settings-layout[data-mobile-subpage="security"] [data-settings-panel="security"] > .settings-section-label { display: none; }
 
   #syncStatus { font-size: 12.5px; color: var(--color-muted); display: flex; align-items: center; gap: 6px; }
   #syncStatus.ok { color: var(--color-income-700); }
@@ -1259,12 +1265,12 @@
        Transactions did (see that comment). Only one of the three
        [data-settings-panel] blocks is shown at a time, selected by
        .settings-layout's own data-active attribute (kept in sync with
-       state.settingsActiveSection -- see settings.js) rather than a full
+       state.settingsSubPage -- see settings.js) rather than a full
        re-render, so switching sections never disturbs an open inline form
        elsewhere on the page. */
     .settings-block { max-width: 100%; }
     .settings-layout { display: flex; align-items: flex-start; gap: 32px; }
-    .settings-nav { display: flex; flex-direction: column; gap: 2px; width: 220px; flex-shrink: 0; }
+    .settings-nav { display: flex; flex-direction: column; gap: var(--space-xs); width: 220px; flex-shrink: 0; padding: var(--space-xs); background: var(--color-card); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
     .settings-nav-item {
       display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; border-radius: var(--radius-md);
       background: none; border: none; cursor: pointer; color: var(--color-text); font-family: var(--font-sans); text-align: left;
@@ -1276,6 +1282,7 @@
     .settings-nav-item.active span { color: var(--color-accent); font-weight: 700; }
     .settings-panels { flex: 1; min-width: 0; }
     .settings-panels [data-settings-panel] { display: none; }
+    .settings-mobile-manage-nav, .settings-back-btn, .settings-security-subpage-header { display: none; }
     .settings-layout[data-active="display"] [data-settings-panel="display"] { display: block; }
     .settings-layout[data-active="sync"] [data-settings-panel="sync"] { display: block; }
     .settings-layout[data-active="security"] [data-settings-panel="security"] { display: block; }
@@ -1284,32 +1291,11 @@
     .settings-layout[data-active="goals"] [data-settings-panel="manage"],
     .settings-layout[data-active="categories"] [data-settings-panel="manage"],
     .settings-layout[data-active="accounts"] [data-settings-panel="manage"] { display: block; }
-    /* Within the shared Manage panel, only the .settings-group matching the
-       active section shows -- its own label is redundant with the nav
-       item's, so it's hidden here rather than kept in sync on every click. */
-    [data-settings-panel="manage"] > .settings-section-label { display: none; }
-    [data-settings-panel="manage"] .settings-group { display: none; }
-    .settings-layout[data-active="budgets"] .settings-group[data-group="budgets"],
-    .settings-layout[data-active="bills"] .settings-group[data-group="bills"],
-    .settings-layout[data-active="goals"] .settings-group[data-group="goals"],
-    .settings-layout[data-active="categories"] .settings-group[data-group="categories"],
-    .settings-layout[data-active="accounts"] .settings-group[data-group="accounts"] { display: block; }
-    /* The left nav now owns section selection, so the <details> disclosure
-       interaction (built for the mobile accordion) is neutralized here --
-       its summary becomes a static in-panel header (icon+name+count)
-       rather than a click target. The body's own visibility is NOT forced
-       via CSS here (a closed <details> doesn't render non-summary content
-       at all, regardless of a display override -- that's part of how the
-       browser implements the element, not something author CSS can
-       override) -- settings.js's nav click handler sets that group's real
-       .open property to true instead, which is what actually makes it
-       render. */
-    [data-settings-panel="manage"] .settings-group summary { cursor: default; pointer-events: none; }
-    [data-settings-panel="manage"] .settings-group summary > .icon:last-child { display: none; }
-    /* The add button (moved into summary itself, see settings.js) isn't
-       part of the now-neutralized disclosure interaction above -- it's a
-       real action, not a toggle -- so it needs pointer-events re-enabled
-       specifically, or the blanket rule above would make it unclickable
-       here too. */
-    [data-settings-panel="manage"] .settings-group summary .btn-icon { pointer-events: auto; cursor: pointer; }
+    .settings-layout[data-active="budgets"] .settings-manage-section[data-settings-section-content="budgets"],
+    .settings-layout[data-active="bills"] .settings-manage-section[data-settings-section-content="bills"],
+    .settings-layout[data-active="goals"] .settings-manage-section[data-settings-section-content="goals"],
+    .settings-layout[data-active="categories"] .settings-manage-section[data-settings-section-content="categories"],
+    .settings-layout[data-active="accounts"] .settings-manage-section[data-settings-section-content="accounts"] { display: block; }
+    .settings-manage-header > .icon { display: flex; }
+    .settings-manage-header > .settings-item-count { display: inline-block; }
   }

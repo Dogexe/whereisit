@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures.js";
-import { navBtn } from "./helpers.js";
+import { navBtn, openSettingsSection } from "./helpers.js";
 
 // docs/specs/app-lock.md: the gate only ever applies at boot
 // (applock-ui.js's renderAppLockGate(), called once from main.js's boot,
@@ -9,7 +9,7 @@ import { navBtn } from "./helpers.js";
 test("enabling a PIN gates the app on reload; wrong PIN is rejected, correct PIN unlocks, and Forgot PIN clears it for good", async ({ page }) => {
   await page.goto("/");
   await navBtn(page, "settings").click();
-  await page.locator('.settings-nav-item[data-settings-section="security"]').click();
+  await openSettingsSection(page, "security");
   await expect(page.locator("#pinRequireSwitch")).toBeVisible();
 
   await page.locator("#pinRequireSwitch").click();

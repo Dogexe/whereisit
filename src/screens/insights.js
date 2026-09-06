@@ -9,6 +9,7 @@ import {
 } from "../derived.js";
 import { pillPickerHtml, wirePillPicker } from "./period-picker.js";
 import { setTab } from "./router.js";
+import { openSettingsSubPage } from "./settings.js";
 import { showToast } from "../toast.js";
 
 function todayIso() { return localDateIso(); }
@@ -93,11 +94,8 @@ function renderBudgetsContent() {
     </div>` : ""}</div>`;
   const addFromInsights = $("addBudgetFromInsightsBtn");
   if (addFromInsights) addFromInsights.addEventListener("click", () => {
-    // Jump straight to Settings' "add budget" inline form rather than
-    // just the Manage section -- same effect as expanding the Budgets
-    // group there and clicking "+ Add budget" by hand.
-    state.settingsGroupOpen.budgets = true;
-    state.settingsActiveSection = "budgets";
+    // Jump straight to Settings' Add budget flow.
+    openSettingsSubPage("budgets");
     state.budgetEditId = "new";
     setTab("settings");
   });

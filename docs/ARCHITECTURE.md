@@ -64,14 +64,13 @@ install-prompt listeners. Everything else lives in `categories.js`,
   reactive `#manageSheetContainer` (`renderManageSheet()`, called at the end
   of every `renderSettings()`, scanning the relevant `*EditId`/
   `*ContributeId` state fields) rather than desktop's inline forms.
-  Settings' `<details>` groups mirror open/closed state into
-  `state.settingsGroupOpen` (not persisted) so a re-render from
-  saving/deleting an item doesn't snap the group shut. **Reminder**: a
-  closed `<details>` renders no non-summary content at all regardless of any
-  CSS `display` override — `getComputedStyle` will even report `display:
-  block` on the non-rendering child, which makes this easy to misdiagnose.
-  To force one open programmatically, set the element's real `.open`
-  property directly.
+  Settings uses `state.settingsSubPage` as one responsive navigation
+  field: below `1024px`, `null` renders the root and a Manage/Security id
+  renders one same-URL history-backed sub-page; at `1024px+`, `null`
+  selects Display and the same ids select desktop detail panes without
+  pushing history. A Settings sub-page closes only through `history.back()`;
+  the `popstate` handler in `settings.js` is the single place that clears
+  the field and re-renders.
 - **Bottom sheets** (six of them: Add/Edit, Transactions Filters, Insights
   Filters, Settings' Manage sheet, Settings' Export sheet, Import): all
   share `.filter-sheet-backdrop`/`.filter-sheet`/`.filter-sheet-header`

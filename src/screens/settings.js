@@ -14,7 +14,7 @@
 // back from here directly -- see that file's own comment on why).
 import { L } from "../i18n.js";
 import { state, budgets, bills, goals, categories, accounts } from "../state.js";
-import { $, icon, iconAvatar, escapeHtml, createFocusTrap, isDesktopShell, PLUS_ICON, sheetGrabberHtml, wireSheetDrag } from "../utils.js";
+import { $, icon, escapeHtml, createFocusTrap, isDesktopShell, PLUS_ICON, sheetGrabberHtml, wireSheetDrag } from "../utils.js";
 import { wireManageRowSwipe } from "./manage-row-swipe.js";
 import { groupedCategories } from "../categories.js";
 import { accountDisplayName } from "../account.js";
@@ -146,52 +146,70 @@ function pushReminderRowHtml() {
   const hint = pushState === "denied" ? l.pushDeniedHint : (pushState === "unsupported" ? l.pushUnsupportedHint : null);
   return `
     <div class="toggle-row">
-      ${iconAvatar("bell", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+      ${icon("bell")}
       <span class="label">${escapeHtml(l.billRemindersLabel)}</span>
       <button type="button" class="switch ${pushState === "enabled" ? "on" : ""}" id="pushReminderSwitch" ${disabled ? "disabled" : ""}><span class="thumb"></span></button>
     </div>
     ${hint ? `<div class="empty-note" style="padding:4px 4px 10px;text-align:left">${escapeHtml(hint)}</div>` : ""}`;
 }
 
+const SETTINGS_SUB_PAGE_IDS = new Set(["budgets", "bills", "goals", "categories", "accounts", "security"]);
+
+export function openSettingsSubPage(section) {
+  if (!SETTINGS_SUB_PAGE_IDS.has(section)) return;
+  state.settingsSubPage = section;
+  if (!isDesktopShell()) history.pushState({ settingsSubPage: section }, "");
+}
+
+export function closeSettingsSubPage() {
+  if (isDesktopShell() || !SETTINGS_SUB_PAGE_IDS.has(state.settingsSubPage)) return false;
+  history.back();
+  return true;
+}
+
+window.addEventListener("popstate", () => {
+  if (isDesktopShell() || !SETTINGS_SUB_PAGE_IDS.has(state.settingsSubPage)) return;
+  state.settingsSubPage = null;
+  renderScreen();
+});
+
 export function renderSettings() {
   const l = L();
   const meta = currentUser ? (currentUser.user_metadata || {}) : {};
   const avatarUrl = meta.avatar_url || meta.picture || "";
   const name = accountDisplayName(currentUser, l.notSignedIn);
+  const desktop = isDesktopShell();
+  const activeSection = state.settingsSubPage || "display";
+  const mobileSubPage = !desktop && SETTINGS_SUB_PAGE_IDS.has(state.settingsSubPage) ? state.settingsSubPage : null;
 
   $("screen").innerHTML = `
-    <h2 class="screen-title" style="margin-bottom:var(--space-xl)">${escapeHtml(l.settingsTitle)}</h2>
+    <div class="settings-screen">
     <div class="settings-block">
 
-      <div class="profile-row">
+      ${desktop || !mobileSubPage ? `<div class="settings-profile-header">
         ${avatarUrl ? `<img class="avatar" src="${escapeHtml(avatarUrl)}" alt="">` : `<div class="avatar">${currentUser ? escapeHtml((name || "?").slice(0, 1).toUpperCase()) : icon("user")}</div>`}
-        <div>
-          <div class="profile-name">${escapeHtml(name)}</div>
-          <div class="profile-sub">${escapeHtml(currentUser ? l.personalAccount : "")}</div>
-        </div>
-        ${currentUser
-          ? `<button type="button" class="btn btn-icon" id="authBtn" aria-label="${escapeHtml(l.signOutBtn)}">${icon("log-out")}</button>`
-          : `<button type="button" class="btn btn-secondary btn-sm" id="authBtn">${escapeHtml(l.signInGoogle)}</button>`}
-      </div>
+        <div class="profile-name">${escapeHtml(name)}</div>
+        ${currentUser ? "" : `<button type="button" class="btn btn-secondary btn-sm" id="authBtn">${escapeHtml(l.signInGoogle)}</button>`}
+      </div>` : ""}
 
-      <div class="settings-layout" data-active="${state.settingsActiveSection}">
-        <nav class="settings-nav" aria-label="${escapeHtml(l.settingsTitle)}">
-          <button type="button" class="settings-nav-item${state.settingsActiveSection === "display" ? " active" : ""}" data-settings-section="display">${iconAvatar("languages", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}<span>${escapeHtml(l.displaySection)}</span></button>
-          <button type="button" class="settings-nav-item${state.settingsActiveSection === "sync" ? " active" : ""}" data-settings-section="sync">${iconAvatar("cloud", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}<span>${escapeHtml(l.syncSection)}</span></button>
-          <button type="button" class="settings-nav-item${state.settingsActiveSection === "budgets" ? " active" : ""}" data-settings-section="budgets">${iconAvatar("wallet", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}<span>${escapeHtml(l.budgetsSection)}</span></button>
-          <button type="button" class="settings-nav-item${state.settingsActiveSection === "bills" ? " active" : ""}" data-settings-section="bills">${iconAvatar("receipt", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}<span>${escapeHtml(l.billsSection)}</span></button>
-          <button type="button" class="settings-nav-item${state.settingsActiveSection === "goals" ? " active" : ""}" data-settings-section="goals">${iconAvatar("target", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}<span>${escapeHtml(l.goalsSection)}</span></button>
-          <button type="button" class="settings-nav-item${state.settingsActiveSection === "categories" ? " active" : ""}" data-settings-section="categories">${iconAvatar("layout-grid", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}<span>${escapeHtml(l.categoriesSection)}</span></button>
-          <button type="button" class="settings-nav-item${state.settingsActiveSection === "accounts" ? " active" : ""}" data-settings-section="accounts">${iconAvatar("landmark", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}<span>${escapeHtml(l.accountsSection)}</span></button>
-          <button type="button" class="settings-nav-item${state.settingsActiveSection === "security" ? " active" : ""}" data-settings-section="security">${iconAvatar("shield", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}<span>${escapeHtml(l.securitySection)}</span></button>
-        </nav>
+      <div class="settings-layout" data-active="${activeSection}" data-mobile-subpage="${mobileSubPage || "root"}">
+        ${desktop ? `<nav class="settings-nav" aria-label="${escapeHtml(l.settingsTitle)}">
+          <button type="button" class="settings-nav-item${activeSection === "display" ? " active" : ""}" data-settings-section="display">${icon("languages")}<span>${escapeHtml(l.displaySection)}</span></button>
+          <button type="button" class="settings-nav-item${activeSection === "sync" ? " active" : ""}" data-settings-section="sync">${icon("cloud")}<span>${escapeHtml(l.syncSection)}</span></button>
+          <button type="button" class="settings-nav-item${activeSection === "budgets" ? " active" : ""}" data-settings-section="budgets">${icon("wallet")}<span>${escapeHtml(l.budgetsSection)}</span></button>
+          <button type="button" class="settings-nav-item${activeSection === "bills" ? " active" : ""}" data-settings-section="bills">${icon("receipt")}<span>${escapeHtml(l.billsSection)}</span></button>
+          <button type="button" class="settings-nav-item${activeSection === "goals" ? " active" : ""}" data-settings-section="goals">${icon("target")}<span>${escapeHtml(l.goalsSection)}</span></button>
+          <button type="button" class="settings-nav-item${activeSection === "categories" ? " active" : ""}" data-settings-section="categories">${icon("layout-grid")}<span>${escapeHtml(l.categoriesSection)}</span></button>
+          <button type="button" class="settings-nav-item${activeSection === "accounts" ? " active" : ""}" data-settings-section="accounts">${icon("landmark")}<span>${escapeHtml(l.accountsSection)}</span></button>
+          <button type="button" class="settings-nav-item${activeSection === "security" ? " active" : ""}" data-settings-section="security">${icon("shield")}<span>${escapeHtml(l.securitySection)}</span></button>
+        </nav>` : ""}
         <div class="settings-panels">
 
-      <div data-settings-panel="display">
+      ${desktop || !mobileSubPage ? `<div data-settings-panel="display">
         <div class="settings-section-label">${escapeHtml(l.displaySection)}</div>
         <div class="list-card">
           <div class="toggle-row">
-            ${iconAvatar("languages", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+            ${icon("languages")}
             <span class="label">${escapeHtml(l.languageSection)}</span>
             <div class="tabs" role="radiogroup" style="flex-shrink:0">
               <label class="tab-opt"><input type="radio" name="lang-switch" value="th" ${state.lang === "th" ? "checked" : ""}>ไทย</label>
@@ -199,7 +217,7 @@ export function renderSettings() {
             </div>
           </div>
           <div class="toggle-row">
-            ${iconAvatar("palette", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+            ${icon("palette")}
             <span class="label">${escapeHtml(l.accentColorLabel)}</span>
             <div class="tabs" role="radiogroup" style="flex-shrink:0">
               <label class="tab-opt"><input type="radio" name="accent-color-switch" value="coral" ${state.accentColor === "coral" ? "checked" : ""}>${escapeHtml(l.accentColorCoralOpt)}</label>
@@ -207,23 +225,23 @@ export function renderSettings() {
             </div>
           </div>
           <div class="toggle-row">
-            ${iconAvatar("moon", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+            ${icon("moon")}
             <span class="label">${escapeHtml(l.darkModeBtn)}</span>
             <button type="button" class="switch ${state.dark ? "on" : ""}" id="darkSwitch"><span class="thumb"></span></button>
           </div>
           <div class="toggle-row">
-            ${iconAvatar(state.hideAmounts ? "eye-off" : "eye", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+            ${icon(state.hideAmounts ? "eye-off" : "eye")}
             <span class="label">${escapeHtml(l.hideAmountsLabel)}</span>
             <button type="button" class="switch ${state.hideAmounts ? "on" : ""}" id="hideAmountsSwitch"><span class="thumb"></span></button>
           </div>
         </div>
-      </div>
+      </div>` : ""}
 
-      <div data-settings-panel="sync">
+      ${desktop || !mobileSubPage ? `<div data-settings-panel="sync">
         <div class="settings-section-label">${escapeHtml(l.syncSection)}</div>
         <div class="list-card">
           <div class="toggle-row">
-            ${iconAvatar("cloud", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+            ${icon("cloud")}
             <span id="syncStatus" class="label ${lastSyncStatus.ok === true ? "ok" : (lastSyncStatus.ok === false ? "err" : "")}"><span class="sync-dot"></span><span>${escapeHtml(currentUser ? lastSyncStatus.text : l.syncSignedOut)}</span></span>
             <button type="button" class="btn btn-secondary btn-sm" id="syncNowBtn" ${currentUser ? "" : "disabled"}>${escapeHtml(l.syncNowBtn)}</button>
           </div>
@@ -236,138 +254,153 @@ export function renderSettings() {
             </button>
           </div>` : ""}
           <button type="button" class="toggle-row" id="openExportSheetBtn">
-            ${iconAvatar("download", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+            ${icon("download")}
             <span class="label">${escapeHtml(l.exportBtn)}</span>
           </button>
           <button type="button" class="toggle-row" id="openImportSheetBtn">
-            ${iconAvatar("upload", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+            ${icon("upload")}
             <span class="label">${escapeHtml(l.importBtn)}</span>
           </button>
         </div>
         ${exportSheetHtml()}
         ${importSheetHtml()}
-      </div>
+      </div>` : ""}
 
-      <div data-settings-panel="manage">
-        <div class="settings-section-label">${escapeHtml(l.manageSection)}</div>
-        <div class="list-card">
-          <details class="settings-group" data-group="budgets" ${state.settingsGroupOpen.budgets ? "open" : ""}>
-            <summary>
-              ${iconAvatar("wallet", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+      ${desktop || mobileSubPage !== "security" ? `<div data-settings-panel="manage">
+        ${desktop || mobileSubPage ? "" : `<div class="settings-mobile-manage-nav">
+          <div class="settings-section-label">${escapeHtml(l.manageSection)}</div>
+          <div class="list-card">
+            <button type="button" class="toggle-row settings-drill-row" data-settings-subpage-link="budgets">${icon("wallet")}<span class="label">${escapeHtml(l.budgetsSection)}</span><span class="settings-item-count">${budgets.length}</span>${icon("chevron-right")}</button>
+            <button type="button" class="toggle-row settings-drill-row" data-settings-subpage-link="bills">${icon("receipt")}<span class="label">${escapeHtml(l.billsSection)}</span><span class="settings-item-count">${bills.length}</span>${icon("chevron-right")}</button>
+            <button type="button" class="toggle-row settings-drill-row" data-settings-subpage-link="goals">${icon("target")}<span class="label">${escapeHtml(l.goalsSection)}</span><span class="settings-item-count">${goals.length}</span>${icon("chevron-right")}</button>
+            <button type="button" class="toggle-row settings-drill-row" data-settings-subpage-link="categories">${icon("layout-grid")}<span class="label">${escapeHtml(l.categoriesSection)}</span><span class="settings-item-count">${categories.length}</span>${icon("chevron-right")}</button>
+            <button type="button" class="toggle-row settings-drill-row" data-settings-subpage-link="accounts">${icon("landmark")}<span class="label">${escapeHtml(l.accountsSection)}</span><span class="settings-item-count">${accounts.length}</span>${icon("chevron-right")}</button>
+          </div>
+        </div>`}
+        <div class="settings-manage-panels">
+          ${desktop || mobileSubPage === "budgets" ? `<section class="settings-manage-section" data-settings-section-content="budgets">
+            <div class="settings-manage-header">
+              ${desktop ? "" : `<button type="button" class="btn btn-icon settings-back-btn" aria-label="${escapeHtml(l.backAria)}">${icon("chevron-left")}</button>`}
+              ${icon("wallet")}
               <span class="label">${escapeHtml(l.budgetsSection)}</span>
-              <span class="settings-badge-count">${budgets.length}</span>
+              <span class="settings-item-count">${budgets.length}</span>
               <button type="button" class="btn btn-icon" id="addBudgetBtn" aria-label="${escapeHtml(l.addBudgetBtn)}">${PLUS_ICON}</button>
-              ${icon("chevron-right")}
-            </summary>
-            <div class="settings-group-body">
+            </div>
+            <div class="settings-manage-body">
               <div id="budgetFormSlot">${isDesktopShell() ? budgetFormHtml() : ""}</div>
               ${budgets.map(budgetRowHtml).join("") || `<div class="empty-note">${escapeHtml(l.noBudgets)}</div>`}
             </div>
-          </details>
-          <details class="settings-group" data-group="bills" ${state.settingsGroupOpen.bills ? "open" : ""}>
-            <summary>
-              ${iconAvatar("receipt", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+          </section>` : ""}
+          ${desktop || mobileSubPage === "bills" ? `<section class="settings-manage-section" data-settings-section-content="bills">
+            <div class="settings-manage-header">
+              ${desktop ? "" : `<button type="button" class="btn btn-icon settings-back-btn" aria-label="${escapeHtml(l.backAria)}">${icon("chevron-left")}</button>`}
+              ${icon("receipt")}
               <span class="label">${escapeHtml(l.billsSection)}</span>
-              <span class="settings-badge-count">${bills.length}</span>
+              <span class="settings-item-count">${bills.length}</span>
               <button type="button" class="btn btn-icon" id="addBillBtn" aria-label="${escapeHtml(l.addBillBtn)}">${PLUS_ICON}</button>
-              ${icon("chevron-right")}
-            </summary>
-            <div class="settings-group-body">
+            </div>
+            <div class="settings-manage-body">
               <div id="billFormSlot">${isDesktopShell() ? billFormHtml() : ""}</div>
               ${bills.map(billRowHtml).join("") || `<div class="empty-note">${escapeHtml(l.noBills)}</div>`}
             </div>
-          </details>
-          <details class="settings-group" data-group="goals" ${state.settingsGroupOpen.goals ? "open" : ""}>
-            <summary>
-              ${iconAvatar("target", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+          </section>` : ""}
+          ${desktop || mobileSubPage === "goals" ? `<section class="settings-manage-section" data-settings-section-content="goals">
+            <div class="settings-manage-header">
+              ${desktop ? "" : `<button type="button" class="btn btn-icon settings-back-btn" aria-label="${escapeHtml(l.backAria)}">${icon("chevron-left")}</button>`}
+              ${icon("target")}
               <span class="label">${escapeHtml(l.goalsSection)}</span>
-              <span class="settings-badge-count">${goals.length}</span>
+              <span class="settings-item-count">${goals.length}</span>
               <button type="button" class="btn btn-icon" id="addGoalBtn" aria-label="${escapeHtml(l.addGoalBtn)}">${PLUS_ICON}</button>
-              ${icon("chevron-right")}
-            </summary>
-            <div class="settings-group-body">
+            </div>
+            <div class="settings-manage-body">
               <div id="goalFormSlot">${state.goalEditId && isDesktopShell() ? goalFormHtml() : ""}</div>
               <div class="insight-cards" style="padding-bottom:0">
                 ${goals.map(goalCardHtml).join("") || `<div class="empty-note">${escapeHtml(l.noGoals)}</div>`}
               </div>
             </div>
-          </details>
-          <details class="settings-group" data-group="categories" ${state.settingsGroupOpen.categories ? "open" : ""}>
-            <summary>
-              ${iconAvatar("layout-grid", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+          </section>` : ""}
+          ${desktop || mobileSubPage === "categories" ? `<section class="settings-manage-section" data-settings-section-content="categories">
+            <div class="settings-manage-header">
+              ${desktop ? "" : `<button type="button" class="btn btn-icon settings-back-btn" aria-label="${escapeHtml(l.backAria)}">${icon("chevron-left")}</button>`}
+              ${icon("layout-grid")}
               <span class="label">${escapeHtml(l.categoriesSection)}</span>
-              <span class="settings-badge-count">${categories.length}</span>
+              <span class="settings-item-count">${categories.length}</span>
               <button type="button" class="btn btn-icon" id="addCategoryBtn" aria-label="${escapeHtml(l.addCategoryBtn)}">${PLUS_ICON}</button>
-              ${icon("chevron-right")}
-            </summary>
-            <div class="settings-group-body">
+            </div>
+            <div class="settings-manage-body">
               <div id="categoryFormSlot">${isDesktopShell() ? categoryFormHtml() : ""}</div>
               ${groupedCategories(categories).map(categoryRowHtml).join("") || `<div class="empty-note">${escapeHtml(l.noCategories)}</div>`}
             </div>
-          </details>
-          <details class="settings-group" data-group="accounts" ${state.settingsGroupOpen.accounts ? "open" : ""}>
-            <summary>
-              ${iconAvatar("landmark", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+          </section>` : ""}
+          ${desktop || mobileSubPage === "accounts" ? `<section class="settings-manage-section" data-settings-section-content="accounts">
+            <div class="settings-manage-header">
+              ${desktop ? "" : `<button type="button" class="btn btn-icon settings-back-btn" aria-label="${escapeHtml(l.backAria)}">${icon("chevron-left")}</button>`}
+              ${icon("landmark")}
               <span class="label">${escapeHtml(l.accountsSection)}</span>
-              <span class="settings-badge-count">${accounts.length}</span>
+              <span class="settings-item-count">${accounts.length}</span>
               <button type="button" class="btn btn-icon" id="addAccountBtn" aria-label="${escapeHtml(l.addAccountBtn)}">${PLUS_ICON}</button>
-              ${icon("chevron-right")}
-            </summary>
-            <div class="settings-group-body">
+            </div>
+            <div class="settings-manage-body">
               <div id="accountFormSlot">${isDesktopShell() ? accountFormHtml() : ""}</div>
               ${accounts.map(accountRowHtml).join("") || `<div class="empty-note">${escapeHtml(l.noAccounts)}</div>`}
             </div>
-          </details>
+          </section>` : ""}
         </div>
-      </div>
+      </div>` : ""}
 
-      <div data-settings-panel="security">
+      ${desktop || mobileSubPage === "security" ? `<div data-settings-panel="security">
+        ${desktop ? "" : `<div class="settings-security-subpage-header">
+          <button type="button" class="btn btn-icon settings-back-btn" aria-label="${escapeHtml(l.backAria)}">${icon("chevron-left")}</button>
+          <h2>${escapeHtml(l.securitySection)}</h2>
+        </div>`}
         <div class="settings-section-label">${escapeHtml(l.securitySection)}</div>
         <div class="list-card">
           <div class="toggle-row">
-            ${iconAvatar("shield", "var(--color-accent-tint)", "var(--color-accent)", "sm", 'width="15" height="15"')}
+            ${icon("shield")}
             <span class="label">${escapeHtml(l.requirePinLabel)}</span>
             <button type="button" class="switch ${state.pinEnabled ? "on" : ""}" id="pinRequireSwitch"><span class="thumb"></span></button>
           </div>
           <div style="padding:0 4px 10px;font-size:12px;color:var(--color-muted)">${escapeHtml(l.pinDescription)}</div>
           ${state.pinSetupActive ? pinSetupFormHtml() : ""}
         </div>
-      </div>
+      </div>` : ""}
 
         </div>
       </div>
 
-      <p class="footer-note">${escapeHtml(l.footerNote)}</p>
-      <p class="footer-note"><a href="./privacy.html" target="_blank" rel="noopener">${escapeHtml(l.privacyPolicyLink)}</a></p>
+      ${!desktop && !mobileSubPage ? `<div class="list-card settings-utility-card">
+        <button type="button" class="toggle-row settings-drill-row" data-settings-subpage-link="security">${icon("shield")}<span class="label">${escapeHtml(l.securitySection)}</span>${icon("chevron-right")}</button>
+        <a class="toggle-row settings-external-row" href="./privacy.html" target="_blank" rel="noopener">${icon("shield")}<span class="label">${escapeHtml(l.privacyPolicyLink)}</span>${icon("arrow-up-right")}</a>
+      </div>` : ""}
+      ${desktop ? `<div class="list-card settings-utility-card settings-privacy-desktop">
+        <a class="toggle-row settings-external-row" href="./privacy.html" target="_blank" rel="noopener">${icon("shield")}<span class="label">${escapeHtml(l.privacyPolicyLink)}</span>${icon("arrow-up-right")}</a>
+      </div>` : ""}
+      ${desktop || !mobileSubPage ? `${currentUser ? `<div class="list-card settings-logout-card"><button type="button" class="toggle-row settings-logout-row" id="authBtn">${icon("log-out")}<span class="label">${escapeHtml(l.signOutBtn)}</span></button></div>` : ""}
+      <p class="footer-note">${escapeHtml(l.footerNote)}</p>` : ""}
+    </div>
     </div>
   `;
 
-  // Desktop-only list-left/detail-right nav (styles.css's 1024px block) --
-  // no effect below that breakpoint, where .settings-nav stays hidden and
-  // every panel just stacks as before. Pure DOM/class toggling rather than
-  // a full re-render, so switching sections never disturbs an open
-  // inline form elsewhere on the page.
+  // Desktop-only list-left/detail-right nav. Pure DOM/class toggling keeps
+  // switching sections from disturbing an open inline form.
   const settingsLayout = document.querySelector(".settings-layout");
   document.querySelectorAll(".settings-nav-item").forEach((btn) => btn.addEventListener("click", () => {
     const section = btn.getAttribute("data-settings-section");
-    state.settingsActiveSection = section;
+    state.settingsSubPage = section === "display" ? null : section;
     settingsLayout.setAttribute("data-active", section);
     document.querySelectorAll(".settings-nav-item").forEach((b) => b.classList.toggle("active", b === btn));
-    // A closed <details> doesn't render its non-summary content at all --
-    // not something a CSS display override can undo, it's part of how the
-    // browser implements the element -- so the manage sub-sections need to
-    // be genuinely open to show anything here. This only ever sets .open
-    // to true (never false), and only via the live DOM property, so it
-    // can't disturb state.settingsGroupOpen (the mobile accordion's own
-    // persisted state) or the template's own `open` attribute output.
-    const group = document.querySelector(`.settings-group[data-group="${section}"]`);
-    if (group) group.open = true;
   }));
-  $("authBtn").addEventListener("click", () => { currentUser ? signOutUser() : signInWithGoogle(); });
+  document.querySelectorAll("[data-settings-subpage-link]").forEach((btn) => btn.addEventListener("click", () => {
+    openSettingsSubPage(btn.getAttribute("data-settings-subpage-link"));
+    renderSettings();
+  }));
+  document.querySelectorAll(".settings-back-btn").forEach((btn) => btn.addEventListener("click", closeSettingsSubPage));
+
+  if ($("authBtn")) $("authBtn").addEventListener("click", () => { currentUser ? signOutUser() : signInWithGoogle(); });
   document.querySelectorAll('input[name="lang-switch"]').forEach((r) => r.addEventListener("change", (e) => { state.lang = e.target.value; saveSettings(); renderChrome(); renderScreen(); }));
   document.querySelectorAll('input[name="accent-color-switch"]').forEach((r) => r.addEventListener("change", (e) => { state.accentColor = e.target.value; saveSettings(); applyTheme(); }));
-  $("darkSwitch").addEventListener("click", () => { state.dark = !state.dark; saveSettings(); applyTheme(); renderScreen(); });
-  $("hideAmountsSwitch").addEventListener("click", () => { state.hideAmounts = !state.hideAmounts; saveSettings(); renderScreen(); });
+  if ($("darkSwitch")) $("darkSwitch").addEventListener("click", () => { state.dark = !state.dark; saveSettings(); applyTheme(); renderScreen(); });
+  if ($("hideAmountsSwitch")) $("hideAmountsSwitch").addEventListener("click", () => { state.hideAmounts = !state.hideAmounts; saveSettings(); renderScreen(); });
   // ui-ux-pro-max skill audit (Touch & Interaction, priority 2, "Loading
   // Buttons" -- Severity: High in the skill's own dataset): syncNow()
   // already updates the separate #syncStatus text/dot while it runs, but
@@ -376,7 +409,7 @@ export function renderSettings() {
   // pressed. Disabling it here doesn't change syncNow()'s own behavior
   // (still exported/awaited exactly as before) or any of its other
   // fire-and-forget call sites elsewhere in this file.
-  $("syncNowBtn").addEventListener("click", async (e) => {
+  if ($("syncNowBtn")) $("syncNowBtn").addEventListener("click", async (e) => {
     const btn = e.currentTarget;
     btn.disabled = true;
     try { await syncNow(); } finally { btn.disabled = false; }
@@ -406,11 +439,8 @@ export function renderSettings() {
       renderSettings();
     });
   });
-  document.querySelectorAll(".settings-group").forEach((d) => {
-    d.addEventListener("toggle", () => { state.settingsGroupOpen[d.getAttribute("data-group")] = d.open; });
-  });
-  wireExportSheet();
-  wireImportSheet();
+  if ($("openExportSheetBtn")) wireExportSheet();
+  if ($("openImportSheetBtn")) wireImportSheet();
 
   wireInlineCrud("Budget", "budgetEditId", deleteBudget, saveBudgetForm);
   wireInlineCrud("Bill", "billEditId", deleteBill, saveBillForm);

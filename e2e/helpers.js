@@ -39,19 +39,18 @@ export function navBtn(page, tab) {
   return page.locator(`.nav-btn[data-tab="${tab}"]:visible`);
 }
 
-// Switches Settings' left-nav section -- desktop only. .settings-nav is
-// display:none below styles.css's 1024px breakpoint (every Manage section
-// already stacks inline there instead, see settings.js's data-settings-panel
-// blocks), so a click on a .settings-nav-item would fail Playwright's
-// actionability check on a narrower viewport. Specs that need a Manage
-// section's content on a mobile viewport open its <details> group directly
-// instead (see accounts.spec.js's mobile regression test).
+// Opens the requested Settings section in whichever navigation model the
+// current viewport uses: mobile drill-in rows or desktop's left nav.
 export async function openSettingsSection(page, section) {
+  if ((page.viewportSize()?.width || 0) < 1024) {
+    if (section === "display" || section === "sync") return;
+    await page.locator(`[data-settings-subpage-link="${section}"]`).click();
+    return;
+  }
   await page.locator(`.settings-nav-item[data-settings-section="${section}"]`).click();
 }
 
-// Creates a new account via Settings' desktop inline Manage form (see
-// openSettingsSection's own doc comment on why this is desktop-only).
+// Creates a new account through Settings' Manage UI.
 // Shared by every spec that needs a second account to exist (transfers,
 // multi-account switching) rather than each re-deriving the same add-flow.
 // Returns nothing -- callers so far all locate the new row by its name text
