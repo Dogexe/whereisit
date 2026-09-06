@@ -97,20 +97,6 @@ flags what a future agent needs to know exists, not how it works.
 
 ## Active work
 
-- WI-011 — the last remaining Settings redesign ticket. **WI-008
-  (sub-page navigation with real history entries), WI-009 (centered
-  profile, grouped cards in a deliberate hierarchy, flat chrome icons,
-  Privacy policy row, red Log out row), and WI-010 (expand-in-place
-  Appearance / Accent color / Language rows) have all shipped** — see
-  `docs/CHANGELOG.md`. Still open: WI-011 (sub-page chrome — hide the
-  bottom tab bar while a sub-page is open and move the section's Add
-  button into a bottom-right FAB). Spec:
-  `docs/specs/settings-chatgpt-style-navigation.md`, whose decisions 9
-  and 10 cover it. Worth knowing up front: this spec **reverses** the
-  "drill-down sub-pages explicitly not chosen" decision recorded in
-  `docs/specs/settings-redesign-concept-b.md`, reversed deliberately by
-  the maintainer with a reference screenshot.
-
 - WI-013 / WI-014 — two accessibility defects found by the `docs/UX.md`
   design-system audit and deliberately left unfixed by that
   documentation-only pass. **WI-013:** the mobile tab bar's five buttons
@@ -126,6 +112,34 @@ flags what a future agent needs to know exists, not how it works.
   rather than a matter of taste.
 
 ## Recently completed
+
+- WI-011 + WI-015 — the last two Settings redesign tickets, both
+  implemented by Claude directly (not Codex — quota was exhausted) and
+  shipped together in one commit. **WI-011:** below 1024px, opening a
+  Settings sub-page hides the bottom tab bar (`body.settings-subpage-open`,
+  driven off the existing `state.settingsSubPage`) and moves each
+  section's Add button into a bottom-right FAB — spec:
+  `docs/specs/settings-chatgpt-style-navigation.md` decisions 9/10; this
+  was the last ticket from that spec, so **the whole Settings redesign
+  (WI-008 through WI-011) is now shipped.** **WI-015:** Budgets/Bills/
+  Categories/Accounts sub-page rows now render inside the same rounded
+  `.list-card` (`.manage-rows-card`) the root list and Security already
+  use; Goals keeps its individually-carded look when populated (reverted
+  after live review) but joins the card when empty — spec:
+  `docs/specs/settings-manage-rows-card-styling.md`. **Two real defects
+  found and fixed along the way, worth carrying forward:** (1) a
+  phantom-`pointerenter` bug where a DOM-mutating click could leave a
+  Manage or Transaction row permanently stuck open with no user gesture
+  — traced to a speculative "desktop mouse hover" fallback in both
+  `tx-row.js` and `manage-row-swipe.js` that was never actually reachable
+  on a real desktop (both surfaces already show actions statically at
+  1024px+), removed from both to keep them contractually identical per
+  `docs/UX.md`; (2) Manage row icon avatars were rendering at 30px against
+  the app's normal 40px everywhere else — a stale, undocumented-until-now
+  choice from `docs/specs/settings-manage-row-icons.md`, now unified.
+  Confirmed live on the deployed site (`https://dogexe.github.io/whereisit/`)
+  on both a real mobile browser and via the served bundle, not just a
+  local `dist/` build.
 
 - WI-012 — make `npm run test:e2e` fail honestly when its browser cannot
   be launched: **shipped.** `scripts/check-playwright-browser.mjs` now

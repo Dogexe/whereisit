@@ -1,8 +1,9 @@
 # Spec: Settings — ChatGPT-style profile header, grouped cards, and sub-page navigation
 
-Status: **Specified, not implemented.** Written from a reference
-screenshot of ChatGPT's mobile Settings screen supplied by the
-maintainer, via the `/spec` interview in `docs/WORKFLOW.md`.
+Status: **All four tickets shipped — this spec is fully implemented.**
+Written from a reference screenshot of ChatGPT's mobile Settings screen
+supplied by the maintainer, via the `/spec` interview in
+`docs/WORKFLOW.md`.
 
 Tickets: `WI-008` (navigation model), `WI-009` (visual language),
 `WI-011` (sub-page chrome: hidden tab bar + Add FAB), `WI-010`

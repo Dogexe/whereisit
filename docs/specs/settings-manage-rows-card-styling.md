@@ -1,6 +1,9 @@
 # Spec: Grouped-card styling for Settings' Manage sub-page rows
 
-Status: **Specified, not implemented.**
+Status: **Implemented and shipped** as `WI-015`, including two rounds of
+live-review corrections — see that ticket's Review notes for the full
+story (a padding-placement bug, a swipe-hover parity fix touching
+`tx-row.js` too, an icon-size fix, and the Goals-treatment reversal).
 
 ## How this was found
 

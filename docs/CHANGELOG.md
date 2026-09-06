@@ -1199,3 +1199,108 @@ green with the corrected import.
 proof it's declared — a flat `node_modules` will happily hoist a
 transitive dependency into something that imports cleanly, right up until
 the dependency tree that put it there changes.
+
+## WI-011: Settings sub-page chrome — hidden tab bar and Add FAB
+
+The last ticket of `docs/specs/settings-chatgpt-style-navigation.md`
+(decisions 9 and 10), closing out the whole Settings redesign that began
+with WI-008. Below 1024px, opening a Settings sub-page now hides the
+bottom tab bar and its reserved vertical space (`body.settings-subpage-open`,
+toggled in `renderChrome()` off the existing `state.settingsSubPage` — no
+new state field), so the back arrow is the only way out. Every offset that
+assumed the tab bar's height (`.screen`'s bottom padding, `#toast`'s
+bottom offset) now collapses to the bare safe-area inset while a sub-page
+is open. Each section's Add button moved out of the sub-page header and
+into a bottom-right FAB (`.settings-add-fab`, reusing existing button
+primitives and tokens — no new colors, radii, or spacing values), with the
+scrollable body gaining enough bottom padding that the FAB never covers
+the last row.
+
+Implemented and independently reviewed live; no confirmed defects.
+
+## WI-015: grouped-card styling for Settings' Manage sub-page rows
+
+Found during WI-011's review: WI-009 had restyled the Settings root list
+into rounded `.list-card` groups but deliberately left the Manage *data*
+rows inside each sub-page (Budgets/Bills/Goals/Categories/Accounts) on
+their old flat divider-list styling, to avoid risking `WI-005`'s swipe
+gesture. That gap was visibly inconsistent once the rest of Settings had
+moved on — Budgets/Bills/Categories/Accounts sub-pages now wrap their row
+list in the same `.list-card` (as `.manage-rows-card`, nested inside
+`.settings-manage-body` rather than applied to it directly — see below).
+Goals is the one exception: each goal already renders as its own
+individually-carded `.goal-card`, and after trying (and shipping, then
+reverting per live maintainer feedback) a flattened unified-list version,
+populated Goals kept its original separate-cards look; only its *empty*
+state joins the shared card, so "no goals yet" isn't left floating bare.
+
+Implemented by Claude directly, not Codex — the maintainer explicitly
+asked for that because Codex's quota was exhausted at the time.
+
+**Three real defects found and fixed during live review, in order:**
+
+1. **A blank space inside the new card.** The first version put
+   `.list-card` directly on `.settings-manage-body`, the same element
+   `WI-011` targets with a large bottom padding to keep the FAB clear of
+   the last row — so that padding rendered as dead space *inside* the
+   rounded card, right before its bottom corner. A maintainer screenshot
+   caught it. Fixed by nesting a `.manage-rows-card` div inside
+   `.settings-manage-body` for the row list only, leaving the outer
+   element a plain scroll container — confirmed with
+   `getBoundingClientRect()` that the card now ends flush after the last
+   row and the FAB-clearance gap sits in the page background below it,
+   not inside the card.
+
+2. **A phantom-`pointerenter` bug, found independently of the above and
+   initially mistaken for the same symptom.** A "desktop mouse hover"
+   fallback in `manage-row-swipe.js` (mirrored from `tx-row.js`, added by
+   `WI-005` "in case a mouse is used in a narrow/resized desktop browser
+   window") could leave a row permanently swiped open with no real user
+   gesture: a click that re-renders the DOM (e.g. drilling into a
+   sub-page) can leave the cursor sitting over a newly-rendered row it
+   never deliberately hovered, and the browser resynthesizes a
+   `pointerenter` for whatever now sits under a stationary cursor after a
+   layout change. Reproduced on a completely fresh page load with a
+   single click — not a test-harness artifact — and confirmed via `git
+   stash` to already exist before this ticket. Removed the fallback from
+   `manage-row-swipe.js`. Doing so then surfaced a second-order problem:
+   `docs/UX.md` requires the two swipe surfaces (`tx-row.js` and
+   `manage-row-swipe.js`) to stay behaviorally identical, and removing the
+   fallback from only one broke that. Investigating whether `tx-row.js`'s
+   copy was actually load-bearing turned up `.tx-list-card`'s desktop
+   override, which already makes Transactions' Edit/Delete an
+   always-visible column at 1024px+ independent of hover — so the
+   fallback was never reachable on the real desktop table either, just
+   the same edge case. Removed from `tx-row.js` too, confirmed by the full
+   e2e suite (including `row.hover()`-driven tests, which pass because
+   `.tx-list-card`'s static column already made hover unnecessary there)
+   and a live check that a Home recent-activity row (the one path with no
+   automated coverage) no longer sticks open.
+
+3. **Manage row icon avatars rendering at 30px against the app's normal
+   40px everywhere else** (Transactions, Home, Goals) — a pre-existing,
+   undocumented-until-now choice from `docs/specs/settings-manage-row-icons.md`,
+   reported directly by the maintainer ("the icon seem too small from
+   normal") and confirmed by measuring `.icon-avatar` with
+   `getBoundingClientRect()` on both sides. Fixed by removing the `"sm"`
+   size override at its three call sites (`manage-row.js`'s shared
+   `categoryIconAvatar()`, `settings-accounts.js`, `settings-categories.js`)
+   so they fall through to the same 40px/18px default every other icon
+   avatar in the app already uses.
+
+Verified at every step with `npm test`, `npm run test:e2e`, and
+`npm run build`, plus live browser checks in both themes against a served
+`dist/` build. After merging, also confirmed against the real deployed
+site (`https://dogexe.github.io/whereisit/`): fetched the live bundle
+directly to confirm the fixes actually shipped (not just built locally),
+and the maintainer separately confirmed on a real mobile browser.
+
+**Lesson worth carrying forward:** two visually similar symptoms (a
+stuck-open row showing garbled content, and a genuinely empty padded
+area) are not the same bug just because they look alike in a screenshot —
+diagnosing each to its actual root cause, rather than assuming the first
+fix covered both, is what surfaced the second one. Separately: fixing a
+shared/duplicated code pair (here, the two swipe modules) in only one
+copy is itself a defect when a design system explicitly requires them to
+stay identical — always grep for the sibling before considering a
+"remove this dead code" fix complete.
