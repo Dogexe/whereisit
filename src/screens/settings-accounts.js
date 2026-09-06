@@ -22,9 +22,9 @@ export function accountRowHtml(a) {
   const iconHtml = iconAvatar(a.icon, tone.bg, tone.color, "sm", 'width="15" height="15"');
   const l = L();
   const actions = `
-    <button type="button" class="btn btn-icon" data-edit-account="${a.id}" aria-label="${escapeHtml(l.editAria)}">${EDIT_ICON}</button>
-    <button type="button" class="btn btn-icon" data-toggle-archive-account="${a.id}" aria-label="${escapeHtml(a.archived ? l.unarchiveAria : l.archiveAria)}">${icon("archive")}</button>
-    <button type="button" class="btn btn-icon" style="color:var(--color-expense-700)" data-delete-account="${a.id}" aria-label="${escapeHtml(l.deleteAria)}">${DELETE_ICON}</button>`;
+    <button type="button" class="btn btn-icon manage-swipe-action manage-swipe-edit" data-edit-account="${a.id}" aria-label="${escapeHtml(l.editAria)}">${EDIT_ICON}</button>
+    <button type="button" class="btn btn-icon manage-swipe-action manage-swipe-archive" data-toggle-archive-account="${a.id}" aria-label="${escapeHtml(a.archived ? l.unarchiveAria : l.archiveAria)}">${icon("archive")}</button>
+    <button type="button" class="btn btn-icon manage-swipe-action manage-swipe-delete" data-delete-account="${a.id}" aria-label="${escapeHtml(l.deleteAria)}">${DELETE_ICON}</button>`;
   return manageRowHtml(iconHtml, a.name, a.archived ? l.archivedLabel : "", fmtMoney(computeBalance(a.id)), "", "", a.archived ? "manage-row-archived" : null, actions, 3);
 }
 // Same guard shape as deleteCategory: block (toast, no state change,

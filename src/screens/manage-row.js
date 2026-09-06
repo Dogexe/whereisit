@@ -52,8 +52,8 @@ export function manageRowHtml(iconHtml, name, sub, amt, editAttr, deleteAttr, ex
     <div class="info"><div class="name">${escapeHtml(name)}</div><div class="sub">${escapeHtml(sub)}</div></div>
     ${amt ? `<div class="amt">${amt}</div>` : ""}`;
   const actions = actionsOverrideHtml || `
-    <button type="button" class="btn btn-icon" ${editAttr} aria-label="${escapeHtml(L().editAria)}">${EDIT_ICON}</button>
-    <button type="button" class="btn btn-icon" style="color:var(--color-expense-700)" ${deleteAttr} aria-label="${escapeHtml(L().deleteAria)}">${DELETE_ICON}</button>`;
+    <button type="button" class="btn btn-icon manage-swipe-action manage-swipe-edit" ${editAttr} aria-label="${escapeHtml(L().editAria)}">${EDIT_ICON}</button>
+    <button type="button" class="btn btn-icon manage-swipe-action manage-swipe-delete" ${deleteAttr} aria-label="${escapeHtml(L().deleteAria)}">${DELETE_ICON}</button>`;
   if (!isDesktopShell()) {
     return manageSwipeWrapHtml("", content, actions, actionCount || 2, `manage-row-content manage-row${extraClass ? " " + extraClass : ""}`);
   }

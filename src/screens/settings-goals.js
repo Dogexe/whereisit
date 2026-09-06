@@ -35,8 +35,8 @@ export function goalCardHtml(g, idx) {
     <span class="badge ${complete ? "badge-income" : "badge-brand"}">${complete ? escapeHtml(l.goalComplete) : pct + "%"}</span>`;
   const contributeBtn = `<button type="button" class="btn btn-icon" data-contribute-goal="${g.id}" aria-label="${escapeHtml(l.contributeAria)}">${PLUS_ICON}</button>`;
   const editDeleteActions = `
-    <button type="button" class="btn btn-icon" data-edit-goal="${g.id}" aria-label="${escapeHtml(l.editAria)}">${EDIT_ICON}</button>
-    <button type="button" class="btn btn-icon" style="color:var(--color-expense-700)" data-delete-goal="${g.id}" aria-label="${escapeHtml(l.deleteAria)}">${DELETE_ICON}</button>`;
+    <button type="button" class="btn btn-icon manage-swipe-action manage-swipe-edit" data-edit-goal="${g.id}" aria-label="${escapeHtml(l.editAria)}">${EDIT_ICON}</button>
+    <button type="button" class="btn btn-icon manage-swipe-action manage-swipe-delete" data-delete-goal="${g.id}" aria-label="${escapeHtml(l.deleteAria)}">${DELETE_ICON}</button>`;
   const topRow = isDesktopShell()
     ? `${infoContent}<div class="goal-card-actions">${contributeBtn}${editDeleteActions}</div>`
     : `${manageSwipeWrapHtml("", infoContent, editDeleteActions, 2, "goal-card-top-content", "goal-card-swipe-wrap")}${contributeBtn}`;

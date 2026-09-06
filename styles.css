@@ -939,11 +939,28 @@
      wrapper owns the row's border-bottom (not .manage-row-content
      itself, which reuses the plain .manage-row rules above and would
      otherwise double up the divider line). */
-  .manage-row-wrap { display: flex; align-items: stretch; position: relative; overflow: hidden; border-bottom: 1px solid var(--color-divider); touch-action: pan-y; user-select: none; }
+  .manage-row-wrap { position: relative; overflow: hidden; border-bottom: 1px solid var(--color-divider); touch-action: pan-y; user-select: none; }
   .manage-row-wrap:last-child { border-bottom: none; }
-  .manage-row-wrap .manage-row-content { border-bottom: none; flex: 1; min-width: 0; }
-  .manage-row-actions-group { display: flex; align-items: center; flex-shrink: 0; overflow: hidden; transition: width 240ms cubic-bezier(.22,1,.36,1); }
-  .manage-row-actions-group.dragging { transition: none; }
+  .manage-row-wrap .manage-row-content,
+  .goal-card-top-content { position: relative; z-index: 1; width: 100%; box-sizing: border-box; background: var(--color-card); transition: transform 240ms cubic-bezier(.22,1,.36,1); }
+  .manage-row-wrap .manage-row-content { border-bottom: none; }
+  .manage-row-wrap .manage-row-content.dragging,
+  .goal-card-top-content.dragging { transition: none; }
+  .manage-row-actions-group { position: absolute; z-index: 0; inset-block: 0; right: 0; display: flex; align-items: center; }
+  .manage-row-actions-group .row-actions { width: 100%; height: 100%; align-items: center; gap: 4px; padding: 0 0 0 12px; }
+  .manage-row-actions-group .manage-swipe-action {
+    width: 40px; height: 40px; min-width: 40px; padding: 0;
+    border-radius: 20px; box-shadow: none; transform: scale(0); transform-origin: right center;
+    transition: transform 240ms cubic-bezier(.22,1,.36,1);
+  }
+  .manage-row-actions-group.dragging .manage-swipe-action { transition: none; }
+  .manage-row-actions-group .manage-swipe-edit,
+  .manage-row-actions-group .manage-swipe-archive { background: var(--color-border); color: var(--color-text); }
+  .manage-row-actions-group .manage-swipe-delete { background: var(--color-expense); color: #fff; }
+  .manage-row-actions-group.full-swipe { position: absolute; inset: 0; width: auto; gap: 0; padding: 0; }
+  .manage-row-actions-group.full-swipe .row-actions { gap: 0; padding: 0; }
+  .manage-row-actions-group.full-swipe .manage-swipe-action:not(.manage-swipe-delete) { opacity: 0; pointer-events: none; }
+  .manage-row-actions-group.full-swipe .manage-swipe-delete { position: absolute; z-index: 1; }
   /* Goal cards (mobile-only swipe for Edit/Delete, Contribute stays
      always-visible outside the swipe wrapper -- docs/specs/
      settings-manage-swipe-and-sheet.md) are their own self-contained box,

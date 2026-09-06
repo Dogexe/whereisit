@@ -887,3 +887,84 @@ reproduce this bug, and `contain: paint` does nothing for it.
 `npm test` (173/173), `npm run test:e2e` (24/24 — the ghosting spec grew
 from 1 test to 6, one per sheet), and `npm run build` all green, re-run
 independently of Codex's own reported runs.
+
+## WI-005: Apple-style swipe actions on Settings' Manage rows, and a ticket that specified a design that never shipped
+
+Carried WI-004's transaction-row swipe language over to Settings' Manage
+rows (Budgets/Bills/Goals/Categories/Accounts): 40px circular Edit/
+Delete(/Archive) matching the category icon avatar, a whole-row drag
+surface, and full-swipe-to-delete with the pop-in/grow animation.
+
+**The ticket was stale before it was ever dispatched, and that cost a
+full Codex run.** WI-005 was written before WI-004 landed, so its
+acceptance criteria encoded an early *draft* of WI-004 — full-height
+rounded rectangles at `actionCount * 64` reveal width. WI-004 then went
+through eleven live-checked revisions and shipped the opposite: 40px
+circles at a `12 + n*40 + (n-1)*4` reveal (96px at n=2, matching
+`tx-row.js`'s `REVEAL = 96`). The first Codex run faithfully implemented
+`border-radius: var(--radius-md)` full-height rectangles, exactly as
+specified and exactly wrong. Codex even noticed mid-run — "the ticket and
+the currently checked-in spec conflict" — and proceeded on the ticket's
+authority anyway. That run was cancelled and reverted, the ticket was
+re-derived from the shipped source, and it now carries a standing rule:
+`tx-row.js` is the reference, and where the ticket prose and that code
+disagree, the code is right.
+
+**Standing lesson: when a ticket's job is "carry over what another ticket
+established," the dependency's shipped code is the specification and the
+ticket text is a stale summary of it.** A ticket that says "reuse the
+finalized colors and sizing from X" while also hardcoding its own guesses
+at those colors and sizing is self-contradictory, and the implementation
+agent will follow the hardcoded guesses. Re-derive before dispatching.
+
+The same staleness had already propagated into the code. `manage-row-swipe.js`'s
+leading comment claimed the reveal worked "the same proven way tx-row.js
+already validated: growing a real flex box's width, never an overlaying
+positioned layer" — untrue of `tx-row.js` since WI-004, which absolutely
+positions the actions *behind* an opaque content layer that translates
+over them. The module had faithfully implemented a stale description of
+its own reference, which is why Manage rows *squeezed* their text while
+transaction rows *slid*. Fixed, and the comment now describes the real
+mechanism.
+
+Three defects found by independent review, all caught live rather than by
+reading the diff:
+
+1. **Full-swipe left Accounts' Archive button stranded.** The CSS rule
+   named `.manage-swipe-edit` specifically, but Accounts has three
+   actions. Measured mid-swipe: Edit `opacity: 0`, Archive `opacity: 1`
+   as a 40x40 circle sitting on top of the row, Delete grown to 118px.
+   Generalized to `:not(.manage-swipe-delete)` so a fourth action would
+   be handled too. `tx-row.js` still carries the same Edit-specific
+   selector; harmless at two actions, would resurface at three.
+2. **The row squeezed instead of sliding** (the mechanism bug above),
+   reported by the maintainer against the shipped transaction behavior.
+3. **The Delete pill could never reach full width.** `pointermove`
+   applied square-root rubber-band damping past the reveal point —
+   leftover from the original swipe-to-reveal, where past-reveal was
+   meaningless over-drag slop. Once past-reveal became the full-swipe
+   *grow* regime, that resistance throttled the animation. Measured on a
+   314px Accounts row against a 298px target: dragging to the left screen
+   edge, the most a real finger can do, reached only 154px; reaching 298px
+   needed ~2342px of travel, six screen widths. Mathematically
+   unreachable. `tx-row.js` damps only the negative direction
+   (`raw < 0 ? -Math.sqrt(-raw) * 2 : raw`), leaving leftward drag linear;
+   deleting the extra branch fixed it. After: 298/298px on both the 2- and
+   3-action cases.
+
+**Lesson: for motion work, verify the magnitude, not the direction.** The
+review that missed defect 3 had confirmed live that the pill *grew* and
+stopped there — an assertion the broken state satisfies. The whole e2e
+suite passed throughout, because `endDrag` tests the raw un-damped offset
+while only the visual was damped: the delete committed correctly while
+looking unfinished. The new regression test asserts the pill reaches
+within 20px of the row's full width, and deliberately bounds the drag to
+65% of the row from a 0.9 start fraction, since a synthetic pointer event
+can dispatch a multi-screen drag no finger could produce and fake a pass.
+
+`npm test` (173/173), `npm run test:e2e` (26/26), and `npm run build` all
+green, re-run independently of Codex's own reported runs. Live-verified at
+390px across all three row shapes — list rows (2 actions), Accounts
+(3 actions), and Goals' card variant: content width unchanged during drag,
+`translateX(-offset)` applied, opaque background, every non-Delete action
+hidden during full swipe, and the pill reaching its full target width.

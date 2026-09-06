@@ -22,7 +22,23 @@ Settings' Manage section (Budgets, Bills, Goals, Categories, Accounts) is the on
 
 `wireInlineCrud`/`inlineForm` and every section's own `xFormHtml()` function (`budgetFormHtml`, `billFormHtml`, `goalFormHtml`, `goalContributeFormHtml`, `categoryFormHtml`, `accountFormHtml`) are already DOM-location-agnostic — they wire their Save/Cancel buttons and field inputs by plain `document.getElementById`/`$()`, not by anything that assumes a specific parent container. That means moving their *rendered output* into `#manageSheetContainer` instead of an inline slot inside `#screen` needs **no changes to any of those six functions** — only to *where* their HTML string gets inserted, and to ensuring it's never rendered in both places at once (which would create duplicate ids and break the `getElementById` wiring both copies rely on). `renderSettings()` conditionally includes each `xFormHtml()` call inline only when `isDesktopShell()`; a new `renderManageSheet()` calls the same six functions and inserts whichever one is non-empty (each already guards on its own edit-id being null, returning `""`) into `#manageSheetContainer` when not on desktop.
 
-## Reveal mechanism: simpler than `tx-row.js`'s, and why
+## Reveal mechanism
+
+> **Superseded during WI-005.** The width-growing mechanism described
+> below is no longer what ships, and the reasoning in it was built on a
+> description of `tx-row.js` that stopped being true when WI-004 landed.
+> What actually ships now, matching `tx-row.js` exactly: the actions are
+> an **absolutely positioned layer beneath** an opaque content layer
+> (`position: absolute; z-index: 0; inset-block: 0; right: 0`), and the
+> content translates left over them (`transform: translateX(-offset)`,
+> `position: relative; z-index: 1`, `background: var(--color-card)`).
+> The row's layout stays rigid — nothing squeezes, truncates or reflows
+> mid-drag, which is what the old mechanism did and what made Manage rows
+> feel different from transaction rows. Leftward drag is linear with no
+> rubber-band damping (only over-*closing* is damped), because past the
+> reveal point the drag now drives the full-swipe Delete grow. The
+> paragraph below is kept for history; don't implement from it.
+
 
 `tx-row.js`'s `.tx-trail-group` has to start at exactly the amount's own natural width (measured once via `getBoundingClientRect()`) because its sibling, `.tx-lead`, is `flex:1` and needs to reclaim all the space the actions aren't using. Manage rows don't need that measurement at all: `.manage-row-content` (icon + name + sub + amount, whatever a given section has) is itself `flex:1; min-width:0`, so it already absorbs any width change by truncating its own text — the same way it already does at narrow viewports today. `.manage-row-actions-group` simply toggles between `width: 0` (closed, `overflow:hidden` so the buttons inside are unreachable and untabbable) and `width: <reveal>px` (open), with the actual reveal pixel value read from a `data-reveal` attribute the row itself carries (computed once at render time from its own button count, not hardcoded). A live drag sets this width directly during `pointermove` (identical technique to `tx-row.js`), and a CSS transition handles the settle-to-open/closed animation on release — again identical in spirit, just without needing the width-measurement step `tx-row.js` needs for its handle-based approach.
 
