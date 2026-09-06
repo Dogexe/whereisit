@@ -111,6 +111,20 @@ flags what a future agent needs to know exists, not how it works.
   `docs/specs/settings-redesign-concept-b.md`, reversed deliberately by
   the maintainer with a reference screenshot.
 
+- WI-013 / WI-014 — two accessibility defects found by the `docs/UX.md`
+  design-system audit and deliberately left unfixed by that
+  documentation-only pass. **WI-013:** the mobile tab bar's five buttons
+  have no accessible name at all — they went icon-only in the tab bar
+  polish pass, and nothing replaced the `<span data-l>` labels
+  `renderChrome()` localizes. **WI-014:** fourteen controls have no visible
+  keyboard focus indicator, including both navs, all six segmented
+  controls, and every Settings row button. Spec:
+  `docs/specs/accessible-names-and-focus-indicators.md`. Both are `Ready`,
+  independent of each other, and rank above any token/spacing
+  normalization — `docs/UX.md` now documents the rules they violate, which
+  makes each violation a defect by this repo's own review classification
+  rather than a matter of taste.
+
 - WI-012 — make `npm run test:e2e` fail honestly when its browser cannot
   be launched. Raised because an implementing agent reported the e2e
   suite as failed three times during WI-008/WI-009 when it in fact
