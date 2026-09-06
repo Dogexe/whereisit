@@ -63,6 +63,7 @@ export function renderChrome() {
   // updated identically, since both are always present in the DOM.
   document.querySelectorAll("#sidebar [data-l]").forEach((el) => { el.textContent = L()[el.getAttribute("data-l")]; });
   document.querySelectorAll(".nav-btn span[data-l]").forEach((el) => { el.textContent = L()[el.getAttribute("data-l")]; });
+  document.querySelectorAll("[data-l-aria]").forEach((el) => { el.setAttribute("aria-label", L()[el.getAttribute("data-l-aria")]); });
   document.querySelectorAll(".nav-btn").forEach((btn) => btn.classList.toggle("active", btn.getAttribute("data-tab") === state.tab));
   // Sidebar footer account status -- mirrors Settings' own profile row
   // (same accountDisplayName() helper, see account.js) so the two never

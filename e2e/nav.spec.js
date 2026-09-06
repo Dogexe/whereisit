@@ -1,5 +1,43 @@
 import { test, expect } from "./fixtures.js";
 
+test("mobile bottom-nav accessible names localize without changing its rendered geometry", async ({ page }) => {
+  const names = {
+    th: ["หน้าแรก", "รายการ", "เพิ่ม", "ภาพรวม", "ตั้งค่า"],
+    en: ["Home", "Transactions", "Add", "Insights", "Settings"]
+  };
+  const assertNames = async (lang) => {
+    const buttons = page.locator("#tabbar button");
+    await expect(buttons).toHaveCount(5);
+    for (let i = 0; i < names[lang].length; i++) await expect(buttons.nth(i)).toHaveAccessibleName(names[lang][i]);
+  };
+  const geometry = () => page.locator("#tabbar button").evaluateAll((buttons) => buttons.map((button) => {
+    const { x, y, width, height } = button.getBoundingClientRect();
+    return { x, y, width, height };
+  }));
+  const switchLanguage = async (lang) => {
+    await page.locator('[aria-controls="languageOptions"]').click();
+    await page.locator(`.tab-opt:has(input[name="lang-switch"][value="${lang}"])`).click();
+  };
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await assertNames("th");
+  await expect(page.locator("#tabbar button")).toHaveText(["", "", "", "", ""]);
+  await expect(page.locator("#tabbar button svg[aria-hidden=\"true\"]")).toHaveCount(5);
+  const narrowGeometry = await geometry();
+
+  await page.locator('#tabbar [data-tab="settings"]').click();
+  await switchLanguage("en");
+  await assertNames("en");
+  expect(await geometry()).toEqual(narrowGeometry);
+
+  await page.setViewportSize({ width: 768, height: 844 });
+  const wideGeometry = await geometry();
+  await switchLanguage("th");
+  await assertNames("th");
+  expect(await geometry()).toEqual(wideGeometry);
+});
+
 test("mobile bottom-nav switches screens and updates active state", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
