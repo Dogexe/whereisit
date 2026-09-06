@@ -6,7 +6,7 @@
     "build": "node scripts/build.mjs",
     "check:sprite": "node tools/check-sprite-svg.mjs",
     "test": "node --test",
-    "test:e2e": "npm run build && playwright test"
+    "test:e2e": "npm run build && node scripts/check-playwright-browser.mjs && playwright test"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",

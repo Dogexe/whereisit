@@ -72,6 +72,12 @@ requires them, and don't fold in unrelated cleanup.
 See `CLAUDE.md`'s "Running locally" section for the build/serve commands and
 exactly what each test layer covers.
 
+## E2E sandbox limitation
+
+An agent sandbox may not be able to see Playwright's browser or `python`.
+This is an environment limitation, not a repository fault. If Chromium cannot
+launch, report e2e as **not run**, not failed.
+
 ## Codex execution profiles
 
 **This section is the single authoritative source for Codex profile

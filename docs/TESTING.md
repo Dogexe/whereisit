@@ -21,6 +21,9 @@ layers — **don't trust a stale doc's silence on this over grepping
    `npm run test:e2e` builds `dist/` then runs the suite against it via
    `scripts/serve.mjs` (a tiny Node static server, so CI doesn't need a
    second language runtime just to serve files) — see `playwright.config.js`.
+   Its browser preflight exits before the suite if Chromium cannot launch; see
+   [AGENTS.md's E2E sandbox limitation](../AGENTS.md#e2e-sandbox-limitation)
+   and report that result as **not run**, not failed.
    Separate CI workflow, `.github/workflows/e2e.yml`, runs on every PR (not
    just push to `main`) so a screen regression is caught before merge.
    First run needs browsers installed once: `npx playwright install
