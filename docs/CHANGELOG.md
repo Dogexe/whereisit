@@ -1039,3 +1039,85 @@ green, re-run independently of the implementing agent's own reported runs —
 which mattered, because those runs did not complete: one died on a provider
 usage limit before verifying anything, and the others reported e2e as failed
 when the suite in fact passed. See `WI-012` for that.
+
+## A UX/design-system documentation layer (docs/UX.md)
+
+Requested directly: add a durable UX/design reference so future
+Claude → Codex UI work stays visually and behaviorally consistent, with the
+governing rule **existing canonical pattern > new pattern**. Explicitly an
+audit + documentation + workflow pass — no application code, CSS, or theme
+values were touched, and the pass was required to report its audit and stop
+for approval before editing anything.
+
+The important constraint was the second half of the brief: **do not assume
+every existing pattern is correct.** The job was to separate the real reusable
+design language from accidental drift, and to refuse to tokenize the drift.
+
+**What the audit found.** The color layer is already coherent and worth
+protecting: `styles.css`'s `:root` holds only the pre-JS first-paint fallback,
+`theme.js`'s `applyTheme()` is the runtime owner of everything that varies by
+theme or accent, and JS modules reference colors as `var(--token)` strings
+rather than hex. That split, plus the `-tint-fg` theme-invariance rule WI-006
+paid for, is now written down as a rule instead of surviving only as CSS
+comments. The interaction layer is similarly consistent — one sheet anatomy,
+one row anatomy, one swipe pattern, no `confirm()` dialogs anywhere.
+
+The *dimensional* layer is where the drift is. `--space-lg: 20px` is specified
+in `docs/specs/home-spacing-scale.md`'s Decision 1 and **was never actually
+defined in `:root`** — so the scale has a hole exactly where the most-repeated
+large value sits (20px appears 13 times as a raw literal). Spacing tokens are
+used in roughly a tenth of the rules, and the comment claiming they are
+"Home-only for now" is stale, since Transactions and Settings now use them too.
+There are no typography tokens at all across sixteen distinct font sizes,
+including three unexplained fractional ones. Three rule bodies are
+**byte-identical**: the two chip families, their two row wrappers, and — the
+risky one — the transaction and Manage swipe-action rules, which WI-005
+declared must never differ.
+
+**Two real accessibility defects surfaced and were deliberately left
+unfixed**, since this pass was documentation-only. The mobile tab bar's five
+buttons have no accessible name at all: they went icon-only in the tab bar
+polish pass, their SVGs are `aria-hidden`, `renderChrome()` only fills
+`span[data-l]` elements the mobile bar no longer has, and no `aria-label` was
+added in their place — so a screen reader gets five unlabeled buttons. Second,
+`.tab-opt`'s real radio input is `opacity:0; width:0; height:0` with no
+`:focus-visible` rule on the visible label, so all six segmented controls are
+keyboard-focusable with no indicator; the same is true of `.switch`,
+`button.toggle-row`, and `.nav-btn`. Both are recorded under Known UI debt and
+ranked **above** cosmetic token normalization.
+
+**Eight decisions were left open on purpose.** The spacing scale's shape (the
+heavily used 6/10/14px values fit neither the current linear scale nor a
+doubling one), card interior padding, icon-button sizes, the duplicate chip
+families, the fractional font sizes, the sheet's untokenized corner radius,
+whether the accent should keep doubling as the expense hue, and whether
+"no confirm dialogs, Undo instead" is inviolable. Each is subjective or
+identity-changing rather than architectural, so `docs/UX.md` names the tension
+and stops. **The standing lesson this pass is built around: the correct order
+is audit → identify canonical → approve decisions → document → tokenize →
+refactor. Tokenizing first would have permanently encoded the inconsistency
+as the system.**
+
+**Workflow integration** left the Claude → spec/tickets → Codex → Claude review
+loop untouched and added only pointers: read-order entries in `CLAUDE.md` and
+`AGENTS.md`, a `## UX constraints` requirement for UI specs, a UX comparison in
+the review step, and an optional `## UX / design references` section in
+`docs/tickets/TICKET_TEMPLATE.md` whose load-bearing line is
+`New design primitives required by this ticket: none` — an explicit `none`
+turns any new primitive appearing in the diff into a reviewable defect. The
+review step also gained an explicit classification rule: **a violation of a
+documented `docs/UX.md` rule is a defect; an undocumented subjective preference
+is a suggestion and never a blocker; a finding that turns on one of the open
+decisions is neither, and goes to the maintainer.** That rule exists so a
+reviewer can't promote personal taste into a merge blocker.
+
+`docs/UX.md` landed at 309 lines against a requested 150–250. It was compressed
+twice and three restatements of `docs/ARCHITECTURE.md` content were converted
+to pointers; going lower would have meant deleting canonical rules or the
+one-clause reasons that make them followable, so the overshoot was flagged
+rather than absorbed silently.
+
+Verification for a documentation-only change: `npm test` (173/173) and
+`npm run build` both green, and an empty `git diff` across `src/`,
+`styles.css`, `index.html`, `e2e/`, `tests/`, `docs/SOT.md`, and this file's
+existing entries. `npm run test:e2e` was not run — no screen changed.
