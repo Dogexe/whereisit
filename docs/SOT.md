@@ -97,21 +97,35 @@ flags what a future agent needs to know exists, not how it works.
 
 ## Active work
 
-- WI-013 / WI-014 — two accessibility defects found by the `docs/UX.md`
-  design-system audit and deliberately left unfixed by that
-  documentation-only pass. **WI-013:** the mobile tab bar's five buttons
-  have no accessible name at all — they went icon-only in the tab bar
-  polish pass, and nothing replaced the `<span data-l>` labels
-  `renderChrome()` localizes. **WI-014:** fourteen controls have no visible
-  keyboard focus indicator, including both navs, all six segmented
-  controls, and every Settings row button. Spec:
-  `docs/specs/accessible-names-and-focus-indicators.md`. Both are `Ready`,
-  independent of each other, and rank above any token/spacing
-  normalization — `docs/UX.md` now documents the rules they violate, which
-  makes each violation a defect by this repo's own review classification
-  rather than a matter of taste.
+None open.
 
 ## Recently completed
+
+- WI-013 + WI-014 — the two accessibility defects found by the
+  `docs/UX.md` design-system audit and deliberately left unfixed by that
+  documentation-only pass, both implemented by Codex (`terra-medium`) and
+  shipped in commits `1c6e64a` (WI-013) and `f2bec1d` (WI-014).
+  **WI-013:** the mobile tab bar's five buttons now carry their existing
+  `tabHome`/`tabTx`/`tabAdd`/`tabInsights`/`tabSettings` `STRINGS` keys via
+  a new `data-l-aria` attribute, applied as `aria-label` by
+  `renderChrome()`'s existing localization re-run — no visible text, no new
+  listener. **WI-014:** the canonical accent `:focus-visible` outline was
+  added to the fourteen controls that lacked one (`.nav-btn`, `.tab-opt`,
+  `.switch`, `button.toggle-row`, `.home-profile-btn`, `.toast-undo-btn`,
+  `.shortcut-btn`, `.period-pill button`, `.picker-year-row .step`,
+  `.picker-year-heading`, `.picker-month-cell`, `.filter-field-label
+  button`, `.kind-toggle button`), matched exactly to the eleven existing
+  rules. Spec: `docs/specs/accessible-names-and-focus-indicators.md`
+  (now marked built and shipped). **One process gap found and fixed
+  during independent review:** Codex's WI-014 implementation verified
+  Decisions 2.3 (`button.toggle-row`'s ring survives its `all: unset`) and
+  2.4 (`.filter-checkbox-row`'s native ring is already adequate) in a real
+  browser but never recorded either finding, despite the spec explicitly
+  requiring it — sent back to the same Codex thread to record both in the
+  spec and the ticket's Review notes. Confirmed live on the deployed site
+  (`https://dogexe.github.io/whereisit/`): `data-l-aria` attributes present
+  in the deployed `index.html`, `button.toggle-row:focus-visible` present
+  in the deployed `styles.css`.
 
 - WI-011 + WI-015 — the last two Settings redesign tickets, both
   implemented by Claude directly (not Codex — quota was exhausted) and

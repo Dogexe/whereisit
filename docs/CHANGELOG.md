@@ -1304,3 +1304,51 @@ shared/duplicated code pair (here, the two swipe modules) in only one
 copy is itself a defect when a design system explicitly requires them to
 stay identical — always grep for the sibling before considering a
 "remove this dead code" fix complete.
+
+## WI-013 + WI-014: accessible names and focus indicators
+
+Closed the two accessibility defects `docs/UX.md`'s design-system audit
+found and deliberately left unfixed, specced in
+`docs/specs/accessible-names-and-focus-indicators.md`. Both implemented by
+Codex (`terra-medium`).
+
+**WI-013:** the mobile tab bar's five icon-only `#tabbar` buttons had no
+accessible name — they went icon-only in the tab bar polish pass and
+nothing replaced the `<span data-l>` labels `renderChrome()` localizes.
+Fixed with a new `data-l-aria="<key>"` attribute on each button, wired to
+the five existing `tabHome`/`tabTx`/`tabAdd`/`tabInsights`/`tabSettings`
+`STRINGS` keys and applied as `aria-label` by one new line in
+`renderChrome()`'s existing localization re-run — no new listener, no
+visible text, `#sidebar` untouched.
+
+**WI-014:** fourteen controls had no visible keyboard focus indicator.
+Added the canonical accent `:focus-visible` outline, matched exactly to
+the eleven rules already in `styles.css`, to `.nav-btn`, `.tab-opt`
+(via `:has(input:focus-visible)`, reusing the pattern already used for
+`.settings-disclosure-control`), `.switch`, `button.toggle-row`,
+`.home-profile-btn`, `.toast-undo-btn`, `.shortcut-btn`, `.period-pill
+button`, `.picker-year-row .step`, `.picker-year-heading`,
+`.picker-month-cell`, `.filter-field-label button`, and `.kind-toggle
+button`. `button.toggle-row`'s ring was verified in a real browser to
+survive its own `all: unset`; `.filter-checkbox-row`'s native checkbox
+ring was checked and found already adequate, so it was left unchanged.
+E2E drives every one of the fourteen controls with a real `Tab` keypress
+(not `.focus()`, since `:focus-visible` depends on interaction modality)
+and asserts the painted outline via computed style, reusing the geometry
+pattern already established in `add-sheet-keyboard-ghosting.spec.js`.
+
+**One process gap found and fixed during independent review:** Codex's
+WI-014 implementation did verify Decisions 2.3 and 2.4 in a real browser,
+but never recorded either finding, despite the spec's Decision 2.4
+explicitly saying to "record that here." Sent back to the same Codex
+thread (resumed, not a fresh task) to record both findings in the spec
+and add a Review notes entry to the ticket — a documentation-only fix, no
+code/test/build change.
+
+Verified with `npm test` (173 passing), the full `npm run test:e2e` suite
+(30 passing — Codex's own sandbox couldn't launch Chromium for this one,
+so the full suite was run and confirmed independently before merge), and
+`npm run build`. Confirmed live on the deployed site
+(`https://dogexe.github.io/whereisit/`): `data-l-aria` attributes present
+in the deployed `index.html`, `button.toggle-row:focus-visible` present
+in the deployed `styles.css`.

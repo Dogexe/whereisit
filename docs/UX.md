@@ -254,14 +254,6 @@ this rather than hand-rolling modal plumbing.
 Real drift. **Not canonical — do not copy.** Fixing these is separate ticketed
 work.
 
-- **Accessibility, highest priority.** The mobile tab bar's buttons have no
-  accessible name at all (icon-only, decorative SVG, no label, no visible
-  text). Separately, fourteen controls — the nav buttons, segmented-control
-  labels, the toggle switch, settings row buttons, the toast Undo button, the
-  profile button, and the period-picker/popover controls — have no visible
-  focus indicator. Both are real defects, rank above cosmetic normalization,
-  and are specced in
-  `docs/specs/accessible-names-and-focus-indicators.md` as WI-013 and WI-014.
 - **Spacing scale incomplete and partly adopted:** one documented step was
   specified in a merged spec but never defined, the most common large spacing
   value is still a raw literal, and token adoption covers roughly a tenth of

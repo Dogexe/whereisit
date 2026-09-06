@@ -1,9 +1,9 @@
 # Accessible names and focus indicators
 
-Status: **specced, not built.** Two defects found during the `docs/UX.md`
-design-system audit and deliberately left unfixed by that pass, which was
-documentation-only. Both are recorded under that file's Known UI debt as
-ranking above cosmetic token normalization.
+Status: **built and shipped.** Two defects found during the `docs/UX.md`
+design-system audit, deliberately left unfixed by that documentation-only
+pass, and closed by `WI-013` and `WI-014` (both `Completed`, deployed and
+confirmed live).
 
 Scope is narrow on purpose: make existing controls reachable and
 identifiable by keyboard and screen reader. **Nothing may change visually
