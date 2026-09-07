@@ -53,9 +53,7 @@ export async function openSettingsSection(page, section) {
 // Creates a new account through Settings' Manage UI.
 // Shared by every spec that needs a second account to exist (transfers,
 // multi-account switching) rather than each re-deriving the same add-flow.
-// Returns nothing -- callers so far all locate the new row by its name text
-// afterward (e.g. an account-chip/switcher's hasText match), which doesn't
-// need the id; add a return value here if a future spec needs it.
+// Returns nothing -- callers locate the new row/page by its visible name.
 export async function createAccount(page, { name, openingBalance = 0 } = {}) {
   await navBtn(page, "settings").click();
   await openSettingsSection(page, "accounts");
@@ -65,6 +63,10 @@ export async function createAccount(page, { name, openingBalance = 0 } = {}) {
   await page.locator("#accountOpeningBalanceInput").fill(String(openingBalance));
   await page.locator("#saveAccountFormBtn").click();
   await expect(page.locator(".manage-row", { hasText: name })).toBeVisible();
+}
+
+export async function selectHomeAccount(page, name) {
+  await page.locator(".hero-dots").getByRole("button", { name, exact: true }).click();
 }
 
 // Mirrors src/utils.js's fmtMoney() exactly for the app's default state

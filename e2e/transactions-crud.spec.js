@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures.js";
-import { addTransaction, createAccount, navBtn, openSettingsSection } from "./helpers.js";
+import { addTransaction, createAccount, navBtn, openSettingsSection, selectHomeAccount } from "./helpers.js";
 
 test("adding a transaction appears in both Home's recent list and Transactions' list", async ({ page }) => {
   await page.goto("/");
@@ -60,7 +60,7 @@ test("expense, income, and transfer amounts keep their semantic colors", async (
 
   await expectAmountColors(page.locator("#txListContainer"));
   await navBtn(page, "home").click();
-  await page.locator('.account-switcher-row [data-account]:not([data-account=""])').first().click();
+  await selectHomeAccount(page, "เงินสด");
   await expectAmountColors(page.locator(".home-col-main"));
 
   await navBtn(page, "settings").click();
@@ -71,7 +71,7 @@ test("expense, income, and transfer amounts keep their semantic colors", async (
   await navBtn(page, "transactions").click();
   await expectAmountColors(page.locator("#txListContainer"));
   await navBtn(page, "home").click();
-  await page.locator('.account-switcher-row [data-account]:not([data-account=""])').first().click();
+  await selectHomeAccount(page, "เงินสด");
   await expectAmountColors(page.locator(".home-col-main"));
 
   await page.setViewportSize({ width: 390, height: 844 });

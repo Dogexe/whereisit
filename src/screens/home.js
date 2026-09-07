@@ -55,19 +55,97 @@ export function markBillPaid(id) {
   Promise.all([pushTx(savedTx), pushRows("bills", [billToRow(bill, false)])]).then(() => syncNow());
 }
 
-// Stage 5 of docs/specs/multi-account-support.md: "All accounts" (null)
-// plus each real account, including archived ones -- decision 8 keeps an
-// archived account selectable/viewable in the switcher, just not as a
-// target for new transactions (the Add screen's picker, stage 4).
-function accountSwitcherHtml() {
-  const l = L();
-  const chips = [{ id: "", label: l.allAccountsOption }].concat(accounts.map((a) => ({ id: a.id, label: a.name })));
-  const selected = state.homeSelectedAccountId || "";
-  return `<div class="account-switcher-row">${chips.map((c) => `<button type="button" class="account-chip${c.id === selected ? " active" : ""}" data-account="${escapeHtml(c.id)}">${escapeHtml(c.label)}</button>`).join("")}</div>`;
+const HERO_DOTS_HIDE_MS = 1500;
+let heroDotsTimer;
+
+function showHeroDots(autoHide = false) {
+  clearTimeout(heroDotsTimer);
+  const dots = document.querySelector(".hero-dots");
+  if (!dots) return;
+  dots.classList.add("visible");
+  if (autoHide) heroDotsTimer = setTimeout(() => dots.classList.remove("visible"), HERO_DOTS_HIDE_MS);
+}
+
+function heroPages(l, curM, prevM) {
+  return [{ id: null, label: l.allAccountsOption, kicker: l.totalBalanceLabel }]
+    .concat(accounts.map((account) => ({ id: account.id, label: account.name, kicker: account.name })))
+    .map((page) => {
+      const curIncome = monthTotal(curM, "income", page.id);
+      const prevIncome = monthTotal(prevM, "income", page.id);
+      const curExpense = monthTotal(curM, "expense", page.id);
+      const prevExpense = monthTotal(prevM, "expense", page.id);
+      return {
+        ...page, curIncome, prevIncome, curExpense, prevExpense,
+        balance: computeBalance(page.id),
+        balanceDelta: pctDeltaLabel(curIncome - curExpense, prevIncome - prevExpense, monthHasTransactions(prevM, null, page.id)),
+        sparkline: sparklineSvg(computeSparklinePoints(page.id), "#ffffff", 150, 34, 2.5)
+      };
+    });
+}
+
+function wireHeroCarousel(pages, selectedIndex) {
+  const card = document.querySelector(".hero-card");
+  const track = card?.querySelector(".hero-carousel-track");
+  if (!card || !track) return;
+
+  const selectPage = (index) => {
+    if (index < 0 || index >= pages.length || index === selectedIndex) return showHeroDots(true);
+    state.homeSelectedAccountId = pages[index].id;
+    renderHome();
+    const indicator = document.querySelector(".hero-dot-indicator");
+    if (indicator) {
+      indicator.style.setProperty("--hero-dot-index", selectedIndex);
+      indicator.getBoundingClientRect();
+      indicator.style.setProperty("--hero-dot-index", index);
+    }
+    showHeroDots(true);
+  };
+
+  card.querySelector(".hero-arrow-prev")?.addEventListener("click", () => selectPage(selectedIndex - 1));
+  card.querySelector(".hero-arrow-next")?.addEventListener("click", () => selectPage(selectedIndex + 1));
+  card.querySelectorAll(".hero-dot").forEach((dot) => {
+    dot.addEventListener("pointerdown", () => showHeroDots());
+    dot.addEventListener("focus", () => showHeroDots());
+    dot.addEventListener("click", () => selectPage(Number(dot.dataset.heroPage)));
+  });
+
+  let dragging = false, startX = 0, dragOffset = 0, moved = false;
+  const resetTrack = () => { track.style.transform = `translateX(${-selectedIndex * 100}%)`; };
+  card.addEventListener("pointerdown", (event) => {
+    if (event.pointerType === "mouse" || event.target.closest("button")) return;
+    dragging = true; moved = false; startX = event.clientX; dragOffset = 0;
+    track.classList.add("dragging");
+    showHeroDots();
+    try { card.setPointerCapture(event.pointerId); } catch { /* synthetic pointer */ }
+  });
+  card.addEventListener("pointermove", (event) => {
+    if (!dragging) return;
+    const raw = event.clientX - startX;
+    moved ||= Math.abs(raw) > 4;
+    const pastEdge = (selectedIndex === 0 && raw > 0) || (selectedIndex === pages.length - 1 && raw < 0);
+    dragOffset = pastEdge ? Math.sign(raw) * Math.sqrt(Math.abs(raw)) * 4 : raw;
+    track.style.transform = `translateX(calc(${-selectedIndex * 100}% + ${dragOffset}px))`;
+  });
+  const endDrag = () => {
+    if (!dragging) return;
+    dragging = false;
+    track.classList.remove("dragging");
+    const threshold = card.getBoundingClientRect().width / 2;
+    if (moved && Math.abs(dragOffset) > threshold) return selectPage(selectedIndex + (dragOffset < 0 ? 1 : -1));
+    resetTrack();
+    showHeroDots(true);
+  };
+  card.addEventListener("pointerup", endDrag);
+  card.addEventListener("pointercancel", endDrag);
 }
 
 export function renderHome() {
   const l = L();
+  const curM = localMonthKey();
+  const prevM = prevMonthKey();
+  const pages = heroPages(l, curM, prevM);
+  const selectedIndex = Math.max(0, pages.findIndex((page) => page.id === state.homeSelectedAccountId));
+  const selectedPage = pages[selectedIndex];
   // Stage 5: hero balance, income/expense stat cards, spent-today, the
   // sparkline, and recent activity all scope to the selected account (or
   // combine across all accounts when "All accounts" is selected). Budgets
@@ -76,7 +154,7 @@ export function renderHome() {
   // bills stay account-agnostic, tracked against every transaction
   // regardless of account, so this Home panel stays consistent with that
   // rather than silently filtering a global concept).
-  const selectedId = state.homeSelectedAccountId;
+  const selectedId = selectedPage.id;
   // Stage 3 of docs/specs/account-transfers.md: a transfer's own account
   // field is its *source* (t.accountId is the "from" side, t.toAccountId
   // the "to"), so viewing a specific account must match either side, not
@@ -86,21 +164,16 @@ export function renderHome() {
   const scopedTx = selectedId
     ? transactions.filter((t) => t.type === "transfer" ? (t.accountId === selectedId || t.toAccountId === selectedId) : t.accountId === selectedId)
     : transactions.filter((t) => t.type !== "transfer");
-  const balance = computeBalance(selectedId);
+  const balance = selectedPage.balance;
   const recent = scopedTx.slice().sort(byRecency).slice(0, 5);
   const budgetsPreview = computeBudgets();
   const dueSoon = upcomingBills();
   const now = new Date();
   const today = now.toLocaleDateString(state.lang === "en" ? "en-US" : "th-TH", { month: "long", year: "numeric" });
 
-  const curM = localMonthKey();
-  const prevM = prevMonthKey();
-  const curIncome = monthTotal(curM, "income", selectedId), prevIncome = monthTotal(prevM, "income", selectedId);
-  const curExpense = monthTotal(curM, "expense", selectedId), prevExpense = monthTotal(prevM, "expense", selectedId);
-  const balanceDelta = pctDeltaLabel(curIncome - curExpense, prevIncome - prevExpense, monthHasTransactions(prevM, null, selectedId));
+  const { curIncome, prevIncome, curExpense, prevExpense } = selectedPage;
   const incomeDelta = pctDeltaLabel(curIncome, prevIncome, monthHasTransactions(prevM, "income", selectedId));
   const expenseDelta = pctDeltaLabel(curExpense, prevExpense, monthHasTransactions(prevM, "expense", selectedId));
-  const sparkline = sparklineSvg(computeSparklinePoints(selectedId), "#ffffff", 150, 34, 2.5);
   const todayIso = localDateIso();
   const spentToday = scopedTx.filter((t) => t.type === "expense" && t.date === todayIso).reduce((a, t) => a + t.amount, 0);
 
@@ -127,17 +200,26 @@ export function renderHome() {
     </div>
     <div class="home-columns">
       <div class="home-col-main">
-        ${accountSwitcherHtml()}
-        <div class="hero-card${balance < 0 ? " hero-card-negative" : ""}">
-          <div class="kicker-row">
-            <div class="kicker">${escapeHtml(l.balanceLabel)}</div>
-            <button type="button" class="hero-hide-btn" id="hideAmountsBtn" aria-label="${escapeHtml(state.hideAmounts ? l.showAmountsAria : l.hideAmountsAria)}">${icon(state.hideAmounts ? "eye-off" : "eye", 'width="16" height="16"')}</button>
+        <div class="hero-card${balance < 0 ? " hero-card-negative" : ""}" data-hero-index="${selectedIndex}">
+          <div class="hero-carousel-viewport">
+            <div class="hero-carousel-track" style="transform:translateX(${-selectedIndex * 100}%)">
+              ${pages.map((page, index) => `
+              <section class="hero-page" data-hero-page="${index}"${index === selectedIndex ? "" : ' aria-hidden="true" inert'}>
+                <div class="kicker-row">
+                  <div class="kicker">${escapeHtml(page.kicker)}</div>
+                  <button type="button" class="hero-hide-btn"${index === selectedIndex ? ' id="hideAmountsBtn"' : ""} aria-label="${escapeHtml(state.hideAmounts ? l.showAmountsAria : l.hideAmountsAria)}">${icon(state.hideAmounts ? "eye-off" : "eye", 'width="16" height="16"')}</button>
+                </div>
+                <div class="amount">${fmtMoney(page.balance)}</div>
+                <div class="foot-row">
+                  ${page.sparkline}
+                  ${page.balanceDelta !== null ? `<div class="delta-pill">${escapeHtml(page.balanceDelta)}</div>` : ""}
+                </div>
+              </section>`).join("")}
+            </div>
           </div>
-          <div class="amount">${fmtMoney(balance)}</div>
-          <div class="foot-row">
-            ${sparkline}
-            ${balanceDelta !== null ? `<div class="delta-pill">${escapeHtml(balanceDelta)}</div>` : ""}
-          </div>
+          ${pages.length > 1 ? `<div class="hero-dots"><span class="hero-dot-indicator" style="--hero-dot-index:${selectedIndex}" aria-hidden="true"></span>${pages.map((page, index) => `<button type="button" class="hero-dot" data-hero-page="${index}" aria-label="${escapeHtml(page.label)}"${index === selectedIndex ? ' aria-current="true"' : ""}></button>`).join("")}</div>` : ""}
+          <button type="button" class="btn btn-icon hero-arrow hero-arrow-prev" aria-label="${escapeHtml(l.prevAria)}"${selectedIndex === 0 ? " disabled" : ""}>${icon("chevron-left")}</button>
+          <button type="button" class="btn btn-icon hero-arrow hero-arrow-next" aria-label="${escapeHtml(l.nextAria)}"${selectedIndex === pages.length - 1 ? " disabled" : ""}>${icon("chevron-right")}</button>
         </div>
         <div class="stat-row">
           <div class="stat-card">
@@ -200,11 +282,7 @@ export function renderHome() {
       </div>
     </div>
   `;
-  document.querySelectorAll("[data-account]").forEach((btn) => btn.addEventListener("click", () => {
-    const v = btn.getAttribute("data-account");
-    state.homeSelectedAccountId = v === "" ? null : v;
-    renderHome();
-  }));
+  wireHeroCarousel(pages, selectedIndex);
   $("hideAmountsBtn").addEventListener("click", () => { state.hideAmounts = !state.hideAmounts; saveSettings(); renderScreen(); });
   $("homeProfileBtn").addEventListener("click", () => setTab("settings"));
   $("goRecentSeeAllBtn").addEventListener("click", () => setTab("transactions"));

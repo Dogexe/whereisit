@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures.js";
-import { navBtn, openSettingsSection, createAccount } from "./helpers.js";
+import { navBtn, openSettingsSection, createAccount, selectHomeAccount } from "./helpers.js";
 
 test("importing a CSV reports new/duplicate/unreadable counts and lands new rows in the chosen account", async ({ page }) => {
   await page.goto("/");
@@ -60,9 +60,8 @@ test("importing a CSV reports new/duplicate/unreadable counts and lands new rows
   await expect(page.locator("#importSheetBackdrop")).toBeHidden();
 
   await navBtn(page, "home").click();
-  const switcher = page.locator(".account-switcher-row");
-  await switcher.locator("[data-account]", { hasText: acctName }).click();
+  await selectHomeAccount(page, acctName);
   await expect(page.locator(".home-col-main .list-card")).toContainText(newNote);
-  await switcher.locator("[data-account]", { hasText: "เงินสด" }).click();
+  await selectHomeAccount(page, "เงินสด");
   await expect(page.locator(".home-col-main .list-card")).not.toContainText(newNote);
 });

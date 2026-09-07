@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures.js";
-import { navBtn, createAccount, fmtMoney } from "./helpers.js";
+import { navBtn, createAccount, fmtMoney, selectHomeAccount } from "./helpers.js";
 
 // Regression coverage for "Fix Transfer tab silently failing to save or
 // edit" (#txCategory stayed required while hidden and optionless on the
@@ -30,12 +30,11 @@ test("transfer round trip moves money between accounts, survives editing, and st
   await expect(row).toBeVisible();
 
   await navBtn(page, "home").click();
-  await expect(page.locator(".hero-card .amount")).toHaveText(fmtMoney(1000));
-  const switcher = page.locator(".account-switcher-row");
-  await switcher.locator("[data-account]", { hasText: "เงินสด" }).click();
-  await expect(page.locator(".hero-card .amount")).toHaveText(fmtMoney(-300));
-  await switcher.locator("[data-account]", { hasText: acctBName }).click();
-  await expect(page.locator(".hero-card .amount")).toHaveText(fmtMoney(1300));
+  await expect(page.locator(".hero-page:not([aria-hidden]) .amount")).toHaveText(fmtMoney(1000));
+  await selectHomeAccount(page, "เงินสด");
+  await expect(page.locator(".hero-page:not([aria-hidden]) .amount")).toHaveText(fmtMoney(-300));
+  await selectHomeAccount(page, acctBName);
+  await expect(page.locator(".hero-page:not([aria-hidden]) .amount")).toHaveText(fmtMoney(1300));
 
   // Regression guard for derived.js's deliberate toAccountId fallback: a
   // transfer's own .accountId is its *source*, so filtering Transactions by

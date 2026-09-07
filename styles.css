@@ -306,12 +306,6 @@
   .category-chip.active { background: var(--color-accent); border-color: var(--color-accent); color: #fff; }
   .category-chip-more { color: var(--color-muted); }
   .category-chip-more.active { background: var(--color-accent); border-color: var(--color-accent); color: #fff; }
-  /* Home's account switcher (stage 5 of docs/specs/multi-account-support.md)
-     -- structurally identical to the category-chip row above, kept as its
-     own class pair rather than reusing .category-chip directly since the
-     two aren't the same concept, just the same visual shape. */
-  .account-switcher-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; margin-bottom: var(--space-xs); -webkit-overflow-scrolling: touch; scrollbar-width: none; -ms-overflow-style: none; }
-  .account-switcher-row::-webkit-scrollbar { display: none; }
   .account-chip {
     display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
     padding: 8px 14px; border-radius: var(--radius-pill); border: 1px solid var(--color-border);
@@ -376,8 +370,12 @@
   .home-profile-btn .icon { width: 21px; height: 21px; }
   .home-profile-btn img { width: 100%; height: 100%; object-fit: cover; }
   .home-columns { display: flex; flex-direction: column; gap: 20px; }
-  .hero-card { border-radius: var(--radius-lg); padding: 22px; color: #ffffff; background: linear-gradient(135deg, var(--hero-gradient-start) 0%, var(--hero-gradient-end) 100%); box-shadow: var(--shadow-accent); margin-top: var(--space-md); }
+  .hero-card { position: relative; overflow: hidden; touch-action: pan-y; user-select: none; border-radius: var(--radius-lg); padding: 22px; color: #ffffff; background: linear-gradient(135deg, var(--hero-gradient-start) 0%, var(--hero-gradient-end) 100%); box-shadow: var(--shadow-accent); margin-top: var(--space-md); }
   .hero-card.hero-card-negative { background: linear-gradient(135deg, var(--hero-negative-gradient-start) 0%, var(--hero-negative-gradient-end) 100%); box-shadow: 0 12px 28px color-mix(in srgb, var(--color-expense) 30%, transparent); }
+  .hero-carousel-viewport { overflow: hidden; }
+  .hero-carousel-track { display: flex; transition: transform 240ms cubic-bezier(.22,1,.36,1); }
+  .hero-carousel-track.dragging { transition: none; }
+  .hero-page { flex: 0 0 100%; min-width: 0; padding-bottom: 10px; }
   .hero-card .kicker { font-size: 13px; opacity: 0.85; font-weight: 500; }
   /* "Hide financial status" quick toggle, top corner of the hero card next
      to the Balance label -- kicker moves into a row alongside it rather
@@ -395,6 +393,22 @@
   .hero-card .amount { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; margin-top: 4px; }
   .hero-card .foot-row { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; }
   .hero-card .delta-pill { font-size: 13px; font-weight: 600; background: rgba(255,255,255,0.18); border-radius: var(--radius-pill); padding: 6px 12px; white-space: nowrap; }
+  .hero-dots { position: absolute; z-index: 2; left: 50%; bottom: 4px; transform: translateX(-50%); display: flex; opacity: 0; }
+  .hero-dots.visible { opacity: 1; }
+  .hero-dot { width: 18px; height: 24px; padding: 0; border: none; background: transparent; cursor: pointer; display: grid; place-items: center; }
+  .hero-dot::before { content: ""; width: 8px; height: 8px; background: rgba(255,255,255,0.35); border-radius: 50%; }
+  .hero-dot-indicator { position: absolute; z-index: 1; top: 50%; left: 5px; width: 8px; height: 8px; border-radius: 50%; background: #fff; pointer-events: none; transform: translateX(calc(var(--hero-dot-index) * 18px)) translateY(-50%); }
+  .hero-dot:focus-visible { outline: 2px solid #fff; outline-offset: -2px; border-radius: 50%; }
+  .hero-arrow { display: none; position: absolute; z-index: 2; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.18); color: #fff; }
+  .hero-arrow:hover { background: rgba(255,255,255,0.28); }
+  .hero-arrow:active { transform: translateY(-50%) scale(0.97); }
+  .hero-arrow:disabled { transform: translateY(-50%); }
+  .hero-arrow-prev { left: 8px; }
+  .hero-arrow-next { right: 8px; }
+  @media (prefers-reduced-motion: no-preference) {
+    .hero-dots { transition: opacity var(--duration-normal) var(--ease-standard); }
+    .hero-dot-indicator { transition: transform var(--duration-fast) var(--ease-standard); }
+  }
 
   .stat-row { display: flex; gap: 12px; margin-top: var(--space-sm); }
   .stat-card { flex: 1; padding: 14px 16px; min-width: 0; }
@@ -1273,6 +1287,8 @@
        nothing to clear. */
     .screen { padding-bottom: 20px; }
     .toast { bottom: 24px; }
+    .hero-arrow { display: inline-flex; }
+    .hero-page { padding-left: 24px; padding-right: 24px; }
 
     /* — Add form: wrap the category chips instead of horizontal-scrolling
        them. Mobile's overflow-x:auto (with its scrollbar intentionally

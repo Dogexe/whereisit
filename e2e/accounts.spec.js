@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures.js";
-import { navBtn, createAccount, fmtMoney, openSettingsSection } from "./helpers.js";
+import { navBtn, createAccount, fmtMoney, openSettingsSection, selectHomeAccount } from "./helpers.js";
 
 test("creating an account and switching Home's account scope narrows the hero balance and recent activity", async ({ page }) => {
   await page.goto("/");
@@ -19,13 +19,12 @@ test("creating an account and switching Home's account scope narrows the hero ba
   await page.locator('#addForm button[type="submit"]').click();
 
   await navBtn(page, "home").click();
-  const switcher = page.locator(".account-switcher-row");
-  await switcher.locator("[data-account]", { hasText: acctName }).click();
-  await expect(page.locator(".hero-card .amount")).toHaveText(fmtMoney(350)); // 500 opening - 150 expense
+  await selectHomeAccount(page, acctName);
+  await expect(page.locator(".hero-page:not([aria-hidden]) .amount")).toHaveText(fmtMoney(350)); // 500 opening - 150 expense
   await expect(page.locator(".home-col-main .list-card")).toContainText(note);
 
-  await switcher.locator("[data-account]", { hasText: "เงินสด" }).click();
-  await expect(page.locator(".hero-card .amount")).toHaveText(fmtMoney(0));
+  await selectHomeAccount(page, "เงินสด");
+  await expect(page.locator(".hero-page:not([aria-hidden]) .amount")).toHaveText(fmtMoney(0));
   await expect(page.locator(".home-col-main .list-card")).not.toContainText(note);
 });
 
