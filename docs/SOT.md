@@ -97,7 +97,13 @@ flags what a future agent needs to know exists, not how it works.
 
 ## Active work
 
-None open.
+- WI-016, WI-017, WI-018 — color scheme refresh (fintech-style reference
+  image: red expense / green income amounts, Blue replacing Purple as an
+  accent option with Coral shifted warmer, and a light+dark base surface
+  retune). All three are `Ready` in `docs/tickets/active/`, specs are
+  `docs/specs/amount-color-semantics.md` and
+  `docs/specs/color-palette-refresh.md`. Not yet delegated to Codex —
+  awaiting the maintainer's explicit go-ahead per `docs/WORKFLOW.md`.
 
 ## Recently completed
 
