@@ -69,7 +69,7 @@ function txRowHtml(t, viewingAccountId) {
     </div>`;
   }
   const tone = rowTone(t.type);
-  const amountColor = t.type === "income" ? "var(--color-income-700)" : "var(--color-text)";
+  const amountColor = t.type === "income" ? "var(--color-income-700)" : "var(--color-expense-700)";
   const sign = t.type === "income" ? "+" : "−";
   const catId = resolveCategoryId(t, t.type);
   const cat = categories.find((c) => c.id === catId);

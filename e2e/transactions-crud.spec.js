@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures.js";
-import { addTransaction, navBtn } from "./helpers.js";
+import { addTransaction, createAccount, navBtn, openSettingsSection } from "./helpers.js";
 
 test("adding a transaction appears in both Home's recent list and Transactions' list", async ({ page }) => {
   await page.goto("/");
@@ -17,6 +17,73 @@ test("adding a transaction appears in both Home's recent list and Transactions' 
   // in .home-col-side (from the seeded sample bills), so a bare .list-card
   // locator is ambiguous between the two.
   await expect(page.locator(".home-col-main .list-card")).toContainText(note);
+});
+
+test("expense, income, and transfer amounts keep their semantic colors", async ({ page }) => {
+  await page.goto("/");
+  const suffix = Date.now();
+  const expenseNote = "e2e red expense " + suffix;
+  const incomeNote = "e2e green income " + suffix;
+  const transferNote = "e2e neutral transfer " + suffix;
+  const accountName = "e2e color account " + suffix;
+
+  await addTransaction(page, { note: expenseNote, amount: "101" });
+  await addTransaction(page, { type: "income", note: incomeNote, amount: "202" });
+  await createAccount(page, { name: accountName });
+  await navBtn(page, "add").click();
+  await page.locator('label.tab-opt:has(input[name="form-type"][value="transfer"])').click();
+  await page.locator("#txAmount").fill("303");
+  await page.locator("#txNote").fill(transferNote);
+  await page.locator('#addForm button[type="submit"]').click();
+
+  const amountColors = () => page.evaluate(() => {
+    const resolve = (token) => {
+      const probe = document.createElement("span");
+      probe.style.color = `var(${token})`;
+      document.body.append(probe);
+      const color = getComputedStyle(probe).color;
+      probe.remove();
+      return color;
+    };
+    return {
+      expense: resolve("--color-expense-700"),
+      income: resolve("--color-income-700"),
+      text: resolve("--color-text")
+    };
+  });
+  let colors = await amountColors();
+  const expectAmountColors = async (container) => {
+    await expect(container.locator(".tx-row-wrap", { hasText: expenseNote }).locator(".amt")).toHaveCSS("color", colors.expense);
+    await expect(container.locator(".tx-row-wrap", { hasText: incomeNote }).locator(".amt")).toHaveCSS("color", colors.income);
+    await expect(container.locator(".tx-row-wrap", { hasText: transferNote }).locator(".amt")).toHaveCSS("color", colors.text);
+  };
+
+  await expectAmountColors(page.locator("#txListContainer"));
+  await navBtn(page, "home").click();
+  await page.locator('.account-switcher-row [data-account]:not([data-account=""])').first().click();
+  await expectAmountColors(page.locator(".home-col-main"));
+
+  await navBtn(page, "settings").click();
+  await openSettingsSection(page, "display");
+  await page.locator('.settings-disclosure-trigger[aria-controls="appearanceOptions"]').click();
+  await page.locator('label.tab-opt:has(input[name="appearance-switch"][value="dark"])').click();
+  colors = await amountColors();
+  await navBtn(page, "transactions").click();
+  await expectAmountColors(page.locator("#txListContainer"));
+  await navBtn(page, "home").click();
+  await page.locator('.account-switcher-row [data-account]:not([data-account=""])').first().click();
+  await expectAmountColors(page.locator(".home-col-main"));
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  await navBtn(page, "add").click();
+  await page.locator("#txAmount").fill("404");
+  const preview = page.locator("#addCommitPreview .amt");
+  await expect(preview).toHaveCSS("color", colors.expense);
+  await page.locator('label.tab-opt:has(input[name="form-type"][value="income"])').click();
+  await expect(preview).toHaveCSS("color", colors.income);
+  await page.locator('label.tab-opt:has(input[name="form-type"][value="transfer"])').click();
+  await expect(preview).toHaveCSS("color", colors.text);
 });
 
 test("editing a transaction updates the list", async ({ page }) => {

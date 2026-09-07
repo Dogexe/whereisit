@@ -88,9 +88,9 @@ amount) → **screen title** → **section heading** → **row title** → **bod
   primary → muted → tertiary), plus divider/border and a separate tab-bar token
   — interactive components must clear a stricter contrast floor than static
   text.
-- **Amount coloring:** income tinted positive; expense and transfer neutral
-  primary text. A normal expense is never red — red means *error*, not
-  *outgoing*.
+- **Amount coloring:** income amounts use the positive green token; expense
+  amounts use the expense red token; transfer amounts remain neutral primary
+  text.
 
 ## Buttons and action hierarchy
 

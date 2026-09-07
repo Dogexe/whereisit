@@ -226,7 +226,7 @@ function renderCommitPreview() {
   const catName = categoryDisplayName(categories, state.formCategoryId, "");
   const accName = accountNameById(accounts, state.formAccountId, "");
   const sign = state.formType === "income" ? "+" : "−";
-  const amountColor = state.formType === "income" ? "var(--color-income-700)" : "var(--color-text)";
+  const amountColor = state.formType === "income" ? "var(--color-income-700)" : "var(--color-expense-700)";
   el.innerHTML = `
     ${iconAvatar(cat ? cat.icon : "circle", tone.bg, tone.color, "sm")}
     <div class="info"><div class="cat">${escapeHtml(catName)}</div><div class="acc">${escapeHtml(accName)}</div></div>
