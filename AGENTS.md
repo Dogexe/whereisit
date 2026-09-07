@@ -60,19 +60,28 @@ not review. Concretely, on every ticket:
   typography, radius, icon, or interaction primitive unless the ticket
   explicitly requires it, and don't copy a pattern listed there as known
   UI debt.
-- While implementing, run the narrowest test that exercises the change you
-  just made; don't rerun the full unit/e2e/build suite after every small
-  edit, don't reread a large unchanged file just to reorient, and don't
-  reprint the full diff repeatedly while iterating.
-- Before first handoff to review, run the ticket's complete required
-  verification gate — `docs/WORKFLOW.md`'s proportional matrix is the
-  source of truth (`npm test` for pure logic, add `npm run build` for
-  state/storage/sync, add `npm run test:e2e` for anything touching a
-  screen). This is the one full run the reviewer relies on.
+- While implementing, use no verification, or run at most one narrow
+  relevant check when genuinely useful. Don't run tests/build/e2e after
+  every edit, don't reread a large unchanged file just to reorient, and
+  don't reprint the full diff repeatedly while iterating.
+- Before first handoff to review, run only what the ticket's `Risk tier`
+  calls for — `docs/WORKFLOW.md`'s risk-based verification table is the
+  source of truth. Low tier: no full suite, no browser check by default.
+  Medium tier: a relevant focused `npm test`, `npm run build` only if
+  build/runtime behavior is involved, `npm run test:e2e` only if the
+  behavior can't be reasonably covered more cheaply. High tier: the full
+  matrix may still be required. Don't run the full test+build+e2e matrix
+  by default just because a screen changed.
 - Inspect the complete diff once before finishing — a clean test run is not
   proof nothing unrelated changed.
-- Report what verification was actually performed and any unresolved risks;
-  don't claim a check happened that didn't.
+- Report what verification was actually performed (including "not run" /
+  "blocked") and any unresolved risks; don't claim a check happened that
+  didn't.
+- Tool/environment failures: at most one retry, and at most one reasonable
+  recovery attempt. Don't install/reinstall browsers, packages, SDKs, or
+  system tooling unless the ticket explicitly requires it or the
+  maintainer approves, and don't enter repeated retry/wait/poll loops. If
+  still blocked, record the verification as blocked and hand off.
 
 For a review-fix round: verify each finding against the implementation
 yourself before fixing it — a Claude finding is not automatically correct.
@@ -80,15 +89,16 @@ Fix confirmed defects, and explain in the ticket's Review notes why any
 finding was rejected. Don't adopt optional suggestions unless the ticket
 requires them, and don't fold in unrelated cleanup.
 
-Start with focused verification for each confirmed defect; rerun the full
-gate only per `docs/WORKFLOW.md`'s escalation criteria (material app-code
-change, shared state/persistence/sync, a shared UI primitive, broad
-regression risk, a stale gate, or a multi-defect round that's cumulatively
-no longer narrow) — that section is the source of truth for exactly when to
-escalate. Documentation-only fixes never need the full suite rerun; a
-test-only fix may stay focused unless it changes the coverage or behavior
-the ticket's acceptance criteria rely on. The maintainer can always request
-the full gate regardless of these rules.
+Fix the confirmed defect, then run only the narrowest relevant check;
+don't rerun a broader suite unless the cumulative fix creates meaningful
+regression risk. Rerun the full gate only when the fix (or the round as a
+whole) pushes the change into the High-risk tier, or leaves the original
+gate run no longer representative of the diff — see
+`docs/WORKFLOW.md`'s escalation criteria, which is the source of truth for
+exactly when to escalate. Documentation-only fixes never need the full
+suite rerun; a narrow test-only fix needs only the affected test by
+default. The maintainer can always request the full gate regardless of
+these rules.
 
 ## Running and testing locally
 

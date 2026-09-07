@@ -40,5 +40,8 @@ layers — **don't trust a stale doc's silence on this over grepping
    `transfers.spec.js`, `csv-import.spec.js`, `accounts.spec.js`,
    `category-nesting.spec.js`.
 
-Run both (`npm test` and `npm run test:e2e`) after any change that touches
-a screen — the two layers cover disjoint ground.
+The two layers cover disjoint ground, so a High-risk change (or one where
+`npm test` alone can't reasonably cover the behavior) should run both — see
+`docs/WORKFLOW.md`'s risk-based verification table for when each layer is
+actually required; this file only describes what they check, not when to
+run them.

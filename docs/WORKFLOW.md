@@ -55,25 +55,47 @@ restate them in the prompt.
   Findings are reported as confirmed defects, kept separate from optional
   suggestions; Codex verifies each confirmed finding against the code
   before fixing it.
-- Verification is proportional to what changed:
+- Verification is proportional to the ticket's **risk tier**, not to
+  change type alone. Claude assigns the tier when the ticket is created
+  (alongside `Codex profile`), using the same categories:
 
-  | Change type | Required |
-  |---|---|
-  | Pure logic | `npm test` |
-  | State / storage / sync | `npm test` + `npm run build` |
-  | Screen / UI | `npm test` + `npm run test:e2e` + `npm run build` |
-  | Anything this project's own rules call out | add the real-browser or deployed check they require |
+  | Tier | Examples | Default before first handoff |
+  |---|---|---|
+  | **Low** | docs-only, copy/text, CSS/token-only, small bounded UI wiring, isolated test-only change | No full suite. No browser check unless explicitly required by the ticket or spec. |
+  | **Medium** | normal bounded application logic/UI changes | Relevant focused `npm test`. Add `npm run build` only if build/runtime behavior is involved. Add `npm run test:e2e` only if the behavior can't be reasonably covered more cheaply. |
+  | **High** | persistence/state ownership, Supabase/sync, auth/security, migrations/schema, concurrency/race conditions, shared primitives with broad blast radius | Full matrix may still be required: `npm test` + `npm run build` + `npm run test:e2e` as relevant. |
 
-Full verification is a gate, not an inner loop. Run the complete
-proportional matrix once, before the first handoff to review — that run is
-what the reviewer relies on. While implementing, and while fixing review
-findings, run the narrowest test/check that exercises the change; don't
-rerun the full matrix after every small edit.
+  This is the default, not the ceiling: a ticket or spec may explicitly
+  declare stronger verification requirements, and the maintainer can
+  always request the full gate regardless of tier.
+
+Full verification is a gate, not an inner loop, and — outside the High
+tier — not the default gate either. Codex should prefer the cheapest
+verification that gives useful evidence for the ticket's actual risk.
+While implementing, run at most one narrow relevant check when genuinely
+useful — don't run tests/build/e2e after every edit, and don't repeatedly
+re-inspect the full diff. Before first handoff, run only what the ticket's
+risk tier calls for above; don't automatically run the full
+test+build+e2e matrix by default.
 
 "Docs-only" means no application code, tests, build config, workflow
 config, or other runtime-affecting file changed. A change meeting that bar
 needs no test run at all unless it alters a documented command or behavior
 other tooling depends on.
+
+Browser/manual verification is never a default requirement. Do it only
+when acceptance genuinely depends on real browser interaction, layout,
+focus, keyboard behavior, viewport behavior, or deployed/runtime behavior
+— not as routine coverage for every screen change, and not duplicated
+across both e2e and a manual check without a specific reason.
+
+**Tool/environment failures:** at most one retry for a verification
+failure caused by tooling/environment, and at most one reasonable recovery
+attempt. Don't install/reinstall browsers, packages, SDKs, or system
+tooling unless the ticket explicitly requires it or the maintainer
+approves, and don't enter repeated retry/wait/poll loops. If still
+blocked, record the verification as blocked and hand off rather than
+escalating retries.
 
 ## Choose the smallest useful path
 
@@ -117,8 +139,10 @@ dependencies, and out-of-scope work, and is marked `Ready` only once its
 requirements are unambiguous. Each ticket also carries a `Codex profile`
 (assigned per `AGENTS.md`'s "Codex execution profiles" section) — execution
 metadata for the Codex environment, never a lever on scope or acceptance
-criteria. Claude stops here — implementation starts only once the maintainer
-explicitly delegates it.
+criteria — and a `Risk tier` (Low/Medium/High, per the verification table
+above) that sets the default verification the ticket requires. Claude stops
+here — implementation starts only once the maintainer explicitly delegates
+it.
 
 Claude also fills the ticket's optional `## Implementation guidance`
 section from what it actually found while investigating — exact
@@ -193,20 +217,21 @@ do not adopt optional suggestions unless the ticket requires them. Add regressio
 coverage where appropriate.
 ```
 
-Start with the narrowest check that exercises each confirmed defect and fix
-it. A test-only change may stay on focused verification through the round,
-but rerun the relevant broader suite before completion if it changes the
-coverage or behavior the ticket's acceptance criteria rely on.
+Fix the confirmed defect, then run only the narrowest relevant check —
+don't rerun a broader suite unless the cumulative fix creates meaningful
+regression risk. A documentation-only fix needs no test run at all; a
+narrow test-only fix needs only the affected test by default.
 
-Rerun the ticket's full verification gate before completion when the fix
-(or the round as a whole) materially changed application code, touched
-shared state/persistence/sync, touched a shared UI primitive, carries broad
-regression risk, or left the original gate run no longer representative of
-the diff. Judge a review-fix round with multiple confirmed defects
-cumulatively, not fix-by-fix: several individually-narrow fixes across
-different files or behaviors can together make the original gate stale even
-if no single fix would have on its own. When in doubt — or whenever the
-maintainer asks for it, regardless of these rules — run the full gate.
+Rerun the ticket's full verification gate before completion only when the
+fix (or the round as a whole) pushes the change into the High-risk tier —
+shared state/persistence/sync, auth/security, migrations/schema,
+concurrency, or a shared primitive with broad blast radius — or when the
+original gate run is no longer representative of the diff. Judge a
+review-fix round with multiple confirmed defects cumulatively, not
+fix-by-fix: several individually-narrow fixes across different files or
+behaviors can together push a Low/Medium-tier ticket into that territory
+even if no single fix would have on its own. When in doubt — or whenever
+the maintainer asks for it, regardless of these rules — run the full gate.
 
 A documentation-only fix never needs the full suite rerun — say so
 explicitly in the ticket's Review notes.

@@ -17,6 +17,17 @@ profile is execution metadata only — it must never influence acceptance
 criteria, scope, ticket size, or dependencies.
 -->
 
+Risk tier: Medium
+
+<!--
+Risk tier must be one of: Low, Medium, High. See docs/WORKFLOW.md's
+risk-based verification table for the definitions and what each tier
+requires by default. Medium is the default. This sets the ticket's default
+verification bar in the Verification section below — it is not a lever on
+scope or acceptance criteria, and a spec or the maintainer can always
+require more than the tier's default.
+-->
+
 ## Goal
 
 Describe one small, coherent outcome.
@@ -67,9 +78,17 @@ yet.
 ## Verification
 
 <!--
-This checklist is the full handoff gate — run it once before first review.
+Default verification is set by this ticket's Risk tier — see
+docs/WORKFLOW.md's risk-based verification table. Low: no full suite, no
+browser check unless explicitly required. Medium: focused npm test; add
+npm run build only if build/runtime behavior is involved; add npm run
+test:e2e only if the behavior can't be reasonably covered more cheaply.
+High: the full matrix below may still be required. Check off only what
+the tier (or the spec/maintainer) actually requires — an unchecked box for
+a Low/Medium-tier ticket is expected, not a gap.
+
 During a review-fix round, start with focused verification for each
-confirmed defect and rerun this full list only when docs/WORKFLOW.md's
+confirmed defect and rerun the full list only when docs/WORKFLOW.md's
 full-gate escalation criteria are met (including cumulative risk across
 multiple defects in one round). Docs-only and test-only fixes follow the
 carve-outs defined there. The maintainer can always request the full gate
@@ -77,9 +96,9 @@ regardless of these rules.
 -->
 
 - [ ] Relevant automated tests are added or updated.
-- [ ] `npm test`
-- [ ] `npm run test:e2e` if a screen changes.
-- [ ] `npm run build`
+- [ ] `npm test` (if the tier calls for it)
+- [ ] `npm run test:e2e` (only if a screen changes and the behavior can't be reasonably covered more cheaply)
+- [ ] `npm run build` (only if build/runtime behavior is involved)
 - [ ] Any required real-browser or deployed check from the spec.
 - [ ] Complete diff inspected for unrelated changes.
 
