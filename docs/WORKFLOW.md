@@ -120,6 +120,17 @@ metadata for the Codex environment, never a lever on scope or acceptance
 criteria. Claude stops here — implementation starts only once the maintainer
 explicitly delegates it.
 
+Claude also fills the ticket's optional `## Implementation guidance`
+section from what it actually found while investigating — exact
+file/function pointers, the one existing pattern to copy, the relevant
+test file, the invariant(s) that bind this change, and explicit "escalate
+back to Claude if" triggers. Populate a bullet only from something
+actually read; leave it blank rather than guess. This lets Codex skip
+`AGENTS.md`'s broader fallback reads for a well-mapped ticket — it's a
+navigation shortcut, not a restatement of `ARCHITECTURE.md`/`UX.md`/
+`SYNC.md`, and not a substitute for Codex's own judgment once it's in the
+code.
+
 ## 3. Implement and verify one ticket with Codex
 
 The maintainer (or whatever launches Codex) starts the task using the
@@ -130,7 +141,9 @@ Codex task with:
 Implement docs/tickets/active/WI-XXX.md.
 
 Read only the ticket, its originating spec, relevant source files, and
-relevant tests. Skip docs/CHANGELOG.md unless historical context is
+relevant tests. If the ticket has an Implementation guidance section, verify
+its pointers and use it as your starting point instead of AGENTS.md's
+broader fallback reads. Skip docs/CHANGELOG.md unless historical context is
 genuinely needed. Implement only this ticket and run the verification it
 requires.
 ```
@@ -155,7 +168,10 @@ from optional suggestions.
 ```
 
 The first review is read-only so the reviewer remains independent from the
-implementation.
+implementation. The ticket's `## Implementation guidance` section, if any,
+is not evidence of correctness — it records where Claude expected the
+change to land, not what Codex actually did. Review the diff and the
+invariant it names independently, the same as any other claim.
 
 For a UI change, the review also compares the implementation against
 `docs/UX.md` and the surrounding existing UI: visual and behavioral

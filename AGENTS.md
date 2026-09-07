@@ -12,29 +12,37 @@ path here assumes anything outside `whereisit/`.
 ## Read in this order
 
 1. This file.
-2. `CLAUDE.md` — always-loaded invariants and routing, plus the two docs it
-   points to for detail: `docs/ARCHITECTURE.md` (module boundaries, screens,
-   standing implementation lessons) and `docs/SYNC.md` (persistence/sync
-   design and the Supabase schema). Read these before touching `src/`; not
-   restated here to avoid the files drifting apart.
-3. `docs/SOT.md` — a compact summary of what's actually true about the
-   product and its technical state right now. Read this for fast context;
-   it points back at `CLAUDE.md`/specs/tickets for detail rather than
-   restating them, and the code is authoritative if the two ever disagree.
-4. The assigned ticket under `docs/tickets/active/`.
-5. The ticket's originating spec under `docs/specs/`.
-6. `docs/UX.md` — whenever the ticket carries a "UX / design references"
-   section, or otherwise changes what a screen renders. It is the
-   authoritative source for reusable UX/visual/interaction rules, the
-   known drift that must *not* be copied, and the design decisions that
-   are deliberately still open.
-7. Relevant source and tests for the ticket. Skip `docs/CHANGELOG.md` unless
+2. The assigned ticket under `docs/tickets/active/`.
+3. The ticket's originating spec under `docs/specs/`.
+4. If the ticket carries a populated `## Implementation guidance` section:
+   spot-check its file/function pointers against the actual source, then use
+   it as the starting point. Read only what it names — the listed
+   files/functions, the listed tests, and (only if it points at one) the
+   specific section of `docs/ARCHITECTURE.md`, `docs/SYNC.md`, `docs/UX.md`,
+   or `docs/SOT.md` — not those documents in full. Go straight to step 6.
+5. Otherwise — no `## Implementation guidance` section, a pointer in it
+   turns out stale or wrong, or the task genuinely spans more
+   architecture/state/sync surface than the ticket names — fall back to a
+   full read of `docs/SOT.md` (compact current-state summary; the code is
+   authoritative if the two disagree), `docs/ARCHITECTURE.md` (module
+   boundaries, screens, standing implementation lessons), and `docs/SYNC.md`
+   (persistence/sync design and the Supabase schema) as relevant, and
+   `docs/UX.md` whenever the ticket carries a "UX / design references"
+   section or otherwise changes what a screen renders.
+6. Relevant source and tests for the ticket. Skip `docs/CHANGELOG.md` unless
    historical context is genuinely needed.
 
+`CLAUDE.md` is Claude's entry document — routing, Claude's role, and
+scoping/review process, not implementation guidance. Implementing a ticket
+does not require reading it. The one exception is its "Running locally"
+section (build/serve commands): read only that section, not the whole file
+— see "Running and testing locally" below. Read further into `CLAUDE.md`
+only if a task genuinely needs product-description or deploy-process
+context not covered by this file, the ticket, or the spec.
+
 Consult `docs/WORKFLOW.md` only when process/handoff details are actually
-needed (e.g. the exact build/test commands, the proportional verification
-matrix, or how a review-fix round is supposed to work) — it is not required
-reading for every ticket.
+needed (e.g. the proportional verification matrix, or how a review-fix
+round is supposed to work) — it is not required reading for every ticket.
 
 ## Codex's responsibilities
 
@@ -84,8 +92,8 @@ the full gate regardless of these rules.
 
 ## Running and testing locally
 
-See `CLAUDE.md`'s "Running locally" section for the build/serve commands and
-exactly what each test layer covers.
+Read only `CLAUDE.md`'s "Running locally" section (build/serve commands) —
+not the whole file. `docs/TESTING.md` covers what each test layer checks.
 
 ## E2E sandbox limitation
 

@@ -43,6 +43,27 @@ See docs/UX.md for the rules these lines point at.
 - Mobile (<1024px) behavior: <…>
 - Desktop (>=1024px) behavior: <…>
 
+## Implementation guidance
+
+<!--
+Optional. Fill only from what you actually verified while investigating or
+writing this ticket -- pointers, not guesses. Leave a bullet blank rather
+than invent it. Codex starts here instead of re-deriving repo structure,
+but should inspect beyond this section whenever evidence contradicts it --
+this is a shortcut, not a ceiling. Don't restate rules from
+ARCHITECTURE.md/UX.md/SYNC.md; name the one relevant rule instead of
+copying it. Delete this section entirely if nothing here is actually known
+yet.
+-->
+
+- Likely files:
+- Likely functions/modules:
+- Existing pattern to reuse:
+- Relevant tests:
+- Known invariants:
+- Do not change:
+- Escalate back to Claude if:
+
 ## Verification
 
 <!--
