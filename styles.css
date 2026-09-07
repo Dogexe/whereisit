@@ -79,7 +79,7 @@
     /* -700 pair is the AA-contrast-safe variant for small/bold text on
        --color-card -- see theme.js, which overrides both per-theme (these
        are just the light-mode fallback values for the pre-JS first paint). */
-    --color-income: #1fae71; --color-income-700: #147a54; --color-income-tint: color-mix(in srgb, var(--color-income) 12%, white);
+    --color-income: #1fae71; --color-income-700: #15803D; --color-income-tint: color-mix(in srgb, var(--color-income) 12%, white);
     /* --color-income-tint always mixes toward white regardless of theme
        (measured: light and dark tint end up within ~2 RGB points of each
        other, since a 12% mix is dominated by the white it's mixed into) --
@@ -92,7 +92,7 @@
        hex, fixed, for exactly this "icon glyph on its own permanently-light
        tint circle" pattern -- categories.js's rowTone()/GOAL_TONES. */
     --color-income-tint-fg: #147a54;
-    --color-expense: #ef4b3a; --color-expense-700: #c22f22; --color-expense-tint: color-mix(in srgb, var(--color-expense) 12%, white);
+    --color-expense: #ef4b3a; --color-expense-700: #CC2020; --color-expense-tint: color-mix(in srgb, var(--color-expense) 12%, white);
     --color-chart-5-tint: color-mix(in srgb, var(--color-chart-5) 12%, white);
     /* This tint stays near-white in both themes, so its foreground must
        stay dark instead of following the chart color's dark-mode brightening.

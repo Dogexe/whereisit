@@ -47,16 +47,30 @@ export function applyTheme() {
   root.setProperty("--color-income", state.dark ? "#34c98a" : "#1fae71");
   // -700 = the AA-safe text variant of income/expense, for small/bold text
   // sitting directly on --color-card (e.g. .stat-card .delta, tx amounts).
-  // The base hues above measure ~2.85:1 (income) / ~3.66:1 (expense)
-  // against white -- below the 4.5:1 small-text minimum -- so text uses
-  // this darker pair instead, same pattern as .badge-expense already did.
-  // In dark mode the base hues were already tuned to clear ~6-7:1 against
-  // --color-card (#1e1f24), so -700 there is just the base color again --
-  // darkening it further (as a light-mode-style mix toward black would)
-  // moves the wrong direction on a dark surface.
-  root.setProperty("--color-income-700", state.dark ? "#34c98a" : "#147a54");
+  // WI-019 retuned both to a more vivid red/green (docs/specs/
+  // amount-color-semantics.md's addendum), replacing the original
+  // dark-mode-equals-base shortcut this comment used to describe -- these
+  // dark values are now deliberately brighter than base, verified by
+  // relative-luminance calc (not eyeballed) at ~9.4:1 (income) / ~6.0:1
+  // (expense) against --color-card (#1e1f24), both comfortably clearing
+  // the 4.5:1 floor.
+  // Light expense-700 targeted Tailwind red-600 (#DC2626) per the
+  // maintainer's chosen reference, but #DC2626 only measures 4.14:1 against
+  // --color-expense-tint (badge-expense's background, ~#fde9e7 -- a tint
+  // mixes toward white but isn't quite white, so it doesn't inherit
+  // --color-card's full contrast headroom) -- below the 4.5:1 floor and a
+  // real regression from the previous #c22f22 (4.83:1 there). Nudged to
+  // #CC2020, which still reads as the same vivid red (5.53:1 on card,
+  // 4.74:1 on the tint) and clears both surfaces.
+  // Known pre-existing gap, NOT introduced by this change: dark-mode
+  // badge-expense (expense-700 dark on --color-expense-tint, which stays
+  // near-white in both themes per its own doc comment below) already
+  // measured ~2.3:1 before this pass and still does after (~2.5:1) --
+  // untouched here, flagged for a separate ticket rather than silently
+  // fixed as a drive-by.
+  root.setProperty("--color-income-700", state.dark ? "#4ADE80" : "#15803D");
   root.setProperty("--color-expense", state.dark ? "#ff7a68" : "#ef4b3a");
-  root.setProperty("--color-expense-700", state.dark ? "#ff7a68" : "#c22f22");
+  root.setProperty("--color-expense-700", state.dark ? "#F87171" : "#CC2020");
   root.setProperty("--color-warning", state.dark ? "#f5b95a" : "#ec9f2e");
   // Breakdown chart's 5th/6th rotating colors (derived.js's CHART_COLORS) --
   // same hue in both modes, brightened for dark the same way income/expense/
