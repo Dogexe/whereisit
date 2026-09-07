@@ -277,6 +277,15 @@ work.
   sizing, empty-state class purpose).
 - **No resize re-render:** crossing the desktop breakpoint by resizing a window
   leaves JS-branched markup stale until the next render.
+- **White text on Coral's `--color-accent` fails 4.5:1 contrast
+  (~3.1:1), deliberately, pending a text-shadow fix (WI-017 round 3):**
+  the maintainer explicitly chose to keep Coral's un-darkened
+  Claude-brand-hue base (`#D97757`) over a darker AA-safe version,
+  planning to restore legibility later with a shadow behind the white
+  text (`.btn-primary`, active chip/tab, the hero card's balance text,
+  etc.) rather than by darkening the fill. Indigo (the other accent
+  option) is unaffected (5.82:1). Not yet ticketed — do so before
+  normalizing shadows/text-on-accent elsewhere.
 
 ## Open design decisions
 

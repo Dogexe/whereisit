@@ -2,6 +2,8 @@
 
 Status: **built and live-verified.** Source design: a Claude Design project ("Brand logo design", `whereisit Logo.dc.html`), imported via `DesignSync` after `/design-login`. Requested directly: "this is final whereisit app logo concept, use this instead of current logo, spec first."
 
+**Superseded (hex values only, WI-017):** `docs/specs/color-palette-refresh.md` retuned `--color-accent`'s Coral hex — after a rejected first attempt (a plain amber), it now lands on a Claude-brand-inspired terracotta, `#B25738`/`#8C442C`/`#5D2D1D`. Purple's hex is unchanged from what's on this page (`#6247ea`/`#4f34d6`/`#3f28ab`) but is now labeled "Indigo" in Settings rather than "Purple" — see `theme.js`'s `ACCENT` object for current values and `src/theme.js`'s WI-017 comment (both rounds) for the contrast measurements and reference-image pixel-sampling. Everything else on this page (mark shape, the two-preference model, static icon files, wordmark decisions) is unaffected and still current.
+
 ## What the design actually specifies (read directly from the source file)
 
 Not just an icon swap — three coupled changes:
