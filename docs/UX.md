@@ -286,6 +286,14 @@ work.
   etc.) rather than by darkening the fill. Indigo (the other accent
   option) is unaffected (5.82:1). Not yet ticketed — do so before
   normalizing shadows/text-on-accent elsewhere.
+  **Extended (post-WI-018 gradient-system pass):** Coral's hero gradient
+  (`--hero-gradient-start`/`-end`, shared by the Home hero card and the
+  tab bar's Add button as of this pass) tapers from the same 3.1:1 at its
+  start stop down to ~2.3:1 at its end stop — worse than the flat base,
+  same pending fix, same "large bold text/icon stays over the
+  higher-contrast start corner" mitigation in the meantime. Indigo's hero
+  gradient is not exempt either: it now ranges 5.75:1 (start) down to
+  2.94:1 (end), so even indigo dips below 4.5:1 toward its far corner.
 
 ## Open design decisions
 

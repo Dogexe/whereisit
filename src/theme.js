@@ -51,28 +51,83 @@ import { $ } from "./utils.js";
 //   2.5:1) -- a pre-existing gap (--color-accent* doesn't invert per theme
 //   the way income/expense do, affecting .btn-ghost's text in dark mode)
 //   this ticket did not introduce and does not fix.
-// heroStart/heroEnd feed the Home hero (balance) card's gradient
-// specifically. Indigo keeps its pre-existing dedicated pair
-// (#7b68ee -> #4f7df3) unchanged through every round -- both reference
-// images' own hero-style gradients sampled close to it (start ~hue 250deg,
-// end ~hue 210-220deg), so it was never actually the problem. Coral's pair
-// is base/c700 again (same "unchanged look" convention as before,
-// unchanged mechanism through all three rounds per the maintainer's
-// explicit "leave gradient for WI-018" -- only the two hex values moved).
+// heroStart/heroEnd feed the Home hero (balance) card's gradient AND (as of
+// the post-WI-018 gradient-system pass below) the tab bar's raised Add
+// button -- both now render the identical two-stop 135deg gradient, not
+// independent tokens.
+//
+// Post-WI-018 gradient-system pass: the maintainer supplied a fresh
+// reference screenshot of the hero card and asked for its exact gradient,
+// pixel-sampled via canvas getImageData against the real image (not
+// hand-converted or eyeballed -- same method this file always uses),
+// landing on two clean corner reads: top-left #6149ea, bottom-right
+// #409ce9. In HSL that's (249deg, 79%, 60%) -> (207deg, 79%, 58%) --
+// *exactly* the app's existing indigo base (#6247ea is 250deg/80%/60%,
+// i.e. the reference's start color IS the base accent, same pattern as
+// WI-017's original "FAB button sampled as exactly #6247ea" finding) --
+// then a ~42deg hue rotation toward blue at constant saturation and
+// near-constant lightness for the end stop. Indigo's old pair (#7b68ee ->
+// #4f7df3, kept unchanged through WI-017 as "close enough") reads
+// noticeably lighter/less saturated than this reference, so it's now
+// replaced outright rather than kept.
+// Coral's end stop is a new dedicated hero color, not reused from c700
+// (#74311A) as it was previously (WI-017's "unchanged mechanism... leave
+// gradient for WI-018" note) -- transposing indigo's rotation *in degrees*
+// onto coral's hue lands in yellow-green (hue 15+42=57 at this
+// saturation/lightness renders as mustard, verified by rendering swatches
+// in a real browser, not guessed), which reads as off-brand and isn't a
+// legitimate reading of "the same system" applied to a different hue
+// family. The same *mechanism* -- constant saturation, near-constant
+// lightness, a moderate hue rotation toward an adjacent, brighter-feeling
+// hue, corner-to-corner 135deg -- lands well for coral at a smaller ~23deg
+// rotation (15deg -> 38deg, terracotta -> warm amber), chosen by rendering
+// and eyeballing several candidate hues side by side in a real browser
+// (14.8->{25,30,35,40,45,50}) since there's no second reference image to
+// pixel-sample coral from. heroStart stays coral's base, matching the
+// "start = base" relationship the indigo reference confirmed.
+// Known contrast debt, extended from WI-017's existing coral note (see
+// docs/UX.md's Known UI debt): white text/icon directly on coral's hero
+// gradient measures 3.12:1 at the start (same as base, already accepted
+// debt) down to 2.26:1 at the end and ~2.67:1 at the midpoint -- all below
+// the 4.5:1 floor, all pending the same future text-shadow fix as coral's
+// base-on-white debt, not newly introduced by this pass. Indigo's new pair
+// fares better (5.75:1 start, 4.24:1 mid, 2.94:1 end) but still tapers
+// below 4.5:1 toward the far corner -- both hero cards keep their large
+// balance text positioned over the higher-contrast start corner, matching
+// how the reference image itself avoids the low-contrast corner (its
+// secondary "+6.9%" figure sits in an opaque pill, not bare white text).
 const ACCENT = {
-  coral: { base: "#D97757", c600: "#B74D2A", c700: "#74311A", heroStart: "#D97757", heroEnd: "#74311A" },
-  purple: { base: "#6247ea", c600: "#4f34d6", c700: "#3f28ab", heroStart: "#7b68ee", heroEnd: "#4f7df3" },
+  coral: { base: "#D97757", c600: "#B74D2A", c700: "#74311A", heroStart: "#D97757", heroEnd: "#D6A44C" },
+  purple: { base: "#6247ea", c600: "#4f34d6", c700: "#3f28ab", heroStart: "#6149ea", heroEnd: "#409ce9" },
 };
 
 export function applyTheme() {
+  // WI-018 (docs/specs/color-palette-refresh.md): bg/card/surface/divider/
+  // border retuned in both themes toward a cleaner, more clearly-separated
+  // page-vs-card look (previously bg-vs-card contrast was only ~1.08:1 in
+  // both themes -- card relied on shadow-sm/dividers alone to read as
+  // distinct from the page). No reference image was available this pass
+  // (not persisted anywhere in the repo -- only shared transiently in the
+  // WI-017 session), so light mode is a conservative, still-close nudge
+  // (per the spec's own framing) and dark mode a proportionally-matched
+  // deepen, rather than a pixel-sampled match. Verified via WCAG relative-
+  // luminance contrast math (same formula the canvas getImageData method
+  // this file's other comments reference ultimately computes), not
+  // eyeballed -- see WI-018's Review notes for every re-measured ratio.
+  // muted/tertiary/tabbarInactive/text are unchanged: re-measured against
+  // the new bg/card below and every previously-documented floor still
+  // clears (tabbarInactive vs bg: 3.64->3.45 light, unchanged ~3.86 dark,
+  // both still >=3:1), so per the ticket's "only if needed, not as a
+  // default" rule they weren't touched.
+  //
   // tabbarInactive is its own token (not tertiary) because tertiary is
   // shared by 11+ mostly-static-text spots, while the tab bar is an
   // interactive component subject to WCAG's stricter 3:1 minimum -- light
-  // tertiary (#9497a3) only computes to ~2.7:1 against this bg; #7d808c
-  // clears 3:1 with margin (~3.65:1). Dark tertiary already passes (~3.86:1)
+  // tertiary (#9497a3) only computes to ~2.55:1 against the new bg; #7d808c
+  // clears 3:1 with margin (~3.45:1). Dark tertiary already passes (~3.86:1)
   // so it's reused as-is.
-  const light = { bg: "#f6f6f8", card: "#ffffff", surface: "#eeeef1", divider: "#e4e4e9", border: "#d9dae0", muted: "#71747f", tertiary: "#9497a3", tabbarInactive: "#7d808c", text: "#15161a" };
-  const dark = { bg: "#141519", card: "#1e1f24", surface: "#26272d", divider: "rgba(255,255,255,0.10)", border: "rgba(255,255,255,0.16)", muted: "rgba(245,245,247,0.62)", tertiary: "rgba(245,245,247,0.42)", tabbarInactive: "rgba(245,245,247,0.42)", text: "#f5f5f7" };
+  const light = { bg: "#eef0f4", card: "#ffffff", surface: "#e5e8ee", divider: "#dde0e7", border: "#cfd3dc", muted: "#71747f", tertiary: "#9497a3", tabbarInactive: "#7d808c", text: "#15161a" };
+  const dark = { bg: "#111216", card: "#1f2027", surface: "#282a31", divider: "rgba(255,255,255,0.10)", border: "rgba(255,255,255,0.16)", muted: "rgba(245,245,247,0.62)", tertiary: "rgba(245,245,247,0.42)", tabbarInactive: "rgba(245,245,247,0.42)", text: "#f5f5f7" };
   const t = state.dark ? dark : light;
   const root = document.documentElement.style;
   document.documentElement.style.colorScheme = state.dark ? "dark" : "light";
@@ -92,9 +147,9 @@ export function applyTheme() {
   // amount-color-semantics.md's addendum), replacing the original
   // dark-mode-equals-base shortcut this comment used to describe -- these
   // dark values are now deliberately brighter than base, verified by
-  // relative-luminance calc (not eyeballed) at ~9.4:1 (income) / ~6.0:1
-  // (expense) against --color-card (#1e1f24), both comfortably clearing
-  // the 4.5:1 floor.
+  // relative-luminance calc (not eyeballed) at ~9.3:1 (income) / ~5.9:1
+  // (expense) against --color-card (#1f2027, re-measured for WI-018's new
+  // dark card), both comfortably clearing the 4.5:1 floor.
   // Light expense-700 targeted Tailwind red-600 (#DC2626) per the
   // maintainer's chosen reference, but #DC2626 only measures 4.14:1 against
   // --color-expense-tint (badge-expense's background, ~#fde9e7 -- a tint

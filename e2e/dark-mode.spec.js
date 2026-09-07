@@ -16,10 +16,10 @@ test("toggling dark mode in Settings actually changes the rendered theme", async
 
   // Real computed style check (theme.js's applyTheme() sets --color-bg,
   // which body's CSS reads via var()), not just "the switch's own class
-  // changed" -- #f6f6f8 light vs #141519 dark.
+  // changed" -- #eef0f4 light vs #111216 dark (WI-018 surface retune).
   expect(darkBg).not.toBe(lightBg);
-  expect(lightBg).toBe("rgb(246, 246, 248)");
-  expect(darkBg).toBe("rgb(20, 21, 25)");
+  expect(lightBg).toBe("rgb(238, 240, 244)");
+  expect(darkBg).toBe("rgb(17, 18, 22)");
 
   // Toggling back should restore the original light background exactly.
   await appearanceRow.click();

@@ -97,16 +97,39 @@ flags what a future agent needs to know exists, not how it works.
 
 ## Active work
 
-- WI-018 — base surface retune (light+dark `bg`/`card`/`surface`/
-  `divider`/`border`, with full cascading contrast re-verification since
-  changing them risks silently breaking several already-tuned floors).
-  `Ready` in `docs/tickets/active/`, `sol-high` profile, spec is
-  `docs/specs/color-palette-refresh.md`. The last piece of the color
-  scheme refresh (WI-016/017/019 all shipped, see below). Not yet
-  delegated — awaiting the maintainer's go-ahead per `docs/WORKFLOW.md`.
+(none — WI-018 shipped, see below.)
 
 ## Recently completed
 
+- **Hero gradient system** (post-WI-018, requested directly by the
+  maintainer with a fresh reference screenshot, not its own ticket):
+  `theme.js`'s `ACCENT` map's `heroStart`/`heroEnd` — which feed both the
+  Home hero balance card *and*, as of this pass, the mobile tab bar's
+  raised Add button (`styles.css`'s `.tabbar button[data-tab="add"]
+  .icon`, previously flat `--color-accent`/`-700` despite an existing
+  comment claiming it already matched the hero card) — were reworked.
+  Indigo's pair was pixel-sampled from the reference (`#6149ea` ->
+  `#409ce9`, replacing the old `#7b68ee`/`#4f7df3`); coral got a new
+  dedicated pair (`#D97757` -> `#D6A44C`, replacing the old
+  base/`c700`-reuse) chosen by rendering candidate hues in a real browser
+  since there was no second reference image for coral. Implemented
+  directly by Claude (explicit maintainer instruction to bypass Codex this
+  pass, same as WI-016/017/019/018). Full derivation, HSL math, and
+  contrast readings are in `theme.js`'s `ACCENT` comment. Verified: 173/173
+  unit, 31/31 e2e, real-browser computed-style checks (not just visual)
+  confirming `.hero-card` and the Add button render byte-identical
+  gradients in both accents and both themes.
+- WI-018 — base surface retune (light+dark `bg`/`card`/`surface`/
+  `divider`/`border`). Implemented directly by Claude (explicit maintainer
+  instruction to bypass Codex this pass, quota/workflow reasons as with
+  WI-016/017/019 below) rather than delegated per the ticket's original
+  `sol-high` Codex profile. No reference image was available for this
+  pass (only ever shared transiently in the WI-017 chat, never persisted
+  in the repo) — see the ticket's Review notes for the resulting
+  measured-not-sampled approach and every re-verified contrast ratio.
+  Committed to `main`, not yet pushed. Spec: `docs/specs/
+  color-palette-refresh.md`. The last piece of the color scheme refresh
+  (WI-016/017/019, see below).
 - WI-016, WI-017, WI-019 — color scheme refresh (from a maintainer
   reference image), all implemented directly by Claude (not Codex —
   quota exhausted this pass) and committed to `main` (not yet pushed).

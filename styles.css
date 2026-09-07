@@ -119,15 +119,18 @@
        --color-income/-expense/-warning above. */
     --color-chart-5: #1f7d70; --color-chart-6: #b23a7a;
     /* surfaces (swapped by applyTheme for dark mode) */
-    --color-bg: #f6f6f8; --color-card: #ffffff; --color-surface: #eeeef1;
-    --color-text: #15161a; --color-muted: #71747f; --color-tertiary: #9497a3; --color-divider: #e4e4e9; --color-border: #d9dae0;
+    /* WI-018: kept in sync with theme.js's light object -- this is only the
+       pre-JS first-paint fallback (see the Design-token ownership rule in
+       docs/UX.md), theme.js's applyTheme() is the runtime owner. */
+    --color-bg: #eef0f4; --color-card: #ffffff; --color-surface: #e5e8ee;
+    --color-text: #15161a; --color-muted: #71747f; --color-tertiary: #9497a3; --color-divider: #dde0e7; --color-border: #cfd3dc;
     /* Own token rather than reusing --color-tertiary: that token is shared
        by 11+ other (mostly static-text) spots, but the tab bar is an
        interactive UI component subject to WCAG's stricter 3:1 minimum --
-       #9497a3 on this bg only computes to ~2.7:1 (verified via a real
-       relative-luminance calc, not eyeballed). #7d808c clears 3:1 with
-       margin (~3.65:1); dark mode's tertiary already passes (~3.86:1) so
-       it's reused as-is below. */
+       #9497a3 on this bg only computes to ~2.55:1 (verified via a real
+       relative-luminance calc, not eyeballed; re-measured for WI-018's new
+       bg). #7d808c clears 3:1 with margin (~3.45:1); dark mode's tertiary
+       already passes (~3.86:1) so it's reused as-is below. */
     --color-tabbar-inactive: #7d808c;
     /* type + shape */
     /* "Noto Sans Thai" comes right after "Inter" so Thai-block characters
@@ -1105,8 +1108,12 @@
   .tabbar button:active .icon { transform: scale(0.88); }
   /* The "add" tab is the app's primary action, so it's broken out of the
      bar visually (raised circle, accent gradient) rather than sitting as
-     a 5th equal-weight icon -- same gradient .hero-card already uses, for
-     consistency. Padding shrinks the icon's own rendered content within
+     a 5th equal-weight icon -- literally the same --hero-gradient-start/
+     -end stops and 135deg angle .hero-card uses (previously this comment
+     claimed that consistency but the rule below actually used
+     --color-accent/-700, a flatter, less saturated pair -- fixed as part
+     of the post-WI-018 gradient-system pass, see theme.js's ACCENT
+     comment). Padding shrinks the icon's own rendered content within
      the circle (SVG content box = width/height minus padding under the
      app's global box-sizing:border-box), independent of .icon's own
      18px default, which this selector out-specifies. 60px/16px padding/
@@ -1116,7 +1123,7 @@
   .tabbar button[data-tab="add"] .icon {
     width: 60px; height: 60px; padding: 16px; flex-shrink: 0;
     border-radius: 50%; color: #ffffff;
-    background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-700) 100%);
+    background: linear-gradient(135deg, var(--hero-gradient-start) 0%, var(--hero-gradient-end) 100%);
     box-shadow: var(--shadow-accent);
     margin-top: -23px;
   }
