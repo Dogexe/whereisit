@@ -4,7 +4,10 @@ import { state } from "./state.js";
 // other place in the app just reads L().someKey same as before.
 const STRINGS = {
   appTitle: ["whereisit", "whereisit"],
-  darkModeBtn: ["โหมดมืด", "Dark mode"], overview: ["ภาพรวม", "Overview"], balanceLabel: ["คงเหลือ", "Balance"],
+  darkModeBtn: ["โหมดมืด", "Dark mode"], balanceLabel: ["คงเหลือ", "Balance"],
+  greetingMorning: ["อรุณสวัสดิ์", "Good morning"], greetingMorningAlt: ["เริ่มเช้าวันใหม่", "Rise and shine"],
+  greetingAfternoon: ["สวัสดีตอนบ่าย", "Good afternoon"], greetingAfternoonAlt: ["ขอให้วันนี้เป็นวันที่ดี", "Hope your day's going well"],
+  greetingEvening: ["สวัสดีตอนเย็น", "Good evening"], greetingEveningAlt: ["ยินดีต้อนรับกลับมา", "Welcome back"],
   incomeLabel: ["รายรับ", "Income"], expenseLabel: ["รายจ่าย", "Expense"],
   recentTx: ["รายการล่าสุด", "Recent activity"], addShort: ["+ เพิ่มรายการ", "+ Add transaction"],
   profileAria: ["โปรไฟล์และการตั้งค่า", "Profile & settings"],

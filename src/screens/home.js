@@ -90,7 +90,8 @@ export function renderHome() {
   const recent = scopedTx.slice().sort(byRecency).slice(0, 5);
   const budgetsPreview = computeBudgets();
   const dueSoon = upcomingBills();
-  const today = new Date().toLocaleDateString(state.lang === "en" ? "en-US" : "th-TH", { month: "long", year: "numeric" });
+  const now = new Date();
+  const today = now.toLocaleDateString(state.lang === "en" ? "en-US" : "th-TH", { month: "long", year: "numeric" });
 
   const curM = localMonthKey();
   const prevM = prevMonthKey();
@@ -106,6 +107,12 @@ export function renderHome() {
   const profileMeta = currentUser ? (currentUser.user_metadata || {}) : {};
   const profileAvatarUrl = profileMeta.avatar_url || profileMeta.picture || "";
   const profileName = accountDisplayName(currentUser, l.notSignedIn);
+  const greetingOptions = now.getHours() >= 5 && now.getHours() < 12
+    ? [l.greetingMorning, l.greetingMorningAlt]
+    : now.getHours() < 18
+      ? [l.greetingAfternoon, l.greetingAfternoonAlt]
+      : [l.greetingEvening, l.greetingEveningAlt];
+  const greeting = `${greetingOptions[Math.floor(Math.random() * greetingOptions.length)]}${currentUser && profileName ? `, ${profileName}` : ""}`;
   const profileInner = profileAvatarUrl
     ? `<img src="${escapeHtml(profileAvatarUrl)}" alt="">`
     : (currentUser ? escapeHtml((profileName || "?").slice(0, 1).toUpperCase()) : icon("user"));
@@ -113,8 +120,8 @@ export function renderHome() {
   $("screen").innerHTML = `
     <div class="home-header-row">
       <div>
-        <div class="today-label">${escapeHtml(today)}</div>
-        <h2 class="screen-title" style="margin:2px 0 var(--space-sm)">${escapeHtml(l.overview)}</h2>
+        <div class="today-label">${escapeHtml(greeting)}</div>
+        <h2 class="screen-title" style="margin:2px 0 var(--space-sm)">${escapeHtml(today)}</h2>
       </div>
       <button type="button" class="home-profile-btn" id="homeProfileBtn" aria-label="${escapeHtml(l.profileAria)}">${profileInner}</button>
     </div>
