@@ -97,15 +97,42 @@ flags what a future agent needs to know exists, not how it works.
 
 ## Active work
 
-- WI-016, WI-017, WI-018 — color scheme refresh (fintech-style reference
-  image: red expense / green income amounts, Blue replacing Purple as an
-  accent option with Coral shifted warmer, and a light+dark base surface
-  retune). All three are `Ready` in `docs/tickets/active/`, specs are
-  `docs/specs/amount-color-semantics.md` and
-  `docs/specs/color-palette-refresh.md`. Not yet delegated to Codex —
-  awaiting the maintainer's explicit go-ahead per `docs/WORKFLOW.md`.
+- WI-018 — base surface retune (light+dark `bg`/`card`/`surface`/
+  `divider`/`border`, with full cascading contrast re-verification since
+  changing them risks silently breaking several already-tuned floors).
+  `Ready` in `docs/tickets/active/`, `sol-high` profile, spec is
+  `docs/specs/color-palette-refresh.md`. The last piece of the color
+  scheme refresh (WI-016/017/019 all shipped, see below). Not yet
+  delegated — awaiting the maintainer's go-ahead per `docs/WORKFLOW.md`.
 
 ## Recently completed
+
+- WI-016, WI-017, WI-019 — color scheme refresh (from a maintainer
+  reference image), all implemented directly by Claude (not Codex —
+  quota exhausted this pass) and committed to `main` (not yet pushed).
+  **WI-016:** expense amounts render in `--color-expense-700` red instead
+  of neutral text (`tx-row.js`, `add.js`); income stays green, transfers
+  stay neutral; `docs/UX.md`'s amount-coloring rule updated to match. One
+  real defect found and fixed during independent review: a new e2e test
+  left Settings on the wrong sub-page before asserting on a different
+  one. **WI-019** (a follow-up spec addendum, not originally its own
+  ticket): retuned `--color-expense-700`/`--color-income-700`'s actual hex
+  to a more vivid red/green after the maintainer found WI-016's shipped
+  colors too muted; found and left a pre-existing (unrelated) dark-mode
+  `.badge-expense` contrast bug for a future ticket. **WI-017** (accent
+  palette) took three review rounds: round 1 (flat Tailwind blue + amber)
+  was rejected on sight; round 2 pixel-sampled the maintainer's own
+  reference images via canvas and found "indigo" was literally the app's
+  original `#6247ea` all along — only the Settings label changed, Purple
+  → Indigo; round 3's Coral was rejected as "too dark" and landed on an
+  un-darkened Claude-brand terracotta (`#D97757`) with its white-text
+  contrast shortfall *deliberately* deferred to a later shadow-based fix
+  per the maintainer's explicit instruction — tracked in `docs/UX.md`'s
+  Known UI debt, not silently accepted. Full round-by-round history is in
+  `docs/tickets/active/WI-017.md`'s Review notes (kept under `active/`,
+  not moved to `completed/`, since none of this is pushed/merged yet).
+  Hero gradient values were deliberately left untouched throughout — the
+  maintainer asked for that to wait for WI-018.
 
 - WI-013 + WI-014 — the two accessibility defects found by the
   `docs/UX.md` design-system audit and deliberately left unfixed by that
