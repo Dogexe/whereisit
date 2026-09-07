@@ -127,12 +127,16 @@ flags what a future agent needs to know exists, not how it works.
   pass (only ever shared transiently in the WI-017 chat, never persisted
   in the repo) — see the ticket's Review notes for the resulting
   measured-not-sampled approach and every re-verified contrast ratio.
-  Committed to `main`, not yet pushed. Spec: `docs/specs/
+  Pushed to `main` and deployed. Spec: `docs/specs/
   color-palette-refresh.md`. The last piece of the color scheme refresh
-  (WI-016/017/019, see below).
+  (WI-016/017/019, see below). Independent review flagged the
+  hero-gradient-system pass above as bundled into the same commit despite
+  being out of WI-018's own scope, and a stale `--hero-gradient-end`
+  pre-JS fallback for Coral (see `docs/UX.md`'s Known UI debt) — both
+  accepted as-is per maintainer decision, not fixed.
 - WI-016, WI-017, WI-019 — color scheme refresh (from a maintainer
   reference image), all implemented directly by Claude (not Codex —
-  quota exhausted this pass) and committed to `main` (not yet pushed).
+  quota exhausted this pass) and pushed to `main` and deployed.
   **WI-016:** expense amounts render in `--color-expense-700` red instead
   of neutral text (`tx-row.js`, `add.js`); income stays green, transfers
   stay neutral; `docs/UX.md`'s amount-coloring rule updated to match. One

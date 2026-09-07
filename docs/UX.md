@@ -294,6 +294,16 @@ work.
   higher-contrast start corner" mitigation in the meantime. Indigo's hero
   gradient is not exempt either: it now ranges 5.75:1 (start) down to
   2.94:1 (end), so even indigo dips below 4.5:1 toward its far corner.
+- **`styles.css`'s pre-JS `--hero-gradient-end` fallback is stale for
+  Coral** (`#74311A`, the pre-gradient-system value) after the
+  post-WI-018 gradient-system pass moved `theme.js`'s
+  `ACCENT.coral.heroEnd` to `#D6A44C` — the default accent is Coral
+  (`state.accentColor` defaults to `"coral"`), so every fresh load shows
+  the old gradient-end color on the hero card and tab bar Add button for
+  the brief pre-`applyTheme()` window, violating the Design-token
+  ownership sync rule above. Accepted as-is per maintainer decision;
+  fix by updating `styles.css`'s `:root` `--hero-gradient-end` to
+  `#D6A44C` to match, same as the `--color-bg` fallback was kept in sync.
 
 ## Open design decisions
 
