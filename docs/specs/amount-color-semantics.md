@@ -70,6 +70,48 @@ Confirmed **not** in scope (checked, no change needed):
   — that's `docs/specs/color-palette-refresh.md`'s concern, not this one.
 - Any other UI surface not listed above under "Current behavior."
 
+## Addendum: `-700` hex retune (WI-019)
+
+After WI-016 shipped and was checked live, the maintainer didn't like how
+muted `--color-expense-700`/`--color-income-700` read for amount text
+(light mode in particular: `#c22f22`/`#147a54` are a dark brick-red/forest-
+green, tuned years ago purely for AA contrast, not for matching the
+original reference image's more vivid red/green). Neither
+`docs/specs/color-palette-refresh.md` (accent + base surfaces) nor this
+spec's original scope assigned ownership of retuning these two tokens'
+actual hex values — a real gap, not a deliberate exclusion. This addendum
+closes it.
+
+**Decision:** retune `--color-income-700`/`--color-expense-700` (both
+themes) toward the reference image's more vivid look, confirmed with the
+maintainer against three concrete reference directions (matching the
+original screenshot, Apple's iOS system red/green, or a subtle brighten of
+today's values) — **the screenshot-matching direction was chosen**:
+
+| | Light | Dark |
+|---|---|---|
+| expense-700 | `#DC2626` (was `#c22f22`) | `#F87171` (was `#ff7a68`) |
+| income-700 | `#15803D` (was `#147a54`) | `#4ADE80` (was `#34c98a`) |
+
+These are starting targets, not final values — WI-019 requires live
+contrast measurement (not hand-conversion) before shipping, same method as
+every other tuned token in `theme.js`.
+
+**Not in scope of this addendum:** `--color-expense`/`--color-income`'s
+*base* (non-`-700`) values, used for fills/tints/buttons/the hero-negative
+gradient — the maintainer's complaint was specifically about amount text,
+which only ever renders the `-700` variant. Base tokens are unchanged.
+
+**Every existing `-700` consumer must be re-checked, not just amount
+text** — the token is shared: Home stat-card deltas (`home.js:139,144`),
+Home's overdue-bill icon avatar (`home.js:172`), `.badge-expense`
+(`styles.css`), `#syncStatus.ok`/`.err` (`styles.css`), the Settings
+sign-out row (`.settings-logout-row`, `styles.css`), and
+`.manage-row-overdue .sub` (`styles.css`) all use `--color-expense-700`/
+`--color-income-700` today and will all visibly change alongside amount
+text — call this out as an expected side effect during review, not a
+separate bug.
+
 ## Verification plan
 
 `npm test` (unit coverage for any existing amount-color assertions) +
