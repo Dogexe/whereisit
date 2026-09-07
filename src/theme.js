@@ -1,25 +1,66 @@
 import { state } from "./state.js";
 import { $ } from "./utils.js";
 
-// docs/specs/coral-rebrand-and-logo.md: "coral" is the new default brand
-// (from the design's own oklch(58% 0.18 40) base -- nudged down from its
-// literal oklch(62% 0.18 40) spec value specifically because the design
-// only ever showed that hue as a small icon stroke/swatch, never as a
-// large white-text button fill; at 62% L, white text measured 3.94:1,
-// below the 4.5:1 small-text minimum this app has held to all session --
-// 58% clears it at 4.64:1 while reading as the same coral). "purple" is
-// the app's original accent, unchanged, kept as an opt-in preference.
-// Resolved via canvas getImageData against real Chrome, not hand-converted.
+// docs/specs/coral-rebrand-and-logo.md: "coral" was the original 2024
+// brand pass (oklch(58% 0.18 40), #cd4805/#b12c00/#960200) -- its hex
+// values were superseded by WI-017 below, see docs/specs/
+// color-palette-refresh.md. "purple" is the app's original accent, object
+// key unchanged (see that spec's decision 1 -- no data migration for
+// state.accentColor, which still stores the literal string "purple"), now
+// labeled "Indigo" in Settings (i18n.js).
+//
+// WI-017 (docs/specs/color-palette-refresh.md) went through two rounds.
+// Round 1 picked a flat Tailwind blue (#2563EB) for purple and a warm
+// amber (#A56409) for coral, both verified for contrast -- but the
+// maintainer rejected both on sight ("wtf is that coral... the blue is so
+// finance app stereotype, i want kind of indigo") and supplied two new
+// reference images. Round 2 (current) is pixel-sampled from those
+// references via canvas getImageData, not re-guessed:
+// - The reference app screenshot's FAB button and active tab icon sampled
+//   as *exactly* #6247ea -- this app's own original purple base, before
+//   round 1 ever touched it. So "indigo" round-trips back to the original
+//   base/c600/c700 (#6247ea/#4f34d6/#3f28ab); only the Settings label
+//   changes (Blue -> Indigo), not the hex. Round 1's "too violet" read was
+//   specifically about pairing that hue with the word "Blue", not a
+//   defect in the hue itself.
+// - For coral, the maintainer asked for "something like claude color
+//   accent" -- Anthropic's own warm terracotta/clay brand hue
+//   (~oklch-equivalent hex #CC785C / #DA7756 in the wild). Round 2's first
+//   pass darkened that to #B25738 (46% L) so white button/chip text would
+//   clear 4.5:1, the same fix the original 2024 coral pass used -- but the
+//   maintainer rejected THAT too ("coral is too dark bro and the gradient
+//   is odd") and explicitly chose to keep the lighter, truer brand hue and
+//   defer the white-text-contrast fix to a later pass (a text-shadow on
+//   white-on-accent text, not a darker base) rather than accept a muddy
+//   color. Round 3 (current): base #D97757 (hue 15deg, sat 63%, L60% --
+//   the un-darkened brand hue) measures **3.12:1 against white text,
+//   below this app's normal 4.5:1 floor, deliberately** -- tracked as
+//   known UI debt in docs/UX.md until the shadow fix lands. c600 #B74D2A
+//   (L44%) and c700 #74311A (L28%) hold the same hue/saturation and were
+//   NOT relaxed the same way -- they aren't paired with white text, they
+//   render as colored text on --color-card/--color-accent-tint (badge-
+//   brand, .shortcut-btn.active, .picker-year-heading:hover, .kind-toggle
+//   button.active, .btn-ghost), so they still need to clear their own
+//   floor on their own merits: c700 measures 8.47:1 against
+//   --color-accent-tint (which stays near-white in both themes), c600
+//   measures 4.53:1 against the tint and 5.11:1 against --color-card in
+//   light mode.
+// - indigo.c700 #3f28ab: 8.38:1 against its own tint, same reasoning.
+//   Both c600 values clear --color-card in light mode (>=5:1) and their
+//   own tint (>=4.5:1); neither clears --color-card in dark mode (~2.2-
+//   2.5:1) -- a pre-existing gap (--color-accent* doesn't invert per theme
+//   the way income/expense do, affecting .btn-ghost's text in dark mode)
+//   this ticket did not introduce and does not fix.
 // heroStart/heroEnd feed the Home hero (balance) card's gradient
-// specifically -- Coral's pair is just base/c700 again (unchanged look),
-// but Purple's plain base/c700 pair (#6247ea -> #3f28ab) reads as one
-// fairly dark, low-blue violet on that large a card, not the brighter
-// blue-to-violet look a reference design asked for -- so Purple gets its
-// own dedicated, more vivid pair here. Every other Purple-themed element
-// (buttons, the active tab, etc.) still uses plain base/c700 below,
-// unaffected by this.
+// specifically. Indigo keeps its pre-existing dedicated pair
+// (#7b68ee -> #4f7df3) unchanged through every round -- both reference
+// images' own hero-style gradients sampled close to it (start ~hue 250deg,
+// end ~hue 210-220deg), so it was never actually the problem. Coral's pair
+// is base/c700 again (same "unchanged look" convention as before,
+// unchanged mechanism through all three rounds per the maintainer's
+// explicit "leave gradient for WI-018" -- only the two hex values moved).
 const ACCENT = {
-  coral: { base: "#cd4805", c600: "#b12c00", c700: "#960200", heroStart: "#cd4805", heroEnd: "#960200" },
+  coral: { base: "#D97757", c600: "#B74D2A", c700: "#74311A", heroStart: "#D97757", heroEnd: "#74311A" },
   purple: { base: "#6247ea", c600: "#4f34d6", c700: "#3f28ab", heroStart: "#7b68ee", heroEnd: "#4f7df3" },
 };
 

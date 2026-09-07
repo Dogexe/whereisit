@@ -57,16 +57,16 @@
     /* brand accent -- coral is the default (docs/specs/coral-rebrand-and-logo.md);
        these are just the pre-JS first-paint fallback, theme.js's ACCENT
        map overrides all three per state.accentColor ("coral" | "purple"). */
-    --color-accent: #cd4805;
-    --color-accent-600: #b12c00;
-    --color-accent-700: #960200;
+    --color-accent: #D97757;
+    --color-accent-600: #B74D2A;
+    --color-accent-700: #74311A;
     --color-accent-tint: color-mix(in srgb, var(--color-accent) 12%, white);
     --shadow-accent: 0 12px 28px color-mix(in srgb, var(--color-accent) 30%, transparent);
     /* Home hero card's own gradient stops -- same pre-JS fallback pattern
        as --color-accent above, theme.js's ACCENT map overrides both per
        state.accentColor. */
-    --hero-gradient-start: #cd4805;
-    --hero-gradient-end: #960200;
+    --hero-gradient-start: #D97757;
+    --hero-gradient-end: #74311A;
     /* Sidebar lockup icon only (see .sidebar-logo below) -- deliberately
        not promoted to a general system color, same reasoning as when the
        coral rebrand spec first considered and rejected that. --logo-ring-color
