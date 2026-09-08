@@ -156,8 +156,9 @@ flags what a future agent needs to know exists, not how it works.
   contrast shortfall *deliberately* deferred to a later shadow-based fix
   per the maintainer's explicit instruction — tracked in `docs/UX.md`'s
   Known UI debt, not silently accepted. Full round-by-round history is in
-  `docs/tickets/active/WI-017.md`'s Review notes (kept under `active/`,
-  not moved to `completed/`, since none of this is pushed/merged yet).
+  `docs/tickets/completed/WI-017.md`'s Review notes (moved from `active/`
+  to `completed/` — WI-016/017/018/019 are all merged, pushed to `main`,
+  and deployed).
   Hero gradient values were deliberately left untouched throughout — the
   maintainer asked for that to wait for WI-018.
 
