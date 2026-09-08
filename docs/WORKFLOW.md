@@ -283,6 +283,8 @@ permanent project memory.
 | `AGENTS.md` | Codex entry rules and implementation behavior |
 | `docs/SOT.md` | Concise current project/product reality |
 | `docs/WORKFLOW.md` | Engineering lifecycle and agent handoffs |
+| `docs/ROADMAP.md` | Planned remediation work, its order, and the open product decisions blocking it |
+| `docs/AUDIT-*.md` | Point-in-time audit findings and their evidence; ages, so re-verify before acting |
 | `docs/specs/` | Durable feature/product behavior |
 | `docs/tickets/` | Small execution contracts |
 | `docs/CHANGELOG.md` | Historical record of meaningful changes |

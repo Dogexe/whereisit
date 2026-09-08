@@ -32,7 +32,9 @@ live in `docs/specs/`. Full project history lives in `docs/CHANGELOG.md`.
 3. `docs/WORKFLOW.md` — only when workflow/process guidance is actually
    needed (the full lifecycle, handoff prompts, the minimum `/spec`
    prompt); not required reading for every session.
-4. Only then, load what the task actually touches: `docs/ARCHITECTURE.md`
+4. Only then, load what the task actually touches: `docs/ROADMAP.md` for
+   what's planned next and which product decisions are still blocking it,
+   `docs/ARCHITECTURE.md`
    for module structure/screens/UI plumbing, `docs/UX.md` for the reusable
    UX/visual/interaction rules any change that renders a screen must
    follow, `docs/SYNC.md` for persistence/sync/auth/Supabase schema,

@@ -97,7 +97,17 @@ flags what a future agent needs to know exists, not how it works.
 
 ## Active work
 
-(none — WI-018 shipped, see below.)
+- **WI-023** (`Ready`, not started) — ship an empty first run: remove the
+  four seeded budgets and four seeded bills from `state.js`, and add the two
+  empty states that removal exposes (Home's budget card, Insights' Budgets
+  tab). Spec: `docs/specs/first-run-empty-defaults.md`. This is workstream
+  WS-1 of `docs/ROADMAP.md`.
+- **`docs/ROADMAP.md`** and **`docs/AUDIT-2026-09.md`** are new: the
+  September 2026 product audit (19 findings with evidence) and the sequenced
+  remediation plan built from it, including five open product decisions that
+  block further work. Read the roadmap before picking up anything not already
+  ticketed. The audit is point-in-time against build `413bf37` — re-verify a
+  finding against current code before acting on it.
 
 ## Recently completed
 
