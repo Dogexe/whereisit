@@ -223,12 +223,12 @@ export function renderHome() {
         </div>
         <div class="stat-row">
           <div class="stat-card">
-            <div class="head">${icon("arrow-down-left")}<span>${escapeHtml(l.incomeLabel)}</span></div>
+            <div class="head head-income">${icon("arrow-down-left")}<span>${escapeHtml(l.incomeLabel)}</span></div>
             <div class="value">${fmtMoney(curIncome)}</div>
             <div class="delta" style="color:var(--color-income-700)">${incomeDelta !== null ? escapeHtml(incomeDelta) : "—"}</div>
           </div>
           <div class="stat-card">
-            <div class="head">${icon("arrow-up-right")}<span>${escapeHtml(l.expenseLabel)}</span></div>
+            <div class="head head-expense">${icon("arrow-up-right")}<span>${escapeHtml(l.expenseLabel)}</span></div>
             <div class="value">${fmtMoney(curExpense)}</div>
             <div class="delta" style="color:var(--color-expense-700)">${expenseDelta !== null ? escapeHtml(expenseDelta) : "—"}</div>
           </div>
