@@ -97,11 +97,17 @@ flags what a future agent needs to know exists, not how it works.
 
 ## Active work
 
-- **WI-023** (`Ready`, not started) — ship an empty first run: remove the
-  four seeded budgets and four seeded bills from `state.js`, and add the two
-  empty states that removal exposes (Home's budget card, Insights' Budgets
-  tab). Spec: `docs/specs/first-run-empty-defaults.md`. This is workstream
-  WS-1 of `docs/ROADMAP.md`.
+- **WI-023** (`Completed`) — shipped an empty first run: `state.js`'s
+  `budgets` and `bills` now initialise to `[]` like `goals`, so a
+  never-touched install shows nothing it invented, and the two surfaces that
+  go empty as a result (Home's budget card, Insights' Budgets tab) render a
+  plain `.empty-note` reading `l.noBudgets`. Existing installs are
+  unaffected — `restore.js`'s saved-array-wins rule is untouched, and only
+  an absent settings key falls through to the module default. Insights'
+  note renders as a sibling of `.insight-cards`, not a child: that container
+  is a multi-column grid from 880px up, so a child would sit in the first
+  column only. Spec: `docs/specs/first-run-empty-defaults.md`. This was
+  workstream WS-1 of `docs/ROADMAP.md`.
 - **`docs/ROADMAP.md`** and **`docs/AUDIT-2026-09.md`** are new: the
   September 2026 product audit (19 findings with evidence) and the sequenced
   remediation plan built from it, including five open product decisions that

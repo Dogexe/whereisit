@@ -50,7 +50,7 @@ excluded from this roadmap — that stream keeps its own ownership.
 
 | # | Workstream | Contains | Scope · risk | Status |
 |---|---|---|---|---|
-| WS-1 | Honest first run | D1 + the two empty states its removal exposes | M · low | **WI-023 Ready** |
+| WS-1 | Honest first run | D1 + the two empty states its removal exposes | M · low | **WI-023 Completed** |
 | WS-2 | Reversible actions | D2 + `role="status"` on `#toast` (toast half of D8) | M · medium | Not started |
 | WS-3 | History and dismissal | D3, in three releases (below) | M–L · see below | Not started |
 | WS-4 | Transaction list at scale | D6 + U3 filtered totals | S · low | Not started |
@@ -61,7 +61,7 @@ excluded from this roadmap — that stream keeps its own ownership.
 | WS-9 | Sync orchestration coverage | F1 | M · medium | Gate before C2 |
 
 WS-1's behavior is specified in `docs/specs/first-run-empty-defaults.md` and
-executed by `docs/tickets/active/WI-023.md`. The remaining workstreams have no
+executed by `docs/tickets/completed/WI-023.md`. The remaining workstreams have no
 spec yet — each needs one before it becomes a ticket.
 
 ## WS-3's three releases
