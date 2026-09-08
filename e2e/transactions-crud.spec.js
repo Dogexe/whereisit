@@ -13,9 +13,8 @@ test("adding a transaction appears in both Home's recent list and Transactions' 
   await expect(page.locator("#txListContainer")).toContainText(note);
 
   await navBtn(page, "home").click();
-  // Scoped to .home-col-main: Home also has an "upcoming bills" .list-card
-  // in .home-col-side (from the seeded sample bills), so a bare .list-card
-  // locator is ambiguous between the two.
+  // Scoped to .home-col-main: Home's side column can include budget and bill
+  // cards, so a bare .list-card locator is not stable for this assertion.
   await expect(page.locator(".home-col-main .list-card")).toContainText(note);
 });
 

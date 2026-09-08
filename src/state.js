@@ -118,18 +118,8 @@ export const state = {
   settingsSubPage: null
 };
 export let transactions = [];
-export let budgets = [
-  { id: "b0", category: "อาหารและเครื่องดื่ม", limit: 3000 },
-  { id: "b1", category: "การเดินทาง", limit: 1200 },
-  { id: "b2", category: "ช้อปปิ้ง", limit: 1500 },
-  { id: "b3", category: "บันเทิง", limit: 800 }
-];
-export let bills = [
-  { id: "bl0", name: "ค่าเช่าห้อง", amount: 8000, day: 1, category: "ที่อยู่อาศัย/ค่าเช่า" },
-  { id: "bl1", name: "ค่าอินเทอร์เน็ต", amount: 590, day: 5, category: "สาธารณูปโภค (ไฟ/น้ำ/เน็ต)" },
-  { id: "bl2", name: "ประกันสุขภาพ", amount: 1200, day: 15, category: "สุขภาพ" },
-  { id: "bl3", name: "Netflix", amount: 349, day: 20, category: "บันเทิง" }
-];
+export let budgets = [];
+export let bills = [];
 export let goals = [];
 // Additive-only for now (see docs/specs/custom-categories.md stage 1) --
 // nothing reads this yet, existing screens still use the hardcoded

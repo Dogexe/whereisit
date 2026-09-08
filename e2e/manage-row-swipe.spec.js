@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures.js";
-import { navBtn } from "./helpers.js";
+import { createBudget, navBtn } from "./helpers.js";
 
 async function openManageSection(page, section) {
   await page.locator(`[data-settings-subpage-link="${section}"]`).click();
@@ -36,8 +36,7 @@ test("mobile Manage swipe uses WI-004 circles, opens after a sub-commit full swi
   await page.goto("/");
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
-  await navBtn(page, "settings").click();
-  await openManageSection(page, "budgets");
+  await createBudget(page);
 
   const row = page.locator(".manage-row-wrap", { has: page.locator("[data-delete-budget]") }).first();
   await expect(row).toBeVisible();

@@ -65,6 +65,18 @@ export async function createAccount(page, { name, openingBalance = 0 } = {}) {
   await expect(page.locator(".manage-row", { hasText: name })).toBeVisible();
 }
 
+// Creates a new budget through Settings' Manage UI for specs that require a
+// real budget row rather than relying on first-run data.
+export async function createBudget(page, { limit = 1000 } = {}) {
+  await navBtn(page, "settings").click();
+  await openSettingsSection(page, "budgets");
+  await page.locator("#addBudgetBtn").click();
+  await expect(page.locator("#budgetCategorySelect")).toBeVisible();
+  await page.locator("#budgetLimitInput").fill(String(limit));
+  await page.locator("#saveBudgetFormBtn").click();
+  await expect(page.locator(".manage-row-wrap", { has: page.locator("[data-delete-budget]") })).toHaveCount(1);
+}
+
 export async function selectHomeAccount(page, name) {
   await page.locator(".hero-dots").getByRole("button", { name, exact: true }).click();
 }
