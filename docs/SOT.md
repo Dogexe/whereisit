@@ -97,10 +97,17 @@ flags what a future agent needs to know exists, not how it works.
 
 ## Active work
 
-- **All six specified tickets are built, and `docs/tickets/active/` is
-  empty.** `WI-024`, `WI-025`, `WI-026`, `WI-027`, `WI-028` and `WI-029` have
-  all shipped. WS-3 is complete; WS-2 still carries one open maintainer
-  decision. Two workstreams from `docs/ROADMAP.md`:
+- **The six WS-2/WS-3 tickets are all built; three new ones are specified and
+  not started.** `WI-024`, `WI-025`, `WI-026`, `WI-027`, `WI-028` and `WI-029`
+  have all shipped, and WS-3 is complete. `WI-030`, `WI-031` and `WI-032` sit in
+  `docs/tickets/active/` as `Draft`, in that dependency order: they close the
+  residual half of D2 that `WI-025` deferred — `lastPaidCycle` has no clearing
+  path — by letting a bill be un-marked and dismissed from Home. Spec:
+  `docs/specs/bill-paid-toggle-on-home.md`. `WI-032` carries an approved schema
+  change (a `dismissed_cycle` column on `bills`) and is the only High-risk one.
+  That closes WS-2's open maintainer decision in favour of the no-schema-for-D2
+  option, with the `billId` alternative left explicitly out of scope. Two
+  workstreams from `docs/ROADMAP.md`:
   - **WS-2, reversible actions:** `WI-024` (`Implemented`) added a
     persistent `role="status"` `.sr-only` live region (`#toastLive` in
     `index.html`, populated by `src/toast.js`) so toasts announce to screen
