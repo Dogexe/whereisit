@@ -63,7 +63,7 @@ excluded from this roadmap — that stream keeps its own ownership.
 WS-1's behavior is specified in `docs/specs/first-run-empty-defaults.md` and
 executed by `docs/tickets/completed/WI-023.md`. WS-2's is specified in
 `docs/specs/reversible-mark-paid-and-announced-toasts.md` and executed by
-`docs/tickets/active/WI-024.md` (shipped — the toast live region) and
+`docs/tickets/completed/WI-024.md` (shipped — the toast live region) and
 `WI-025.md` (not started). The remaining workstreams have
 no spec yet — each needs one before it becomes a ticket.
 
