@@ -1394,3 +1394,63 @@ High risk tier for its persistence/sync surface, so the full matrix applied:
 `npm test`, `npm run build`, and `npm run test:e2e` locally, plus `e2e.yml` in
 CI on PR #9 — the branch had not been pushed before that, so this was its
 first server-side validation.
+
+
+## WI-026: browser Back dismisses the Add sheet, via a shared overlay-history owner
+
+Release 1 of WS-3, specced in `docs/specs/back-button-dismisses-overlays.md`
+and implemented by Codex (`sol-high`). The audit had recorded the real failure:
+with the Add sheet open on a Pixel 7, hardware Back left the app entirely,
+landing on `about:blank`. Now it closes the sheet and stays put, and every
+existing way of closing the sheet leaves no stale history entry behind.
+
+The new `src/overlay-history.js` is 22 lines: a module-level stack with exactly
+one `popstate` listener, exposing `pushOverlayHistory(key, onPop)` and
+`releaseOverlayHistory(key)`. `openAddSheet` pushes and `closeAddSheet`
+releases, which covers all five existing dismissals — Cancel, backdrop tap,
+Escape, swipe-down, and a successful save — through the single funnel they
+already shared, so no per-path calls were added. `settings.js`, `setTab()`,
+every other sheet, and all URLs and routes are untouched, and the diff adds no
+CSS, class, `STRINGS` key, icon, or visible control.
+
+Three decisions are worth keeping. **Re-entrancy is handled by ordering, not a
+flag:** `releaseOverlayHistory` pops its entry *before* calling
+`history.back()`, so the resulting `popstate` finds an empty stack and does not
+re-run `onPop` — without that ordering a single Back would pop twice and exit
+the app. **Dispatch is driven by the module's own stack, not `event.state`,**
+because on `popstate` `event.state` is the state being landed *on* rather than
+the one being left, and `main.js:73`/`:109` both `replaceState(null, …)` and can
+null the tag out; the tag is for identification only. **An empty stack is
+ignored,** so `settings.js`'s own listener keeps handling Settings sub-page pops
+exactly as before — safe because the Add sheet can never be open while a
+sub-page is, the tab bar being hidden once a sub-page opens.
+
+**One confirmed defect on independent review, docs-only.** The spec's
+verification plan and the ticket's matching acceptance criterion both required
+`history.length` to return to its pre-open value after a non-Back dismissal.
+That is unachievable: `history.back()` retains the released entry as a
+*forward* entry, so the length stays at N+1. The implementation and its tests
+had correctly asserted a restored base state and a stable, non-accumulating
+length instead — satisfying the spec's real intent that a later Back is not
+swallowed — but that reasoning existed only in the handoff message rather than
+in the repository. Spec and ticket were corrected to match what ships. A
+reminder that a longer, more prescriptive ticket is not automatically a safer
+one: this ticket was detailed enough to specify something impossible, and the
+detail encoded the error rather than catching it.
+
+Three optional suggestions were raised and declined with reasons, recorded in
+the ticket's review notes. The most interesting: Back is the only dismissal
+path that skips `resetForm()`, since `onPop` is `closeAddSheet` while Cancel,
+backdrop tap, swipe-down, and Escape all route through
+`dismiss = () => { resetForm(); closeAddSheet(); }`. Verified live to be
+harmless today — Back out of an edit sheet, reopen from the tab bar, and the
+sheet is clean — because all four fresh-open call sites (`main.js:87`,
+`home.js:25`, `transactions.js:17`) call `resetForm()` first. It does leave
+`state.editingId` set while the sheet is closed, a state no other dismissal
+produces, so revisit if a future entry point ever opens the sheet without
+resetting.
+
+Verified with `npm test` (173 passing), `npm run build`, and
+`npm run test:e2e`, plus `e2e.yml` in CI on PR #8. Releases 2 and 3 (`WI-027`,
+`WI-028`) adopt the remaining sheets against this module's now-real API;
+batching all six was explicitly ruled out in `docs/ROADMAP.md`.
