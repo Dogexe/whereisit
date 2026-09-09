@@ -115,11 +115,13 @@ flags what a future agent needs to know exists, not how it works.
     `src/overlay-history.js` — a module-level stack with exactly one
     `popstate` listener, exposing `pushOverlayHistory(key, onPop)` and
     `releaseOverlayHistory(key)` — and adopted it for the Add sheet only;
-    `WI-027` and `WI-028` (both `Draft`) adopt the four other sheets, then
+    `WI-027` and `WI-028` (both now `Ready`) adopt the four other sheets, then
     migrate Settings' sub-page and the Manage sheet. Spec:
-    `docs/specs/back-button-dismisses-overlays.md`. The two Draft tickets were
-    Draft on ordering only — the module they call now exists, so both can move
-    to `Ready` against its real API. `WI-028` is the one carrying real risk: it
+    `docs/specs/back-button-dismisses-overlays.md`. Both were Draft on ordering
+    only; they moved to `Ready` against the module's real API once `WI-026`
+    shipped, with every file pointer re-verified against merged code.
+    **`WI-027` is the one to dispatch next** — `WI-028` is `Ready` but
+    deliberately sequenced behind it. `WI-028` is the one carrying real risk: it
     deletes `settings.js`'s `popstate` listener and inverts
     `closeSettingsSubPage`'s contract, so `docs/ARCHITECTURE.md:71-73` changes
     with it.

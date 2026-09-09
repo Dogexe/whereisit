@@ -52,7 +52,7 @@ excluded from this roadmap — that stream keeps its own ownership.
 |---|---|---|---|---|
 | WS-1 | Honest first run | D1 + the two empty states its removal exposes | M · low | **WI-023 Completed** |
 | WS-2 | Reversible actions | D2 + a `role="status"` live region for toasts (toast half of D8) | M · medium | **WI-024 + WI-025 Completed** |
-| WS-3 | History and dismissal | D3, in three releases (below) | M–L · see below | **WI-026 Completed; WI-027/028 Draft** |
+| WS-3 | History and dismissal | D3, in three releases (below) | M–L · see below | **WI-026 Completed; WI-027 Ready; WI-028 Ready (sequenced after WI-027)** |
 | WS-4 | Transaction list at scale | D6 + U3 filtered totals | S · low | Not started |
 | WS-5 | Storage durability | `navigator.storage.persist()` half of D5 | XS · none | Not started |
 | WS-6 | Entry quality | U1 + D7 | S · low | Not started |
@@ -111,11 +111,13 @@ release where a regression is hard to attribute.
 All three releases are specified in
 `docs/specs/back-button-dismisses-overlays.md` and ticketed as
 `docs/tickets/completed/WI-026.md` (shipped — `src/overlay-history.js` and the
-Add sheet), `WI-027` and `WI-028` (both `Draft`). The two Draft tickets carry
-settled requirements and finished investigation; every line of each calls the
-module `WI-026` created, so they can now move to `Ready` with their call names
-checked against the shipped API — `pushOverlayHistory(key, onPop)` and
-`releaseOverlayHistory(key)` — rather than predicted. One
+Add sheet), `WI-027` and `WI-028` (both now `Ready`). Both moved from `Draft`
+once `WI-026` shipped, with every pointer re-verified against the merged code
+and their call names checked against the shipped API —
+`pushOverlayHistory(key, onPop)` and `releaseOverlayHistory(key)` — rather
+than predicted. `WI-028` stays sequenced behind `WI-027`: that is an ordering
+choice, not a code dependency, so the module gets exercised across four more
+consumers before the one migration where a regression is expensive. One
 correction the spec records: the shorthand "dispatches on `event.state`" above
 is backwards as written — on `popstate`, `event.state` is the state being
 landed *on*, and `main.js:73`/`:109` can `replaceState` a tag away — so the
