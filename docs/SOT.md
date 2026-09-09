@@ -1,6 +1,6 @@
 # Current State
 
-Last updated: 2026-09-06
+Last updated: 2026-09-09
 
 This file answers one question: **what is actually true about whereisit
 right now?** It is not architecture (`CLAUDE.md`), not history
@@ -97,6 +97,29 @@ flags what a future agent needs to know exists, not how it works.
 
 ## Active work
 
+- **Five tickets are specified; one of them is built.** `WI-024` has
+  shipped; the other four in `docs/tickets/active/` have not been started.
+  Two workstreams from `docs/ROADMAP.md`:
+  - **WS-2, reversible actions:** `WI-024` (`Implemented`) added a
+    persistent `role="status"` `.sr-only` live region (`#toastLive` in
+    `index.html`, populated by `src/toast.js`) so toasts announce to screen
+    readers; `WI-025` (`Ready`) gives Home's "Mark paid" an undo toast that
+    reverses both the created expense *and* the bill's `lastPaidCycle`. Spec:
+    `docs/specs/reversible-mark-paid-and-announced-toasts.md`. **One open
+    maintainer decision** is recorded there and in the roadmap: `lastPaidCycle`
+    still has no clearing path once the toast expires, and closing that needs
+    either a `billId` on transactions (schema + mappers) or an "un-mark paid"
+    control in Settings → Bills.
+  - **WS-3, Back dismisses overlays:** `WI-026` (`Ready`) builds
+    `src/overlay-history.js` and adopts it for the Add sheet only; `WI-027` and
+    `WI-028` (both `Draft`) adopt the four other sheets, then migrate Settings'
+    sub-page and the Manage sheet. Spec:
+    `docs/specs/back-button-dismisses-overlays.md`. The two Draft tickets are
+    Draft on ordering only — they call a module that does not exist yet, and go
+    `Ready` after `WI-026` ships. `WI-028` is the one carrying real risk: it
+    deletes `settings.js`'s `popstate` listener and inverts
+    `closeSettingsSubPage`'s contract, so `docs/ARCHITECTURE.md:71-73` changes
+    with it.
 - **WI-023** (`Completed`) — shipped an empty first run: `state.js`'s
   `budgets` and `bills` now initialise to `[]` like `goals`, so a
   never-touched install shows nothing it invented, and the two surfaces that

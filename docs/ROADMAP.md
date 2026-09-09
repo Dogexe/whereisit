@@ -51,8 +51,8 @@ excluded from this roadmap — that stream keeps its own ownership.
 | # | Workstream | Contains | Scope · risk | Status |
 |---|---|---|---|---|
 | WS-1 | Honest first run | D1 + the two empty states its removal exposes | M · low | **WI-023 Completed** |
-| WS-2 | Reversible actions | D2 + `role="status"` on `#toast` (toast half of D8) | M · medium | Not started |
-| WS-3 | History and dismissal | D3, in three releases (below) | M–L · see below | Not started |
+| WS-2 | Reversible actions | D2 + a `role="status"` live region for toasts (toast half of D8) | M · medium | **WI-024 Completed; WI-025 Ready** |
+| WS-3 | History and dismissal | D3, in three releases (below) | M–L · see below | **WI-026 Ready; WI-027/028 Draft** |
 | WS-4 | Transaction list at scale | D6 + U3 filtered totals | S · low | Not started |
 | WS-5 | Storage durability | `navigator.storage.persist()` half of D5 | XS · none | Not started |
 | WS-6 | Entry quality | U1 + D7 | S · low | Not started |
@@ -61,8 +61,19 @@ excluded from this roadmap — that stream keeps its own ownership.
 | WS-9 | Sync orchestration coverage | F1 | M · medium | Gate before C2 |
 
 WS-1's behavior is specified in `docs/specs/first-run-empty-defaults.md` and
-executed by `docs/tickets/completed/WI-023.md`. The remaining workstreams have no
-spec yet — each needs one before it becomes a ticket.
+executed by `docs/tickets/completed/WI-023.md`. WS-2's is specified in
+`docs/specs/reversible-mark-paid-and-announced-toasts.md` and executed by
+`docs/tickets/active/WI-024.md` (shipped — the toast live region) and
+`WI-025.md` (not started). The remaining workstreams have
+no spec yet — each needs one before it becomes a ticket.
+
+WS-2 covers D2's accidental-tap case (undo) but deliberately leaves D2's second
+half open: `lastPaidCycle` still has no clearing path once the toast expires,
+so deleting the generated expense later leaves the bill marked paid. Closing it
+needs either a `billId` link on the transaction (schema + sync mappers) or an
+"un-mark paid" control in Settings → Bills. **That is a sixth open product
+decision** — see the spec's "Deliberately deferred" section for both options
+and the bounded impact of leaving it open.
 
 ## WS-3's three releases
 
@@ -95,6 +106,17 @@ So:
 Migrating all six at once is explicitly ruled out: five are trivially safe and
 one carries all the risk, so batching would put the risky migration in a
 release where a regression is hard to attribute.
+
+All three releases are specified in
+`docs/specs/back-button-dismisses-overlays.md` and ticketed as `WI-026`
+(Ready), `WI-027` and `WI-028` (both `Draft`). The two Draft tickets carry
+settled requirements and finished investigation, but every line of each calls
+the module `WI-026` creates — they move to `Ready` once it exists and their
+call names can be checked against it rather than predicted. One
+correction the spec records: the shorthand "dispatches on `event.state`" above
+is backwards as written — on `popstate`, `event.state` is the state being
+landed *on*, and `main.js:73`/`:109` can `replaceState` a tag away — so the
+owner dispatches off its own stack and uses the tag for identification only.
 
 ## Open product decisions (WS-7)
 
