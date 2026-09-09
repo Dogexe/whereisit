@@ -104,6 +104,11 @@ So:
 3. **Release 3** — migrate the Settings sub-page onto the shared owner, then
    adopt the Manage sheet. The only release carrying real risk, now isolated.
 
+**All three releases have shipped, plus the inserted fourth ticket, so WS-3 is
+complete.** The app has exactly one `popstate` listener. `WI-028`'s review found
+one defect, in the e2e fixtures rather than the app — see
+`docs/tickets/completed/WI-028.md`'s Review notes and the changelog entry.
+
 Migrating all six at once is explicitly ruled out: five are trivially safe and
 one carries all the risk, so batching would put the risky migration in a
 release where a regression is hard to attribute.
@@ -123,8 +128,8 @@ branch `wi-029/overlay-history-release-pop`).
 All three releases are specified in
 `docs/specs/back-button-dismisses-overlays.md` and ticketed as
 `docs/tickets/completed/WI-026.md` (shipped — `src/overlay-history.js` and the
-Add sheet), `WI-027` and `WI-028` (both now `Ready`). Both moved from `Draft`
-once `WI-026` shipped, with every pointer re-verified against the merged code
+Add sheet), `WI-027` and `WI-028` (both now shipped too). Both moved from
+`Draft` once `WI-026` shipped, with every pointer re-verified against the merged code
 and their call names checked against the shipped API —
 `pushOverlayHistory(key, onPop)` and `releaseOverlayHistory(key)` — rather
 than predicted. `WI-028` stays sequenced behind `WI-027`: that is an ordering

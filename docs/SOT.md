@@ -97,10 +97,10 @@ flags what a future agent needs to know exists, not how it works.
 
 ## Active work
 
-- **Six tickets are specified; five of them are built.** `WI-024`,
-  `WI-025`, `WI-026`, `WI-027`, and `WI-029` have shipped; the one remaining in
-  `docs/tickets/active/` (`WI-028`) has not been started. Two workstreams from
-  `docs/ROADMAP.md`:
+- **All six specified tickets are built, and `docs/tickets/active/` is
+  empty.** `WI-024`, `WI-025`, `WI-026`, `WI-027`, `WI-028` and `WI-029` have
+  all shipped. WS-3 is complete; WS-2 still carries one open maintainer
+  decision. Two workstreams from `docs/ROADMAP.md`:
   - **WS-2, reversible actions:** `WI-024` (`Implemented`) added a
     persistent `role="status"` `.sr-only` live region (`#toastLive` in
     `index.html`, populated by `src/toast.js`) so toasts announce to screen
@@ -123,8 +123,8 @@ flags what a future agent needs to know exists, not how it works.
     Manage sheet. It carries the workstream's real risk: it deletes
     `settings.js`'s `popstate` listener and inverts `closeSettingsSubPage`'s
     contract, so `docs/ARCHITECTURE.md:71-73` changes with it. It is also the
-    only release where two entries stack, and that is what blocked it: it was
-    dispatched, and Codex escalated instead of implementing. `WI-029`
+    only release where two entries stack, and that is what blocked it on its
+    first dispatch: Codex escalated instead of implementing. `WI-029`
     (`Completed`, on the unmerged local branch
     `wi-029/overlay-history-release-pop`, which is branched off `WI-027`'s)
     is the fix, and it has now shipped, so **`WI-028` is the one to dispatch

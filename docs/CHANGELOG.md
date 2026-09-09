@@ -1563,3 +1563,59 @@ over-suppression tests pass both before and after, which is exactly their job.
 The unit test is the real gate here by design: no UI path can stack two entries
 until `WI-028` ships, so e2e cannot reach the defect. Verified with `npm test`
 (181 passing), `npm run test:e2e` (42 passing, unchanged), and `npm run build`.
+
+### WI-028 — Settings' sub-page and Manage sheet join the overlay history owner
+
+The last WS-3 release, and the only one carrying real risk: it rewrites a
+working history contract rather than adopting an unused one. Mobile Settings'
+sub-page and the Manage sheet now both run on `src/overlay-history.js`, which
+leaves the app with **exactly one `popstate` listener** — the thing that
+actually retires the D3 hazard instead of routing around it.
+
+The inversion was the trap, and it landed as the ticket predicted.
+`closeSettingsSubPage()` used to call `history.back()` and nothing else; the
+`popstate` listener was the sole place that cleared `state.settingsSubPage` and
+re-rendered. Since the shared owner de-registers an entry *before* traversing,
+porting that function unchanged would have left the sub-page open in state while
+its history entry vanished — silently, and only on the button and tab-switch
+paths, never on Back. `closeSettingsSubPage()` now does its own clearing and
+re-render, exactly as `closeAddSheet()` does, with the owner responsible only
+for the history entry. `settings.js`'s own listener is deleted. The Manage sheet
+needed no new detection: it pushes and releases on the two render transitions
+`renderManageSheet()` already computes for its focus trap.
+
+One mechanism is load-bearing and worth knowing before touching either file:
+`closeSettingsSubPage` is registered as its own entry's `onPop` *and* calls
+`releaseOverlayHistory` itself. That re-entrancy is safe only because the owner
+pops the stack before invoking `onPop`, so the nested release finds a different
+key on top and returns `false`. The Manage sheet's `dismiss` closure
+self-cancels identically. Reordering the owner's listener to pop after the
+callback would break both surfaces silently.
+
+Review found one confirmed defect, in the tests rather than the app. The
+`createBudget` e2e fixture had been given a synthetic
+`history.pushState(history.state, "")` on mobile, to consume the forward slot a
+released entry leaves behind. It was load-bearing: removing only that block
+failed the protected `nav.spec.js:146` with `Expected: 5, Received: 4`, making
+it the mechanism by which that test "passed unchanged" — which is what the
+ticket's escalation trigger existed to prevent. The forward slot itself is not a
+regression; it is inherent to releasing via `history.back()` and was already
+true of all five previously shipped sheets. What was new is that `createBudget`
+tripped it before `nav.spec` measured its baseline. The fix routes fixture setup
+off the history-backed sheet entirely: mobile `createBudget` seeds through the
+desktop-inline form, restores the viewport, and reopens the Budgets section. The
+mobile Manage-sheet save is still covered deliberately, in
+`overlay-history.spec.js` alongside the other five non-Back dismissal routes.
+
+Coverage grew `overlay-history.spec.js` from five tests to ten: stacked Back
+popping one entry at a time, every non-Back Manage dismissal preserving the
+sub-page entry, the tab-switch path, desktop pushing nothing, and the
+bill-reminder deep link — which pushes both surfaces in one tick without a user
+gesture and then `replaceState`s the tag away, and is the single best end-to-end
+proof that stack-based dispatch was the right call over tag-based.
+
+Verified with `npm test` (181 passing), `npm run test:e2e` (47 passing, up from
+42, `nav.spec.js` unchanged), and `npm run build`. Implemented by Codex at
+`sol-high`; branch, commits, review and docs by Claude, since Codex's sandbox
+could write neither the ticket file nor `.git/refs`. Its reported Playwright
+failures were sandbox-only and do not reproduce. **WS-3 is complete.**
