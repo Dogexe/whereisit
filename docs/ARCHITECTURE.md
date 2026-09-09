@@ -68,9 +68,11 @@ install-prompt listeners. Everything else lives in `categories.js`,
   field: below `1024px`, `null` renders the root and a Manage/Security id
   renders one same-URL history-backed sub-page; at `1024px+`, `null`
   selects Display and the same ids select desktop detail panes without
-  pushing history. A Settings sub-page closes only through `history.back()`;
-  the `popstate` handler in `settings.js` is the single place that clears
-  the field and re-renders.
+  pushing history. `openSettingsSubPage()` registers the mobile sub-page
+  with the shared overlay-history owner; `closeSettingsSubPage()` clears
+  the field, re-renders, and releases that entry. The reactive Manage sheet
+  registers and releases its own stacked entry on its existing open/close
+  render transitions.
 - **Bottom sheets** (six of them: Add/Edit, Transactions Filters, Insights
   Filters, Settings' Manage sheet, Settings' Export sheet, Import): all
   share `.filter-sheet-backdrop`/`.filter-sheet`/`.filter-sheet-header`

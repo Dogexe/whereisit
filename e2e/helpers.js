@@ -50,6 +50,13 @@ export async function openSettingsSection(page, section) {
   await page.locator(`.settings-nav-item[data-settings-section="${section}"]`).click();
 }
 
+async function waitForMobileManageSheetRelease(page) {
+  if ((page.viewportSize()?.width || 0) >= 1024) return;
+  await expect.poll(() => page.evaluate(() => history.state?.overlay || null), {
+    message: "the Manage sheet history entry should be released"
+  }).not.toBe("settings-manage");
+}
+
 // Creates a new account through Settings' Manage UI.
 // Shared by every spec that needs a second account to exist (transfers,
 // multi-account switching) rather than each re-deriving the same add-flow.
@@ -63,6 +70,7 @@ export async function createAccount(page, { name, openingBalance = 0 } = {}) {
   await page.locator("#accountOpeningBalanceInput").fill(String(openingBalance));
   await page.locator("#saveAccountFormBtn").click();
   await expect(page.locator(".manage-row", { hasText: name })).toBeVisible();
+  await waitForMobileManageSheetRelease(page);
 }
 
 // Creates a new budget through Settings' Manage UI for specs that require a
@@ -75,6 +83,16 @@ export async function createBudget(page, { limit = 1000 } = {}) {
   await page.locator("#budgetLimitInput").fill(String(limit));
   await page.locator("#saveBudgetFormBtn").click();
   await expect(page.locator(".manage-row-wrap", { has: page.locator("[data-delete-budget]") })).toHaveCount(1);
+  await waitForMobileManageSheetRelease(page);
+  // releaseOverlayHistory() correctly leaves the released entry in the
+  // browser's forward list. Replace that fixture-only forward slot so a
+  // caller's later same-URL reload starts from the top of its test history
+  // (nav.spec's unchanged history.length assertion depends on that clean
+  // baseline). This does not add to history.length while a forward slot is
+  // present and does not alter the app's overlay stack.
+  if ((page.viewportSize()?.width || 0) < 1024) {
+    await page.evaluate(() => history.pushState(history.state, ""));
+  }
 }
 
 // Creates a bill through Settings' Manage UI for specs that need an
@@ -89,6 +107,7 @@ export async function createBill(page, { name, amount = 100, day = new Date().ge
   await page.locator("#billDayInput").fill(String(day));
   await page.locator("#saveBillFormBtn").click();
   await expect(page.locator(".manage-row", { hasText: name })).toBeVisible();
+  await waitForMobileManageSheetRelease(page);
 }
 
 export async function selectHomeAccount(page, name) {
