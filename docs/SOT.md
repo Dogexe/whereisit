@@ -97,9 +97,9 @@ flags what a future agent needs to know exists, not how it works.
 
 ## Active work
 
-- **Six tickets are specified; four of them are built.** `WI-024`,
-  `WI-025`, `WI-026`, and `WI-027` have shipped; the two remaining in
-  `docs/tickets/active/` (`WI-029`, then `WI-028`) have not been started. Two workstreams from
+- **Six tickets are specified; five of them are built.** `WI-024`,
+  `WI-025`, `WI-026`, `WI-027`, and `WI-029` have shipped; the one remaining in
+  `docs/tickets/active/` (`WI-028`) has not been started. Two workstreams from
   `docs/ROADMAP.md`:
   - **WS-2, reversible actions:** `WI-024` (`Implemented`) added a
     persistent `role="status"` `.sr-only` live region (`#toastLive` in
@@ -125,16 +125,23 @@ flags what a future agent needs to know exists, not how it works.
     contract, so `docs/ARCHITECTURE.md:71-73` changes with it. It is also the
     only release where two entries stack, and that is what blocked it: it was
     dispatched, and Codex escalated instead of implementing. `WI-029`
-    (`Ready`, **the one to dispatch next**) is the fix. The defect, reproduced
-    against the merged module: `releaseOverlayHistory()` pops its own entry and
-    calls `history.back()`, but the owner's `popstate` listener
-    (`overlay-history.js:3-7`) pops unconditionally, so the traversal it caused
-    consumes the entry *below* and fires that overlay's `onPop`. On a stack of
-    two, every non-Back dismissal of the top overlay closes both. It is latent
-    today — `WI-027`'s review notes verify that none of the five shipped
-    consumers can be co-open — so `WI-028` is the first ticket to expose it.
-    `WI-028`'s dependency on `WI-027` was sequencing, not code, and is now
-    satisfied; its dependency on `WI-029` is a real code one.
+    (`Completed`, on the unmerged local branch
+    `wi-029/overlay-history-release-pop`, which is branched off `WI-027`'s)
+    is the fix, and it has now shipped, so **`WI-028` is the one to dispatch
+    next**. The defect it removed: `releaseOverlayHistory()` pops its own entry
+    and calls `history.back()`, but the owner's `popstate` listener popped
+    unconditionally, so the traversal it caused consumed the entry *below* and
+    fired that overlay's `onPop` — on a stack of two, every non-Back dismissal
+    of the top overlay closed both. It was latent, never live: `WI-027`'s review
+    notes verify that none of the five shipped consumers can be co-open, so
+    `WI-028` is the first ticket that would have exposed it. The fix is a
+    module-level `suppressedPops` counter — incremented next to `history.back()`
+    in release, decremented by an early return in the listener — a counter
+    rather than a boolean because two releases queued in one task queue two
+    traversals. No API, tag, or consumer changed; coverage is
+    `tests/overlay-history.test.js`, which is the real gate since no UI path can
+    stack two entries until `WI-028` ships. `WI-028`'s dependencies on both
+    `WI-027` (sequencing) and `WI-029` (code) are now satisfied.
     One correction made during `WI-027`'s review carries forward: the spec's
     named-`onPop` requirement is justified by `renderSettings()`'s non-sync
     callers, **not** by the 25-second background sync tick — every background

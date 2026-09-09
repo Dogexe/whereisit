@@ -113,9 +113,12 @@ dispatched, and Codex escalated instead of implementing: the shipped
 `releaseOverlayHistory()` calls `history.back()`, and the owner's `popstate`
 listener pops unconditionally, so on a stack of two a non-Back dismissal of the
 top overlay also closes the one below. Every consumer through `WI-027` runs on a
-stack of one, so the defect is latent — Release 3 is the first to stack, and
-cannot meet its criteria on the module as shipped. `docs/tickets/active/WI-029.md`
-fixes the owner and is now a hard prerequisite for `WI-028`.
+stack of one, so the defect was latent — Release 3 is the first to stack, and
+could not meet its criteria on the module as shipped.
+`docs/tickets/completed/WI-029.md` fixed the owner with a suppression counter,
+so release consumes exactly the one `popstate` it causes. It was a hard
+prerequisite for `WI-028` and is now satisfied (shipped on the unmerged local
+branch `wi-029/overlay-history-release-pop`).
 
 All three releases are specified in
 `docs/specs/back-button-dismisses-overlays.md` and ticketed as
