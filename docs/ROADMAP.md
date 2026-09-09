@@ -52,7 +52,7 @@ excluded from this roadmap — that stream keeps its own ownership.
 |---|---|---|---|---|
 | WS-1 | Honest first run | D1 + the two empty states its removal exposes | M · low | **WI-023 Completed** |
 | WS-2 | Reversible actions | D2 + a `role="status"` live region for toasts (toast half of D8) | M · medium | **WI-024 + WI-025 Completed** |
-| WS-3 | History and dismissal | D3, in three releases (below) | M–L · see below | **WI-026 Completed; WI-027 Ready; WI-028 Ready (sequenced after WI-027)** |
+| WS-3 | History and dismissal | D3, in three releases (below) | M–L · see below | **WI-026 + WI-027 Completed; WI-029 Ready (dispatch next); WI-028 Ready (blocked on WI-029)** |
 | WS-4 | Transaction list at scale | D6 + U3 filtered totals | S · low | Not started |
 | WS-5 | Storage durability | `navigator.storage.persist()` half of D5 | XS · none | Not started |
 | WS-6 | Entry quality | U1 + D7 | S · low | Not started |
@@ -107,6 +107,15 @@ So:
 Migrating all six at once is explicitly ruled out: five are trivially safe and
 one carries all the risk, so batching would put the risky migration in a
 release where a regression is hard to attribute.
+
+**A fourth ticket was inserted after `WI-027` shipped.** `WI-028` was
+dispatched, and Codex escalated instead of implementing: the shipped
+`releaseOverlayHistory()` calls `history.back()`, and the owner's `popstate`
+listener pops unconditionally, so on a stack of two a non-Back dismissal of the
+top overlay also closes the one below. Every consumer through `WI-027` runs on a
+stack of one, so the defect is latent — Release 3 is the first to stack, and
+cannot meet its criteria on the module as shipped. `docs/tickets/active/WI-029.md`
+fixes the owner and is now a hard prerequisite for `WI-028`.
 
 All three releases are specified in
 `docs/specs/back-button-dismisses-overlays.md` and ticketed as

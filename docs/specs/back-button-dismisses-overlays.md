@@ -69,8 +69,15 @@ releaseOverlayHistory(key)       // if key is the top entry, drop it and history
   ignored, so `settings.js`'s existing listener keeps working untouched.
 - **Release** is what a UI dismissal (Cancel, backdrop tap, Escape, swipe-down,
   save) calls. It removes the entry from the stack *before* calling
-  `history.back()`, so the resulting popstate finds nothing and does not
-  re-run `onPop`. That ordering is the whole re-entrancy guard.
+  `history.back()`, so the resulting popstate does not re-run the released
+  entry's `onPop`. That ordering is the re-entrancy guard.
+
+  **Correction (`WI-029`).** As first shipped, that ordering was *not* enough:
+  the popstate listener pops unconditionally, so on a stack of two the
+  release-triggered pop finds the entry *below* and closes that overlay too.
+  "Finds nothing" holds only for a stack of one, which is every consumer up to
+  and including `WI-027`. `WI-029` makes release suppress exactly the one
+  popstate it causes, which is what lets `WI-028` stack two entries at all.
 
 ### Key decisions
 
@@ -194,8 +201,10 @@ Two findings from reading the code shape it:
    listener at `:172` is the sole place that clears it —
    `docs/ARCHITECTURE.md:71-73` documents this as "a Settings sub-page closes
    only through `history.back()`". But the shared owner de-registers an entry
-   *before* calling `history.back()` precisely so the resulting pop is a no-op
-   (decision, "Release" above). Port the function as-is and nothing clears the
+   *before* calling `history.back()` precisely so the resulting pop does not
+   re-close the released overlay (decision, "Release" above, including
+   `WI-029`'s correction — on a stack of two that pop is only harmless once
+   `WI-029` has shipped). Port the function as-is and nothing clears the
    field: the sub-page stays open in state while its history entry vanishes.
    `closeSettingsSubPage` must therefore start clearing the field and
    re-rendering itself, exactly as `closeAddSheet()` closes its own sheet, with
