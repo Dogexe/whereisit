@@ -51,7 +51,7 @@ excluded from this roadmap — that stream keeps its own ownership.
 | # | Workstream | Contains | Scope · risk | Status |
 |---|---|---|---|---|
 | WS-1 | Honest first run | D1 + the two empty states its removal exposes | M · low | **WI-023 Completed** |
-| WS-2 | Reversible actions | D2 + a `role="status"` live region for toasts (toast half of D8) | M · medium | **WI-024 Completed; WI-025 Ready** |
+| WS-2 | Reversible actions | D2 + a `role="status"` live region for toasts (toast half of D8) | M · medium | **WI-024 + WI-025 Completed** |
 | WS-3 | History and dismissal | D3, in three releases (below) | M–L · see below | **WI-026 Ready; WI-027/028 Draft** |
 | WS-4 | Transaction list at scale | D6 + U3 filtered totals | S · low | Not started |
 | WS-5 | Storage durability | `navigator.storage.persist()` half of D5 | XS · none | Not started |
@@ -64,8 +64,9 @@ WS-1's behavior is specified in `docs/specs/first-run-empty-defaults.md` and
 executed by `docs/tickets/completed/WI-023.md`. WS-2's is specified in
 `docs/specs/reversible-mark-paid-and-announced-toasts.md` and executed by
 `docs/tickets/completed/WI-024.md` (shipped — the toast live region) and
-`WI-025.md` (not started). The remaining workstreams have
-no spec yet — each needs one before it becomes a ticket.
+`docs/tickets/completed/WI-025.md` (shipped — the reversible Mark paid).
+The remaining workstreams have no spec yet — each needs one before it
+becomes a ticket.
 
 WS-2 covers D2's accidental-tap case (undo) but deliberately leaves D2's second
 half open: `lastPaidCycle` still has no clearing path once the toast expires,

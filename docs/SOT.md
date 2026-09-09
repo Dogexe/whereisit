@@ -97,15 +97,15 @@ flags what a future agent needs to know exists, not how it works.
 
 ## Active work
 
-- **Five tickets are specified; one of them is built.** `WI-024` has
-  shipped; the other four in `docs/tickets/active/` have not been started.
-  Two workstreams from `docs/ROADMAP.md`:
+- **Five tickets are specified; two of them are built.** `WI-024` and
+  `WI-025` have shipped; the other three in `docs/tickets/active/` have not
+  been started. Two workstreams from `docs/ROADMAP.md`:
   - **WS-2, reversible actions:** `WI-024` (`Implemented`) added a
     persistent `role="status"` `.sr-only` live region (`#toastLive` in
     `index.html`, populated by `src/toast.js`) so toasts announce to screen
-    readers; `WI-025` (`Ready`) gives Home's "Mark paid" an undo toast that
-    reverses both the created expense *and* the bill's `lastPaidCycle`. Spec:
-    `docs/specs/reversible-mark-paid-and-announced-toasts.md`. **One open
+    readers; `WI-025` (`Completed`) gives Home's "Mark paid" an undo toast
+    that reverses both the created expense *and* the bill's `lastPaidCycle`.
+    Spec: `docs/specs/reversible-mark-paid-and-announced-toasts.md`. **One open
     maintainer decision** is recorded there and in the roadmap: `lastPaidCycle`
     still has no clearing path once the toast expires, and closing that needs
     either a `billId` on transactions (schema + mappers) or an "un-mark paid"
