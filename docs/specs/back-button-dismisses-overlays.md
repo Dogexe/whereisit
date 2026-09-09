@@ -76,8 +76,11 @@ releaseOverlayHistory(key)       // if key is the top entry, drop it and history
   the popstate listener pops unconditionally, so on a stack of two the
   release-triggered pop finds the entry *below* and closes that overlay too.
   "Finds nothing" holds only for a stack of one, which is every consumer up to
-  and including `WI-027`. `WI-029` makes release suppress exactly the one
-  popstate it causes, which is what lets `WI-028` stack two entries at all.
+  and including `WI-027`. `WI-029` shipped the fix: a module-level counter of
+  the pops release itself caused, so the listener swallows exactly one popstate
+  per release and then resumes closing overlays normally. A counter rather than
+  a boolean, so two releases queued in the same task each consume their own
+  event. That is what lets `WI-028` stack two entries at all.
 
 ### Key decisions
 
@@ -203,8 +206,8 @@ Two findings from reading the code shape it:
    only through `history.back()`". But the shared owner de-registers an entry
    *before* calling `history.back()` precisely so the resulting pop does not
    re-close the released overlay (decision, "Release" above, including
-   `WI-029`'s correction — on a stack of two that pop is only harmless once
-   `WI-029` has shipped). Port the function as-is and nothing clears the
+   `WI-029`'s correction — on a stack of two that pop is harmless only
+   because `WI-029` shipped). Port the function as-is and nothing clears the
    field: the sub-page stays open in state while its history entry vanishes.
    `closeSettingsSubPage` must therefore start clearing the field and
    re-rendering itself, exactly as `closeAddSheet()` closes its own sheet, with

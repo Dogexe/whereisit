@@ -1523,3 +1523,43 @@ two Add-sheet tests), and `npm run build`. `WI-028` — the Settings sub-page an
 Manage sheet — is the last release of WS-3 and the only one carrying real risk:
 it deletes `settings.js`'s own `popstate` listener and inverts
 `closeSettingsSubPage`'s contract.
+
+### WI-029 — a released overlay entry no longer consumes the entry below it
+
+`releaseOverlayHistory()` pops its own stack entry and then calls
+`history.back()`. The module's single `popstate` listener popped
+*unconditionally*, so the traversal that release had just caused consumed the
+*next* entry down and fired its `onPop`. On a stack of two, closing the top
+sheet by any non-Back route — close button, backdrop, Escape, swipe-down, save
+— silently closed the overlay underneath it as well.
+
+This was latent, never live. None of the five `WI-026`/`WI-027` consumers can
+be open at the same time (`WI-027`'s review notes verify the no-co-open claim),
+so nothing stacked two entries. `WI-028` — the Settings sub-page plus the
+Manage sheet — is the first thing that would, which is why Codex escalated it
+instead of building on a broken module.
+
+The fix is four lines: a module-level `suppressedPops` counter, incremented by
+`releaseOverlayHistory()` alongside its `history.back()`, and decremented by
+the listener, which returns early instead of popping. A counter rather than a
+boolean on purpose — two releases in one task queue two traversals, and a
+boolean would swallow one popstate and let the other close a live overlay. The
+suppression cannot be a call-stack guard or a `try/finally`: `history.back()`
+returns immediately and `popstate` arrives on a later task. The exported API,
+the `{ overlay: key }` tag, the duplicate-key no-op, the `false` return for a
+non-top key, and all six consumer files are untouched.
+
+Coverage is a new `tests/overlay-history.test.js` — eight tests over stubbed
+`window`/`history` installed on `globalThis` before a dynamic `import()`, since
+the module registers its listener at load (the same shape `tests/applock.test.js`
+already uses). The stub separates queueing a traversal from delivering its
+`popstate` so a test can queue two before either fires. It covers the stacked
+release, ordinary Back at depth one and two, and — the case that would have
+broken all five shipped sheets — a Back immediately after a non-Back dismissal,
+asserted by opening another sheet afterward and requiring its Back to still
+work. Only the stacked-release test fails against the pre-fix module; the
+over-suppression tests pass both before and after, which is exactly their job.
+
+The unit test is the real gate here by design: no UI path can stack two entries
+until `WI-028` ships, so e2e cannot reach the defect. Verified with `npm test`
+(181 passing), `npm run test:e2e` (42 passing, unchanged), and `npm run build`.
