@@ -8,6 +8,7 @@ import { groupedTxRowsHtml, wireTxRowActions } from "./tx-row.js";
 import { pillPickerHtml, wirePillPicker } from "./period-picker.js";
 import { resetForm, openAddSheet } from "./add.js";
 import { setTab } from "./router.js";
+import { pushOverlayHistory, releaseOverlayHistory } from "../overlay-history.js";
 
 // Mirrors home.js's private goAdd() -- same desktop/mobile branch, kept as
 // its own copy per this codebase's screens/*.js import convention (only
@@ -309,6 +310,7 @@ function closeTxFilterSheet() {
   const backdrop = document.getElementById("txFilterSheetBackdrop");
   if (backdrop) backdrop.hidden = true;
   txFilterFocusTrap.deactivate();
+  releaseOverlayHistory("transactions-filters");
 }
 // Registered once at module load, not per-render -- renderTransactions()
 // runs on every navigation to this tab (and on sync-triggered re-renders),
@@ -323,7 +325,7 @@ function wireFilterSheet() {
   const backdrop = document.getElementById("txFilterSheetBackdrop");
   const openBtn = document.getElementById("openTxFiltersBtn");
   const closeBtn = document.getElementById("txFilterSheetClose");
-  openBtn.addEventListener("click", () => { state.txFilterSheetOpen = true; backdrop.hidden = false; txFilterFocusTrap.activate(); });
+  openBtn.addEventListener("click", () => { state.txFilterSheetOpen = true; backdrop.hidden = false; txFilterFocusTrap.activate(); pushOverlayHistory("transactions-filters", closeTxFilterSheet); });
   closeBtn.addEventListener("click", closeTxFilterSheet);
   backdrop.addEventListener("click", (e) => { if (e.target === backdrop) closeTxFilterSheet(); });
   wireSheetDrag(backdrop.querySelector(".sheet-grabber"), backdrop.querySelector(".filter-sheet"), closeTxFilterSheet);

@@ -1,16 +1,17 @@
 # Spec: Browser Back dismisses overlays instead of exiting the app
 
-Status: **proposed** (not built). From the September 2026 product audit's
-finding D3 (high), scoped as workstream WS-3 of the approved remediation
-roadmap.
+Status: **shipped**. From the September 2026 product audit's finding D3
+(high), scoped as workstream WS-3 of the approved remediation roadmap.
 
 This spec owns the durable behavior for **all three of WS-3's releases** — the
-shared history owner and which surfaces adopt it. `WI-026` (Release 1) is
-`Ready`. `WI-027` and `WI-028` (Releases 2 and 3) are deliberately `Draft`:
-their acceptance criteria are settled and their investigation is done, but both
-consist of calling an API that does not exist yet, so each moves to `Ready`
-only after Release 1 ships and its real signatures can be quoted rather than
-predicted.
+shared history owner and which surfaces adopt it. All three shipped, as
+`WI-026`, `WI-027` and `WI-028`, plus `WI-029`, a fourth ticket inserted after
+`WI-027` to fix a latent defect in the owner that Release 3 was the first to
+expose (see the "Release" bullet's correction below). All six overlay surfaces
+are now history-backed and the app has exactly one `popstate` listener, which
+is what retires D3. What each release actually shipped, and the one review
+finding against Release 3, are recorded in `docs/CHANGELOG.md` and in each
+ticket's Review notes under `docs/tickets/completed/`.
 
 ## Current behavior
 
@@ -69,8 +70,18 @@ releaseOverlayHistory(key)       // if key is the top entry, drop it and history
   ignored, so `settings.js`'s existing listener keeps working untouched.
 - **Release** is what a UI dismissal (Cancel, backdrop tap, Escape, swipe-down,
   save) calls. It removes the entry from the stack *before* calling
-  `history.back()`, so the resulting popstate finds nothing and does not
-  re-run `onPop`. That ordering is the whole re-entrancy guard.
+  `history.back()`, so the resulting popstate does not re-run the released
+  entry's `onPop`. That ordering is the re-entrancy guard.
+
+  **Correction (`WI-029`).** As first shipped, that ordering was *not* enough:
+  the popstate listener pops unconditionally, so on a stack of two the
+  release-triggered pop finds the entry *below* and closes that overlay too.
+  "Finds nothing" holds only for a stack of one, which is every consumer up to
+  and including `WI-027`. `WI-029` shipped the fix: a module-level counter of
+  the pops release itself caused, so the listener swallows exactly one popstate
+  per release and then resumes closing overlays normally. A counter rather than
+  a boolean, so two releases queued in the same task each consume their own
+  event. That is what lets `WI-028` stack two entries at all.
 
 ### Key decisions
 
@@ -156,11 +167,14 @@ mechanical:
 Two constraints specific to this release:
 
 - **`onPop` must be the named close function, never a closure over a captured
-  element.** All four sheets live inside `#screen`'s `innerHTML`, which a
-  background sync tick rebuilds every 25 s (`main.js:97` → `renderScreen`).
+  element.** All four sheets live inside `#screen`'s `innerHTML`, and
+  `renderSettings()` has non-sync callers that can rebuild Settings markup.
   The open state survives via the `state.*SheetOpen` flag and the `hidden`
-  binding, but the DOM node does not. Every close function already looks its
-  backdrop up fresh by id and says so in a comment
+  binding, but the DOM node does not. The 25-second background-sync path is
+  not the reason: every background re-render caller is gated by
+  `hasLiveInputRisk()`, which returns true while any of these four sheets is
+  open. Every close function already looks its backdrop up fresh by id and
+  says so in a comment
   (`transactions.js:304-306`); the history entry must hold that same
   discipline.
 - Insights' Breakdown filter sheet regenerates its markup on nearly every
@@ -191,8 +205,10 @@ Two findings from reading the code shape it:
    listener at `:172` is the sole place that clears it —
    `docs/ARCHITECTURE.md:71-73` documents this as "a Settings sub-page closes
    only through `history.back()`". But the shared owner de-registers an entry
-   *before* calling `history.back()` precisely so the resulting pop is a no-op
-   (decision, "Release" above). Port the function as-is and nothing clears the
+   *before* calling `history.back()` precisely so the resulting pop does not
+   re-close the released overlay (decision, "Release" above, including
+   `WI-029`'s correction — on a stack of two that pop is harmless only
+   because `WI-029` shipped). Port the function as-is and nothing clears the
    field: the sub-page stays open in state while its history entry vanishes.
    `closeSettingsSubPage` must therefore start clearing the field and
    re-rendering itself, exactly as `closeAddSheet()` closes its own sheet, with

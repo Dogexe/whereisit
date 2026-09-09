@@ -9,6 +9,7 @@ import { state, transactions } from "../state.js";
 import { $, escapeHtml, iconAvatar, createFocusTrap, sheetGrabberHtml, wireSheetDrag } from "../utils.js";
 import { showToast } from "../toast.js";
 import { exportToGoogleSheets } from "../sheets-export.js";
+import { pushOverlayHistory, releaseOverlayHistory } from "../overlay-history.js";
 
 // The three export options (CSV/JSON/Google Sheets) used to be three
 // always-visible toggle-rows; now they're one "Export" row that opens a
@@ -49,6 +50,7 @@ function closeExportSheet() {
   const backdrop = document.getElementById("exportSheetBackdrop");
   if (backdrop) backdrop.hidden = true;
   exportSheetFocusTrap.deactivate();
+  releaseOverlayHistory("export");
 }
 // Registered once at module load, not per-render -- renderSettings() runs
 // on every navigation to this tab, and a per-render document-level
@@ -66,7 +68,7 @@ export function wireExportSheet() {
   const backdrop = document.getElementById("exportSheetBackdrop");
   const openBtn = document.getElementById("openExportSheetBtn");
   const closeBtn = document.getElementById("exportSheetClose");
-  openBtn.addEventListener("click", () => { state.exportSheetOpen = true; backdrop.hidden = false; exportSheetFocusTrap.activate(); });
+  openBtn.addEventListener("click", () => { state.exportSheetOpen = true; backdrop.hidden = false; exportSheetFocusTrap.activate(); pushOverlayHistory("export", closeExportSheet); });
   closeBtn.addEventListener("click", closeExportSheet);
   wireSheetDrag(backdrop.querySelector(".sheet-grabber"), backdrop.querySelector(".filter-sheet"), closeExportSheet);
   backdrop.addEventListener("click", (e) => { if (e.target === backdrop) closeExportSheet(); });

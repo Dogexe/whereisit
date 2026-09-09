@@ -1454,3 +1454,168 @@ Verified with `npm test` (173 passing), `npm run build`, and
 `npm run test:e2e`, plus `e2e.yml` in CI on PR #8. Releases 2 and 3 (`WI-027`,
 `WI-028`) adopt the remaining sheets against this module's now-real API;
 batching all six was explicitly ruled out in `docs/ROADMAP.md`.
+
+## WI-027: browser Back dismisses the four remaining safe sheets
+
+Release 2 of WS-3, specced in `docs/specs/back-button-dismisses-overlays.md`
+and implemented by Codex (`terra-medium`, deliberately a tier below WI-026's
+`sol-high` — that ticket designed the mechanism, this one copies a mechanism
+already shipped, e2e-covered and verified live). Browser Back now dismisses the
+Transactions Filters, Insights Filters, Export and Import sheets exactly the
+way it already dismissed the Add sheet.
+
+Mechanically it is WI-026's wiring four more times:
+`pushOverlayHistory(key, closeFn)` as the last line of each open path,
+`releaseOverlayHistory(key)` as the last line of each named close function,
+four distinct keys. The reason one release call per sheet is enough is that
+each sheet already funnels every dismissal through a single named function —
+close button, backdrop tap, Escape, swipe-down, **and** the action-completed
+paths (`export-sheet.js`'s CSV/JSON/Sheets handlers, `import-sheet.js`'s
+commit). No per-path calls were added, no new module, no `settings.js` change,
+and nothing visual: no CSS, class, `STRINGS` key, icon, or control.
+
+`onPop` is the bare named close function in all four cases, never a closure
+over a captured backdrop element, because each close function looks its
+backdrop up fresh by id and a re-render replaces that node.
+
+**Independent review found no confirmed defects** — a first for this
+workstream, and the payoff for WI-026 having designed the mechanism carefully.
+What review did produce was five test-coverage suggestions, all applied, and
+one correction to the reasoning both the ticket and the spec carried.
+
+The correction is the part worth remembering. Both documents justified the
+named-`onPop` requirement with "the 25-second background sync tick rebuilds
+`#screen`." That rebuild **cannot reach these four sheets**:
+`hasLiveInputRisk()` (`sync.js:509`, `sync.js:516`) already returns `true` for
+all four, and every background re-render caller is gated on it. The requirement
+itself is still right — `renderSettings()` has non-sync callers — so only the
+stated rationale changed. Left uncorrected, `WI-028` would have inherited a
+reason that does not hold. Second time in this workstream that a confidently
+detailed ticket encoded a wrong claim rather than catching one; WI-026's was an
+impossible acceptance criterion, this one a plausible-sounding rationale.
+
+Three things were verified during review and recorded in the ticket rather than
+changed. `settings.js`'s state-blind `popstate` listener — the hazard the spec
+warns about once a second pusher exists — cannot fire for these four, because
+`sync` is not in `SETTINGS_SUB_PAGE_IDS`, so the Export and Import buttons sit
+on the Settings root with `state.settingsSubPage` null. No two of the five
+sheets can co-open, since `.filter-sheet-backdrop`'s `z-index: 50` sits above
+the tab bar's 30 and the un-z-indexed sidebar, putting every other entry point
+behind the backdrop. And Back on the Insights sheet skips the
+`renderBreakdownFilterSheet()` that its `dismiss` closure runs afterward —
+visually identical, because the close function already hid the live backdrop
+node and every in-sheet filter change re-renders the toolbar itself.
+
+Coverage is a new `e2e/overlay-history.spec.js`, five tests at 390x844 rather
+than the suite's default desktop viewport — deliberately, since that is where
+`settings.js`'s own history mechanism is live and where the audit measured D3
+in the first place. Each asserts one entry with the expected
+`history.state.overlay` tag and an unchanged URL on open, Back closing the
+sheet with the app still rendered, and a restored base state with a stable,
+non-accumulating length across repeated open/close cycles. Non-Back dismissals
+covered include Insights' Escape path and a real CSV export;
+`e2e/csv-import.spec.js` gained the same assertions around its existing import
+commit.
+
+Verified with `npm test` (173 passing), `npm run test:e2e` (42 passing,
+including `nav.spec.js:124`'s Settings sub-page regression guard and WI-026's
+two Add-sheet tests), and `npm run build`. `WI-028` — the Settings sub-page and
+Manage sheet — is the last release of WS-3 and the only one carrying real risk:
+it deletes `settings.js`'s own `popstate` listener and inverts
+`closeSettingsSubPage`'s contract.
+
+### WI-029 — a released overlay entry no longer consumes the entry below it
+
+`releaseOverlayHistory()` pops its own stack entry and then calls
+`history.back()`. The module's single `popstate` listener popped
+*unconditionally*, so the traversal that release had just caused consumed the
+*next* entry down and fired its `onPop`. On a stack of two, closing the top
+sheet by any non-Back route — close button, backdrop, Escape, swipe-down, save
+— silently closed the overlay underneath it as well.
+
+This was latent, never live. None of the five `WI-026`/`WI-027` consumers can
+be open at the same time (`WI-027`'s review notes verify the no-co-open claim),
+so nothing stacked two entries. `WI-028` — the Settings sub-page plus the
+Manage sheet — is the first thing that would, which is why Codex escalated it
+instead of building on a broken module.
+
+The fix is four lines: a module-level `suppressedPops` counter, incremented by
+`releaseOverlayHistory()` alongside its `history.back()`, and decremented by
+the listener, which returns early instead of popping. A counter rather than a
+boolean on purpose — two releases in one task queue two traversals, and a
+boolean would swallow one popstate and let the other close a live overlay. The
+suppression cannot be a call-stack guard or a `try/finally`: `history.back()`
+returns immediately and `popstate` arrives on a later task. The exported API,
+the `{ overlay: key }` tag, the duplicate-key no-op, the `false` return for a
+non-top key, and all six consumer files are untouched.
+
+Coverage is a new `tests/overlay-history.test.js` — eight tests over stubbed
+`window`/`history` installed on `globalThis` before a dynamic `import()`, since
+the module registers its listener at load (the same shape `tests/applock.test.js`
+already uses). The stub separates queueing a traversal from delivering its
+`popstate` so a test can queue two before either fires. It covers the stacked
+release, ordinary Back at depth one and two, and — the case that would have
+broken all five shipped sheets — a Back immediately after a non-Back dismissal,
+asserted by opening another sheet afterward and requiring its Back to still
+work. Only the stacked-release test fails against the pre-fix module; the
+over-suppression tests pass both before and after, which is exactly their job.
+
+The unit test is the real gate here by design: no UI path can stack two entries
+until `WI-028` ships, so e2e cannot reach the defect. Verified with `npm test`
+(181 passing), `npm run test:e2e` (42 passing, unchanged), and `npm run build`.
+
+### WI-028 — Settings' sub-page and Manage sheet join the overlay history owner
+
+The last WS-3 release, and the only one carrying real risk: it rewrites a
+working history contract rather than adopting an unused one. Mobile Settings'
+sub-page and the Manage sheet now both run on `src/overlay-history.js`, which
+leaves the app with **exactly one `popstate` listener** — the thing that
+actually retires the D3 hazard instead of routing around it.
+
+The inversion was the trap, and it landed as the ticket predicted.
+`closeSettingsSubPage()` used to call `history.back()` and nothing else; the
+`popstate` listener was the sole place that cleared `state.settingsSubPage` and
+re-rendered. Since the shared owner de-registers an entry *before* traversing,
+porting that function unchanged would have left the sub-page open in state while
+its history entry vanished — silently, and only on the button and tab-switch
+paths, never on Back. `closeSettingsSubPage()` now does its own clearing and
+re-render, exactly as `closeAddSheet()` does, with the owner responsible only
+for the history entry. `settings.js`'s own listener is deleted. The Manage sheet
+needed no new detection: it pushes and releases on the two render transitions
+`renderManageSheet()` already computes for its focus trap.
+
+One mechanism is load-bearing and worth knowing before touching either file:
+`closeSettingsSubPage` is registered as its own entry's `onPop` *and* calls
+`releaseOverlayHistory` itself. That re-entrancy is safe only because the owner
+pops the stack before invoking `onPop`, so the nested release finds a different
+key on top and returns `false`. The Manage sheet's `dismiss` closure
+self-cancels identically. Reordering the owner's listener to pop after the
+callback would break both surfaces silently.
+
+Review found one confirmed defect, in the tests rather than the app. The
+`createBudget` e2e fixture had been given a synthetic
+`history.pushState(history.state, "")` on mobile, to consume the forward slot a
+released entry leaves behind. It was load-bearing: removing only that block
+failed the protected `nav.spec.js:146` with `Expected: 5, Received: 4`, making
+it the mechanism by which that test "passed unchanged" — which is what the
+ticket's escalation trigger existed to prevent. The forward slot itself is not a
+regression; it is inherent to releasing via `history.back()` and was already
+true of all five previously shipped sheets. What was new is that `createBudget`
+tripped it before `nav.spec` measured its baseline. The fix routes fixture setup
+off the history-backed sheet entirely: mobile `createBudget` seeds through the
+desktop-inline form, restores the viewport, and reopens the Budgets section. The
+mobile Manage-sheet save is still covered deliberately, in
+`overlay-history.spec.js` alongside the other five non-Back dismissal routes.
+
+Coverage grew `overlay-history.spec.js` from five tests to ten: stacked Back
+popping one entry at a time, every non-Back Manage dismissal preserving the
+sub-page entry, the tab-switch path, desktop pushing nothing, and the
+bill-reminder deep link — which pushes both surfaces in one tick without a user
+gesture and then `replaceState`s the tag away, and is the single best end-to-end
+proof that stack-based dispatch was the right call over tag-based.
+
+Verified with `npm test` (181 passing), `npm run test:e2e` (47 passing, up from
+42, `nav.spec.js` unchanged), and `npm run build`. Implemented by Codex at
+`sol-high`; branch, commits, review and docs by Claude, since Codex's sandbox
+could write neither the ticket file nor `.git/refs`. Its reported Playwright
+failures were sandbox-only and do not reproduce. **WS-3 is complete.**

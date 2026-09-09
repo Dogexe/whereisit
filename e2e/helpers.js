@@ -50,6 +50,13 @@ export async function openSettingsSection(page, section) {
   await page.locator(`.settings-nav-item[data-settings-section="${section}"]`).click();
 }
 
+async function waitForMobileManageSheetRelease(page) {
+  if ((page.viewportSize()?.width || 0) >= 1024) return;
+  await expect.poll(() => page.evaluate(() => history.state?.overlay || null), {
+    message: "the Manage sheet history entry should be released"
+  }).not.toBe("settings-manage");
+}
+
 // Creates a new account through Settings' Manage UI.
 // Shared by every spec that needs a second account to exist (transfers,
 // multi-account switching) rather than each re-deriving the same add-flow.
@@ -63,18 +70,37 @@ export async function createAccount(page, { name, openingBalance = 0 } = {}) {
   await page.locator("#accountOpeningBalanceInput").fill(String(openingBalance));
   await page.locator("#saveAccountFormBtn").click();
   await expect(page.locator(".manage-row", { hasText: name })).toBeVisible();
+  await waitForMobileManageSheetRelease(page);
 }
 
 // Creates a new budget through Settings' Manage UI for specs that require a
-// real budget row rather than relying on first-run data.
+// real budget row rather than relying on first-run data. On mobile, seed it
+// through the desktop-inline form, then restore the requested mobile section:
+// budget creation is fixture setup for these callers, while exercising the
+// mobile Manage-sheet save belongs to overlay-history.spec.js. Keeping setup
+// off the history-backed sheet leaves callers with a genuine top-of-history
+// baseline instead of requiring synthetic history cleanup.
 export async function createBudget(page, { limit = 1000 } = {}) {
+  const originalViewport = page.viewportSize();
+  const restoreMobile = originalViewport && originalViewport.width < 1024;
+  if (restoreMobile) {
+    await page.setViewportSize({ width: 1024, height: originalViewport.height });
+    await page.reload();
+  }
   await navBtn(page, "settings").click();
   await openSettingsSection(page, "budgets");
   await page.locator("#addBudgetBtn").click();
   await expect(page.locator("#budgetCategorySelect")).toBeVisible();
   await page.locator("#budgetLimitInput").fill(String(limit));
   await page.locator("#saveBudgetFormBtn").click();
-  await expect(page.locator(".manage-row-wrap", { has: page.locator("[data-delete-budget]") })).toHaveCount(1);
+  await expect(page.locator("[data-delete-budget]")).toHaveCount(1);
+  if (restoreMobile) {
+    await page.setViewportSize(originalViewport);
+    await page.reload();
+    await navBtn(page, "settings").click();
+    await openSettingsSection(page, "budgets");
+    await expect(page.locator(".manage-row-wrap", { has: page.locator("[data-delete-budget]") })).toHaveCount(1);
+  }
 }
 
 // Creates a bill through Settings' Manage UI for specs that need an
@@ -89,6 +115,7 @@ export async function createBill(page, { name, amount = 100, day = new Date().ge
   await page.locator("#billDayInput").fill(String(day));
   await page.locator("#saveBillFormBtn").click();
   await expect(page.locator(".manage-row", { hasText: name })).toBeVisible();
+  await waitForMobileManageSheetRelease(page);
 }
 
 export async function selectHomeAccount(page, name) {

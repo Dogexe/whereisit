@@ -16,6 +16,7 @@ import { showToast } from "../toast.js";
 import { renderScreen } from "./router.js";
 import { renderImportAccountChips } from "./add.js";
 import { parseCsv, parseAmountValue, parseDateWithFormat, buildImportPlan, DATE_FORMATS } from "../import.js";
+import { pushOverlayHistory, releaseOverlayHistory } from "../overlay-history.js";
 
 // Parsed file contents and the computed import plan are deliberately NOT on
 // the shared `state` object -- see docs/specs/csv-import.md's own decision.
@@ -41,6 +42,7 @@ export function openImportSheet() {
   if (backdrop) backdrop.hidden = false;
   renderImportStepBody();
   importSheetFocusTrap.activate();
+  pushOverlayHistory("import", closeImportSheet);
 }
 // Looked up fresh from the DOM rather than closed over at wire-time, same
 // reasoning as settings.js's closeExportSheet/transactions.js's closeTxFilterSheet.
@@ -49,6 +51,7 @@ function closeImportSheet() {
   const backdrop = document.getElementById("importSheetBackdrop");
   if (backdrop) backdrop.hidden = true;
   importSheetFocusTrap.deactivate();
+  releaseOverlayHistory("import");
 }
 // Registered once at module load, not per-render -- same reasoning as
 // settings.js's own Escape listener for the Export sheet.

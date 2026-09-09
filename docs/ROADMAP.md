@@ -52,7 +52,7 @@ excluded from this roadmap — that stream keeps its own ownership.
 |---|---|---|---|---|
 | WS-1 | Honest first run | D1 + the two empty states its removal exposes | M · low | **WI-023 Completed** |
 | WS-2 | Reversible actions | D2 + a `role="status"` live region for toasts (toast half of D8) | M · medium | **WI-024 + WI-025 Completed** |
-| WS-3 | History and dismissal | D3, in three releases (below) | M–L · see below | **WI-026 Completed; WI-027/028 Draft** |
+| WS-3 | History and dismissal | D3, in three releases (below) | M–L · see below | **WI-026 + WI-027 Completed; WI-029 Ready (dispatch next); WI-028 Ready (blocked on WI-029)** |
 | WS-4 | Transaction list at scale | D6 + U3 filtered totals | S · low | Not started |
 | WS-5 | Storage durability | `navigator.storage.persist()` half of D5 | XS · none | Not started |
 | WS-6 | Entry quality | U1 + D7 | S · low | Not started |
@@ -104,18 +104,37 @@ So:
 3. **Release 3** — migrate the Settings sub-page onto the shared owner, then
    adopt the Manage sheet. The only release carrying real risk, now isolated.
 
+**All three releases have shipped, plus the inserted fourth ticket, so WS-3 is
+complete.** The app has exactly one `popstate` listener. `WI-028`'s review found
+one defect, in the e2e fixtures rather than the app — see
+`docs/tickets/completed/WI-028.md`'s Review notes and the changelog entry.
+
 Migrating all six at once is explicitly ruled out: five are trivially safe and
 one carries all the risk, so batching would put the risky migration in a
 release where a regression is hard to attribute.
 
+**A fourth ticket was inserted after `WI-027` shipped.** `WI-028` was
+dispatched, and Codex escalated instead of implementing: the shipped
+`releaseOverlayHistory()` calls `history.back()`, and the owner's `popstate`
+listener pops unconditionally, so on a stack of two a non-Back dismissal of the
+top overlay also closes the one below. Every consumer through `WI-027` runs on a
+stack of one, so the defect was latent — Release 3 is the first to stack, and
+could not meet its criteria on the module as shipped.
+`docs/tickets/completed/WI-029.md` fixed the owner with a suppression counter,
+so release consumes exactly the one `popstate` it causes. It was a hard
+prerequisite for `WI-028` and is now satisfied (shipped on the unmerged local
+branch `wi-029/overlay-history-release-pop`).
+
 All three releases are specified in
 `docs/specs/back-button-dismisses-overlays.md` and ticketed as
 `docs/tickets/completed/WI-026.md` (shipped — `src/overlay-history.js` and the
-Add sheet), `WI-027` and `WI-028` (both `Draft`). The two Draft tickets carry
-settled requirements and finished investigation; every line of each calls the
-module `WI-026` created, so they can now move to `Ready` with their call names
-checked against the shipped API — `pushOverlayHistory(key, onPop)` and
-`releaseOverlayHistory(key)` — rather than predicted. One
+Add sheet), `WI-027` and `WI-028` (both now shipped too). Both moved from
+`Draft` once `WI-026` shipped, with every pointer re-verified against the merged code
+and their call names checked against the shipped API —
+`pushOverlayHistory(key, onPop)` and `releaseOverlayHistory(key)` — rather
+than predicted. `WI-028` stays sequenced behind `WI-027`: that is an ordering
+choice, not a code dependency, so the module gets exercised across four more
+consumers before the one migration where a regression is expensive. One
 correction the spec records: the shorthand "dispatches on `event.state`" above
 is backwards as written — on `popstate`, `event.state` is the state being
 landed *on*, and `main.js:73`/`:109` can `replaceState` a tag away — so the

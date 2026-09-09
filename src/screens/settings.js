@@ -24,6 +24,7 @@ import { currentUser, lastSyncStatus, signInWithGoogle, signOutUser, syncNow } f
 import { renderChrome, renderScreen } from "./router.js";
 import { deferredInstallPrompt, setDeferredInstallPrompt } from "../pwa-install.js";
 import { pushReminderState, enableBillReminders, disableBillReminders } from "../push.js";
+import { pushOverlayHistory, releaseOverlayHistory } from "../overlay-history.js";
 import { importSheetHtml, wireImportSheet } from "./import-sheet.js";
 import { exportSheetHtml, wireExportSheet } from "./export-sheet.js";
 import { wireInlineCrud, setSettingsRerender } from "./manage-row.js";
@@ -80,7 +81,7 @@ function renderManageSheet() {
   if (!container) return;
   const active = manageSheetFormDefs().find((d) => state[d.key]);
   if (!active || isDesktopShell()) {
-    if (state.manageSheetOpen) { state.manageSheetOpen = false; manageSheetFocusTrap.deactivate(); }
+    if (state.manageSheetOpen) { state.manageSheetOpen = false; manageSheetFocusTrap.deactivate(); releaseOverlayHistory("settings-manage"); }
     container.innerHTML = "";
     return;
   }
@@ -124,7 +125,7 @@ function renderManageSheet() {
     btn.classList.add("selected");
   }));
   wireCategoryTypeRadios(container);
-  if (!state.manageSheetOpen) { state.manageSheetOpen = true; manageSheetFocusTrap.activate(); }
+  if (!state.manageSheetOpen) { state.manageSheetOpen = true; manageSheetFocusTrap.activate(); pushOverlayHistory("settings-manage", dismiss); }
 }
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape" || !state.manageSheetOpen) return;
@@ -158,20 +159,16 @@ const SETTINGS_SUB_PAGE_IDS = new Set(["budgets", "bills", "goals", "categories"
 export function openSettingsSubPage(section) {
   if (!SETTINGS_SUB_PAGE_IDS.has(section)) return;
   state.settingsSubPage = section;
-  if (!isDesktopShell()) history.pushState({ settingsSubPage: section }, "");
+  if (!isDesktopShell()) pushOverlayHistory("settings-subpage", closeSettingsSubPage);
 }
 
 export function closeSettingsSubPage() {
   if (isDesktopShell() || !SETTINGS_SUB_PAGE_IDS.has(state.settingsSubPage)) return false;
-  history.back();
-  return true;
-}
-
-window.addEventListener("popstate", () => {
-  if (isDesktopShell() || !SETTINGS_SUB_PAGE_IDS.has(state.settingsSubPage)) return;
   state.settingsSubPage = null;
   renderScreen();
-});
+  releaseOverlayHistory("settings-subpage");
+  return true;
+}
 
 export function renderSettings() {
   const l = L();
