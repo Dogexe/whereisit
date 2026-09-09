@@ -74,24 +74,32 @@ export async function createAccount(page, { name, openingBalance = 0 } = {}) {
 }
 
 // Creates a new budget through Settings' Manage UI for specs that require a
-// real budget row rather than relying on first-run data.
+// real budget row rather than relying on first-run data. On mobile, seed it
+// through the desktop-inline form, then restore the requested mobile section:
+// budget creation is fixture setup for these callers, while exercising the
+// mobile Manage-sheet save belongs to overlay-history.spec.js. Keeping setup
+// off the history-backed sheet leaves callers with a genuine top-of-history
+// baseline instead of requiring synthetic history cleanup.
 export async function createBudget(page, { limit = 1000 } = {}) {
+  const originalViewport = page.viewportSize();
+  const restoreMobile = originalViewport && originalViewport.width < 1024;
+  if (restoreMobile) {
+    await page.setViewportSize({ width: 1024, height: originalViewport.height });
+    await page.reload();
+  }
   await navBtn(page, "settings").click();
   await openSettingsSection(page, "budgets");
   await page.locator("#addBudgetBtn").click();
   await expect(page.locator("#budgetCategorySelect")).toBeVisible();
   await page.locator("#budgetLimitInput").fill(String(limit));
   await page.locator("#saveBudgetFormBtn").click();
-  await expect(page.locator(".manage-row-wrap", { has: page.locator("[data-delete-budget]") })).toHaveCount(1);
-  await waitForMobileManageSheetRelease(page);
-  // releaseOverlayHistory() correctly leaves the released entry in the
-  // browser's forward list. Replace that fixture-only forward slot so a
-  // caller's later same-URL reload starts from the top of its test history
-  // (nav.spec's unchanged history.length assertion depends on that clean
-  // baseline). This does not add to history.length while a forward slot is
-  // present and does not alter the app's overlay stack.
-  if ((page.viewportSize()?.width || 0) < 1024) {
-    await page.evaluate(() => history.pushState(history.state, ""));
+  await expect(page.locator("[data-delete-budget]")).toHaveCount(1);
+  if (restoreMobile) {
+    await page.setViewportSize(originalViewport);
+    await page.reload();
+    await navBtn(page, "settings").click();
+    await openSettingsSection(page, "budgets");
+    await expect(page.locator(".manage-row-wrap", { has: page.locator("[data-delete-budget]") })).toHaveCount(1);
   }
 }
 
