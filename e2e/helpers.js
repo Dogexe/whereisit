@@ -77,6 +77,20 @@ export async function createBudget(page, { limit = 1000 } = {}) {
   await expect(page.locator(".manage-row-wrap", { has: page.locator("[data-delete-budget]") })).toHaveCount(1);
 }
 
+// Creates a bill through Settings' Manage UI for specs that need an
+// upcoming-bill row without relying on first-run data.
+export async function createBill(page, { name, amount = 100, day = new Date().getDate() } = {}) {
+  await navBtn(page, "settings").click();
+  await openSettingsSection(page, "bills");
+  await page.locator("#addBillBtn").click();
+  await expect(page.locator("#billNameInput")).toBeVisible();
+  await page.locator("#billNameInput").fill(name);
+  await page.locator("#billAmountInput").fill(String(amount));
+  await page.locator("#billDayInput").fill(String(day));
+  await page.locator("#saveBillFormBtn").click();
+  await expect(page.locator(".manage-row", { hasText: name })).toBeVisible();
+}
+
 export async function selectHomeAccount(page, name) {
   await page.locator(".hero-dots").getByRole("button", { name, exact: true }).click();
 }
