@@ -101,6 +101,7 @@ const STRINGS = {
   tabInsights: ["ภาพรวม", "Insights"], tabSettings: ["ตั้งค่า", "Settings"],
   toastInvalidAmount: ["กรุณากรอกจำนวนเงินให้ถูกต้อง", "Please enter a valid amount"],
   toastEdited: ["บันทึกการแก้ไขแล้ว", "Changes saved"], toastAdded: ["เพิ่มรายการแล้ว", "Transaction added"],
+  toastBillPaid: ["บันทึกการจ่ายแล้ว", "Bill marked paid"],
   toastDeleted: ["ลบรายการแล้ว", "Transaction deleted"], toastCsv: ["ส่งออก CSV แล้ว", "CSV exported"],
   toastJson: ["ส่งออกข้อมูลแล้ว", "Data exported"], undoBtn: ["เลิกทำ", "Undo"],
   toastSheetsExporting: ["กำลังส่งออกไป Google Sheets...", "Exporting to Google Sheets..."],

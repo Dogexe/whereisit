@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures.js";
-import { navBtn, openSettingsSection } from "./helpers.js";
+import { createBill, navBtn, openSettingsSection } from "./helpers.js";
 
 async function dragHero(page, distance) {
   const card = page.locator(".hero-card");
@@ -49,6 +49,30 @@ test("fresh profile shows the Home and Insights budget empty states", async ({ p
   expect(Math.abs(alignment.noteCenter - alignment.panelCenter)).toBeLessThanOrEqual(2);
   await expect(page.locator("#budgetsContent .insight-card")).toHaveCount(0);
   await expect(page.locator("#addBudgetFromInsightsBtn")).toHaveCount(0);
+});
+
+test("marking a bill paid can be undone with the bill restored and transaction removed", async ({ page }) => {
+  await page.goto("/");
+  const billName = "e2e undo paid bill " + Date.now();
+  await createBill(page, { name: billName, amount: 321, day: new Date().getDate() });
+
+  await navBtn(page, "home").click();
+  const billRow = page.locator(".home-col-side .manage-row", { hasText: billName });
+  await expect(billRow).toBeVisible();
+  const dueLabel = await billRow.locator(".sub").innerText();
+
+  await billRow.locator("[data-mark-paid]").click();
+  await expect(billRow).toHaveCount(0);
+  await expect(page.locator(".home-col-main .tx-row-wrap", { hasText: billName })).toBeVisible();
+  await expect(page.locator("#toastUndoBtn")).toBeVisible();
+
+  await page.locator("#toastUndoBtn").click();
+  await expect(billRow).toBeVisible();
+  await expect(billRow.locator(".sub")).toHaveText(dueLabel);
+  await expect(page.locator(".home-col-main .tx-row-wrap", { hasText: billName })).toHaveCount(0);
+
+  await navBtn(page, "transactions").click();
+  await expect(page.locator("#txListContainer")).not.toContainText(billName);
 });
 
 test("Home hero carousel supports arrows, dots, swipe thresholds, fade, localization, and reduced motion", async ({ page }) => {
