@@ -13,9 +13,8 @@ test("adding a transaction appears in both Home's recent list and Transactions' 
   await expect(page.locator("#txListContainer")).toContainText(note);
 
   await navBtn(page, "home").click();
-  // Scoped to .home-col-main: Home also has an "upcoming bills" .list-card
-  // in .home-col-side (from the seeded sample bills), so a bare .list-card
-  // locator is ambiguous between the two.
+  // Scoped to .home-col-main: Home's side column can include budget and bill
+  // cards, so a bare .list-card locator is not stable for this assertion.
   await expect(page.locator(".home-col-main .list-card")).toContainText(note);
 });
 
@@ -127,6 +126,40 @@ test("deleting a transaction removes it, and the undo toast restores it", async 
 
   await page.locator("#toastUndoBtn").click();
   await expect(page.locator("#txListContainer")).toContainText(note);
+});
+
+test("toasts announce through a persistent live region, including repeated messages", async ({ page }) => {
+  await page.goto("/");
+  const live = page.locator("#toastLive");
+  await expect(live).toHaveAttribute("role", "status");
+  await expect(live).not.toHaveCSS("display", "none");
+
+  await addTransaction(page, { note: "e2e live auto-hide " + Date.now(), amount: "55" });
+  await expect(live).toHaveText(await page.locator("#toast").innerText());
+  await expect(live).toBeEmpty({ timeout: 3000 });
+
+  const undoNote = "e2e live undo " + Date.now();
+  await addTransaction(page, { note: undoNote, amount: "55" });
+  const undoRow = page.locator("#txListContainer .tx-row-wrap", { hasText: undoNote });
+  await undoRow.hover();
+  await undoRow.locator("[data-delete]").click();
+  await expect(live).toHaveText(await page.locator("#toast").innerText());
+  await expect(live).toContainText(await page.locator("#toastUndoBtn").innerText());
+  await page.locator("#toastUndoBtn").click();
+  await expect(live).toBeEmpty();
+
+  const repeatedNote = "e2e live repeat " + Date.now();
+  await addTransaction(page, { note: repeatedNote, amount: "55" });
+  const repeatedMessage = await live.innerText();
+  await page.evaluate(() => {
+    window.toastLiveMutations = [];
+    const liveRegion = document.querySelector("#toastLive");
+    new MutationObserver(() => window.toastLiveMutations.push(liveRegion.textContent))
+      .observe(liveRegion, { childList: true, characterData: true, subtree: true });
+  });
+  await addTransaction(page, { note: repeatedNote, amount: "55" });
+  await page.waitForFunction(() => window.toastLiveMutations.length >= 2);
+  expect(await page.evaluate(() => window.toastLiveMutations)).toEqual(["", repeatedMessage]);
 });
 
 test("mobile whole-row full swipe grows Delete, commits past 65% of the row, and Undo restores", async ({ page }) => {

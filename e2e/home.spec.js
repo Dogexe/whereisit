@@ -30,6 +30,27 @@ test("app loads to the Home screen with no console errors", async ({ page }) => 
   expect(errors).toEqual([]);
 });
 
+test("fresh profile shows the Home and Insights budget empty states", async ({ page }) => {
+  await page.goto("/");
+
+  await expect(page.locator(".home-col-side .empty-note")).toBeVisible();
+  await expect(page.locator(".home-col-side .budgets-list .budget-item")).toHaveCount(0);
+  await expect(page.locator("[data-mark-paid]")).toHaveCount(0);
+
+  await navBtn(page, "insights").click();
+  await expect(page.locator("#budgetsContent .empty-note")).toBeVisible();
+  const alignment = await page.locator("#budgetsContent").evaluate((panel) => {
+    const note = panel.querySelector(":scope > .empty-note");
+    if (!note) throw new Error("budget empty note must be a direct panel child");
+    const panelRect = panel.getBoundingClientRect();
+    const noteRect = note.getBoundingClientRect();
+    return { panelCenter: panelRect.left + panelRect.width / 2, noteCenter: noteRect.left + noteRect.width / 2 };
+  });
+  expect(Math.abs(alignment.noteCenter - alignment.panelCenter)).toBeLessThanOrEqual(2);
+  await expect(page.locator("#budgetsContent .insight-card")).toHaveCount(0);
+  await expect(page.locator("#addBudgetFromInsightsBtn")).toHaveCount(0);
+});
+
 test("Home hero carousel supports arrows, dots, swipe thresholds, fade, localization, and reduced motion", async ({ page }) => {
   await page.goto("/");
 

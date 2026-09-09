@@ -72,6 +72,7 @@ function renderBudgetsContent() {
   const rollupOver = totalSpent > totalLimit;
   const rollupNear = !rollupOver && totalLimit > 0 && totalSpent / totalLimit >= 0.8;
   const rollupColor = rollupOver ? "var(--color-expense)" : (rollupNear ? "var(--color-warning)" : "var(--color-accent)");
+  const emptyNote = !rows.length && unbudgeted === 0 ? `<div class="empty-note">${escapeHtml(l.noBudgets)}</div>` : "";
   $("budgetsContent").innerHTML = `
     ${rows.length ? `
     <div class="insight-rollup">
@@ -81,6 +82,7 @@ function renderBudgetsContent() {
         <div class="figures">${fmtMoney(totalSpent)} / ${fmtMoney(totalLimit)}</div>
       </div>
     </div>` : ""}
+    ${emptyNote}
     <div class="insight-cards">${rows.map((b) => `
     <div class="insight-card">
       <div class="head"><span class="cat">${escapeHtml(b.category)}</span><span class="badge ${b.badgeClass}">${escapeHtml(b.statusLabel)}</span></div>

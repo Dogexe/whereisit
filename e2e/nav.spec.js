@@ -1,4 +1,5 @@
 import { test, expect } from "./fixtures.js";
+import { createBudget } from "./helpers.js";
 
 test("mobile bottom-nav accessible names localize without changing its rendered geometry", async ({ page }) => {
   const names = {
@@ -71,6 +72,9 @@ test("mobile bottom-nav switches screens and updates active state", async ({ pag
 
 test("mobile Settings drills into a real same-URL history entry and browser Back restores the root", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await page.locator('#tabbar [data-tab="settings"]').click();
+  await createBudget(page);
   await page.goto("/");
   await page.locator('#tabbar [data-tab="settings"]').click();
 

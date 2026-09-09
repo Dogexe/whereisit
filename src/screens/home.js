@@ -277,7 +277,7 @@ export function renderHome() {
             <div class="budget-item">
               <div class="row1"><span>${escapeHtml(b.category)}</span><span class="right">${b.spentFmt} / ${b.limitFmt}</span></div>
               <div class="bar-track"><div class="bar-fill" style="width:${b.pct}%;background:${b.barColor}"></div></div>
-            </div>`).join("")}
+            </div>`).join("") || `<div class="empty-note">${escapeHtml(l.noBudgets)}</div>`}
         </div>
       </div>
     </div>

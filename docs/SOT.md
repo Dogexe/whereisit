@@ -1,6 +1,6 @@
 # Current State
 
-Last updated: 2026-09-06
+Last updated: 2026-09-09
 
 This file answers one question: **what is actually true about whereisit
 right now?** It is not architecture (`CLAUDE.md`), not history
@@ -97,7 +97,46 @@ flags what a future agent needs to know exists, not how it works.
 
 ## Active work
 
-(none — WI-018 shipped, see below.)
+- **Five tickets are specified; one of them is built.** `WI-024` has
+  shipped; the other four in `docs/tickets/active/` have not been started.
+  Two workstreams from `docs/ROADMAP.md`:
+  - **WS-2, reversible actions:** `WI-024` (`Implemented`) added a
+    persistent `role="status"` `.sr-only` live region (`#toastLive` in
+    `index.html`, populated by `src/toast.js`) so toasts announce to screen
+    readers; `WI-025` (`Ready`) gives Home's "Mark paid" an undo toast that
+    reverses both the created expense *and* the bill's `lastPaidCycle`. Spec:
+    `docs/specs/reversible-mark-paid-and-announced-toasts.md`. **One open
+    maintainer decision** is recorded there and in the roadmap: `lastPaidCycle`
+    still has no clearing path once the toast expires, and closing that needs
+    either a `billId` on transactions (schema + mappers) or an "un-mark paid"
+    control in Settings → Bills.
+  - **WS-3, Back dismisses overlays:** `WI-026` (`Ready`) builds
+    `src/overlay-history.js` and adopts it for the Add sheet only; `WI-027` and
+    `WI-028` (both `Draft`) adopt the four other sheets, then migrate Settings'
+    sub-page and the Manage sheet. Spec:
+    `docs/specs/back-button-dismisses-overlays.md`. The two Draft tickets are
+    Draft on ordering only — they call a module that does not exist yet, and go
+    `Ready` after `WI-026` ships. `WI-028` is the one carrying real risk: it
+    deletes `settings.js`'s `popstate` listener and inverts
+    `closeSettingsSubPage`'s contract, so `docs/ARCHITECTURE.md:71-73` changes
+    with it.
+- **WI-023** (`Completed`) — shipped an empty first run: `state.js`'s
+  `budgets` and `bills` now initialise to `[]` like `goals`, so a
+  never-touched install shows nothing it invented, and the two surfaces that
+  go empty as a result (Home's budget card, Insights' Budgets tab) render a
+  plain `.empty-note` reading `l.noBudgets`. Existing installs are
+  unaffected — `restore.js`'s saved-array-wins rule is untouched, and only
+  an absent settings key falls through to the module default. Insights'
+  note renders as a sibling of `.insight-cards`, not a child: that container
+  is a multi-column grid from 880px up, so a child would sit in the first
+  column only. Spec: `docs/specs/first-run-empty-defaults.md`. This was
+  workstream WS-1 of `docs/ROADMAP.md`.
+- **`docs/ROADMAP.md`** and **`docs/AUDIT-2026-09.md`** are new: the
+  September 2026 product audit (19 findings with evidence) and the sequenced
+  remediation plan built from it, including five open product decisions that
+  block further work. Read the roadmap before picking up anything not already
+  ticketed. The audit is point-in-time against build `413bf37` — re-verify a
+  finding against current code before acting on it.
 
 ## Recently completed
 
