@@ -7,6 +7,7 @@ import { checkBudgetAlert, resolveCategoryId, mostUsedCategoryIds, defaultAccoun
 import { saveToStorage } from "../storage.js";
 import { pushTx, pushDeleteTx, syncNow } from "../sync.js";
 import { showToast } from "../toast.js";
+import { pushOverlayHistory, releaseOverlayHistory } from "../overlay-history.js";
 import { setTab, renderScreen } from "./router.js";
 
 // Stage 4 of docs/specs/custom-categories.md: the form tracks a
@@ -579,12 +580,14 @@ export function openAddSheet() {
   state.addSheetOpen = true;
   renderAddSheet();
   addSheetFocusTrap.activate();
+  pushOverlayHistory("add", closeAddSheet);
 }
 function closeAddSheet() {
   state.addSheetOpen = false;
   const backdrop = $("addSheetBackdrop");
   if (backdrop) backdrop.hidden = true;
   addSheetFocusTrap.deactivate();
+  releaseOverlayHistory("add");
 }
 // Registered once at module load, not per-render -- see transactions.js's
 // identical pattern/reasoning for its own Filters-sheet Escape listener.

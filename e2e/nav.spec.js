@@ -70,6 +70,57 @@ test("mobile bottom-nav switches screens and updates active state", async ({ pag
   await expect(tabbar.locator('[data-tab="add"]')).not.toHaveClass(/active/);
 });
 
+test("mobile browser Back dismisses the Add sheet without leaving the app", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+
+  const urlBefore = page.url();
+  const historyLengthBefore = await page.evaluate(() => history.length);
+  await page.locator('#tabbar [data-tab="add"]').click();
+
+  await expect(page.locator("#addSheetBackdrop")).toBeVisible();
+  expect(page.url()).toBe(urlBefore);
+  expect(await page.evaluate(() => history.length)).toBe(historyLengthBefore + 1);
+  expect(await page.evaluate(() => history.state)).toEqual({ overlay: "add" });
+
+  await page.goBack();
+  await expect(page.locator("#addSheetBackdrop")).toBeHidden();
+  await expect(page.locator(".hero-card")).toBeVisible();
+  expect(page.url()).toBe(urlBefore);
+});
+
+test("mobile Add dismissals release their history entry without accumulating entries", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await page.evaluate(() => history.replaceState({ base: true }, ""));
+
+  const addButton = page.locator('#tabbar [data-tab="add"]');
+  const waitForBaseEntry = () => expect.poll(
+    () => page.evaluate(() => history.state),
+    { message: "the Add overlay history entry should be released" }
+  ).toEqual({ base: true });
+
+  await addButton.click();
+  await page.locator("#addSheetCancel").click();
+  await expect(page.locator("#addSheetBackdrop")).toBeHidden();
+  await waitForBaseEntry();
+  const historyLengthAfterFirstDismissal = await page.evaluate(() => history.length);
+
+  await addButton.click();
+  expect(await page.evaluate(() => history.length)).toBe(historyLengthAfterFirstDismissal);
+  await page.locator("#addSheetCancel").click();
+  await waitForBaseEntry();
+  expect(await page.evaluate(() => history.length)).toBe(historyLengthAfterFirstDismissal);
+
+  await addButton.click();
+  expect(await page.evaluate(() => history.length)).toBe(historyLengthAfterFirstDismissal);
+  await page.locator("#txAmount").fill("25");
+  await page.locator("#addSheetSaveTop").click();
+  await expect(page.locator("#addSheetBackdrop")).toBeHidden();
+  await waitForBaseEntry();
+  expect(await page.evaluate(() => history.length)).toBe(historyLengthAfterFirstDismissal);
+});
+
 test("mobile Settings drills into a real same-URL history entry and browser Back restores the root", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");

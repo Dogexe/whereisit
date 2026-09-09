@@ -257,8 +257,11 @@ Release 1, Medium risk:
    - Back closes the sheet, keeps the URL, and **stays in the app** — assert on
      a still-rendered app element, since this is the exact failure the audit
      recorded (`goBack()` landing on `about:blank`).
-   - Cancelling the sheet (not Back) also removes the entry: `history.length`
-     returns to its pre-open value, and a subsequent Back is not swallowed.
+   - Cancelling the sheet (not Back) also releases the entry, so a subsequent
+     Back is not swallowed. Because `history.back()` retains the released entry
+     as a forward entry, `history.length` does not return to its pre-open value;
+     coverage instead asserts that the base state is restored and repeated
+     open/close cycles keep the length stable rather than accumulating entries.
    - Saving a transaction from the sheet leaves no stale entry either.
    - Opening the sheet, closing it, and reopening it does not accumulate
      entries.

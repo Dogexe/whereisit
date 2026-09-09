@@ -52,7 +52,7 @@ excluded from this roadmap — that stream keeps its own ownership.
 |---|---|---|---|---|
 | WS-1 | Honest first run | D1 + the two empty states its removal exposes | M · low | **WI-023 Completed** |
 | WS-2 | Reversible actions | D2 + a `role="status"` live region for toasts (toast half of D8) | M · medium | **WI-024 + WI-025 Completed** |
-| WS-3 | History and dismissal | D3, in three releases (below) | M–L · see below | **WI-026 Ready; WI-027/028 Draft** |
+| WS-3 | History and dismissal | D3, in three releases (below) | M–L · see below | **WI-026 Completed; WI-027/028 Draft** |
 | WS-4 | Transaction list at scale | D6 + U3 filtered totals | S · low | Not started |
 | WS-5 | Storage durability | `navigator.storage.persist()` half of D5 | XS · none | Not started |
 | WS-6 | Entry quality | U1 + D7 | S · low | Not started |
@@ -109,11 +109,13 @@ one carries all the risk, so batching would put the risky migration in a
 release where a regression is hard to attribute.
 
 All three releases are specified in
-`docs/specs/back-button-dismisses-overlays.md` and ticketed as `WI-026`
-(Ready), `WI-027` and `WI-028` (both `Draft`). The two Draft tickets carry
-settled requirements and finished investigation, but every line of each calls
-the module `WI-026` creates — they move to `Ready` once it exists and their
-call names can be checked against it rather than predicted. One
+`docs/specs/back-button-dismisses-overlays.md` and ticketed as
+`docs/tickets/completed/WI-026.md` (shipped — `src/overlay-history.js` and the
+Add sheet), `WI-027` and `WI-028` (both `Draft`). The two Draft tickets carry
+settled requirements and finished investigation; every line of each calls the
+module `WI-026` created, so they can now move to `Ready` with their call names
+checked against the shipped API — `pushOverlayHistory(key, onPop)` and
+`releaseOverlayHistory(key)` — rather than predicted. One
 correction the spec records: the shorthand "dispatches on `event.state`" above
 is backwards as written — on `popstate`, `event.state` is the state being
 landed *on*, and `main.js:73`/`:109` can `replaceState` a tag away — so the
