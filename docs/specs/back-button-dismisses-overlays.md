@@ -1,16 +1,17 @@
 # Spec: Browser Back dismisses overlays instead of exiting the app
 
-Status: **proposed** (not built). From the September 2026 product audit's
-finding D3 (high), scoped as workstream WS-3 of the approved remediation
-roadmap.
+Status: **shipped**. From the September 2026 product audit's finding D3
+(high), scoped as workstream WS-3 of the approved remediation roadmap.
 
 This spec owns the durable behavior for **all three of WS-3's releases** — the
-shared history owner and which surfaces adopt it. `WI-026` (Release 1) is
-`Ready`. `WI-027` and `WI-028` (Releases 2 and 3) are deliberately `Draft`:
-their acceptance criteria are settled and their investigation is done, but both
-consist of calling an API that does not exist yet, so each moves to `Ready`
-only after Release 1 ships and its real signatures can be quoted rather than
-predicted.
+shared history owner and which surfaces adopt it. All three shipped, as
+`WI-026`, `WI-027` and `WI-028`, plus `WI-029`, a fourth ticket inserted after
+`WI-027` to fix a latent defect in the owner that Release 3 was the first to
+expose (see the "Release" bullet's correction below). All six overlay surfaces
+are now history-backed and the app has exactly one `popstate` listener, which
+is what retires D3. What each release actually shipped, and the one review
+finding against Release 3, are recorded in `docs/CHANGELOG.md` and in each
+ticket's Review notes under `docs/tickets/completed/`.
 
 ## Current behavior
 
