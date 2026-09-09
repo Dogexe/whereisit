@@ -1352,3 +1352,45 @@ so the full suite was run and confirmed independently before merge), and
 (`https://dogexe.github.io/whereisit/`): `data-l-aria` attributes present
 in the deployed `index.html`, `button.toggle-row:focus-visible` present
 in the deployed `styles.css`.
+
+
+## WI-025: make "Mark paid" reversible with an undo toast
+
+Specced in `docs/specs/reversible-mark-paid-and-announced-toasts.md` and
+implemented by Codex (`sol-high`). One click of "จ่ายเลย" / "Mark paid" on
+Home's bill card can now be taken back from the toast it already showed,
+undoing **both** the expense the click created and the bill's
+paid-for-this-cycle flag.
+
+The change is confined to `markBillPaid()` in `src/screens/home.js`, plus one
+new `toastBillPaid` `STRINGS` key, a new `createBill()` e2e helper, and one
+new test. The undo callback removes the created transaction, restores
+`bill.lastPaidCycle` to the value it held *before* the click — `null` on a
+first payment, the previous cycle key if the bill had been paid in an earlier
+month, rather than unconditionally `null` — then saves, re-renders, and pushes
+both changes. No CSS rule, class, element, icon, or button was added, and no
+unit test changed.
+
+**One confirmed defect, found on independent review and fixed before merge:
+the forward and undo pushes were unordered.** As first implemented, the
+mark-paid `Promise.all([pushTx, pushRows("bills", …)])` and the undo
+callback's `Promise.all([pushDeleteTx, pushRows("bills", …)])` were two
+independent network chains with no sequencing between them. `pushRows`
+(`src/sync.js:154`) is a plain Supabase `upsert`, so the server has no
+last-write-wins resolution — arrival order decides the stored row, not
+`updated_at`. If the forward insert landed *after* the undo's tombstone, the
+server kept `deleted:false`; `clearPending`'s reference-equality check had
+already dropped the tombstone as successfully pushed, and `mergeRowsById`
+(`src/merge.js:16`) re-adds any remote non-deleted row missing locally, so the
+next pull silently resurrected the undone transaction and the stale bill row.
+That is precisely the silent-desync failure mode the ticket's `sol-high`
+profile reason had named in advance. Fixed by hoisting the forward push into a
+`forwardPush` variable before `showToast` and chaining the undo's pushes off
+it, so the tombstone and the restored bill row can never overtake the forward
+insert on the server. `pushRows` swallows its own errors and returns `false`
+rather than rejecting, so a failed forward push cannot drop the undo chain.
+
+High risk tier for its persistence/sync surface, so the full matrix applied:
+`npm test`, `npm run build`, and `npm run test:e2e` locally, plus `e2e.yml` in
+CI on PR #9 — the branch had not been pushed before that, so this was its
+first server-side validation.

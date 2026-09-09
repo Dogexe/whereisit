@@ -1,5 +1,5 @@
 import { L } from "../i18n.js";
-import { state, transactions, bills, accounts } from "../state.js";
+import { state, transactions, bills, accounts, setTransactions } from "../state.js";
 import { $, uid, escapeHtml, icon, iconAvatar, fmtMoney, isDesktopShell, localDateIso, localMonthKey } from "../utils.js";
 import { CATEGORIES } from "../categories.js";
 import {
@@ -7,7 +7,7 @@ import {
   sparklineSvg, computeSparklinePoints, dueSoonLabel, billDueCycle, checkBudgetAlert, defaultAccountId, computeBalance
 } from "../derived.js";
 import { saveToStorage, saveSettings } from "../storage.js";
-import { pushTx, pushRows, syncNow, billToRow, currentUser } from "../sync.js";
+import { pushTx, pushDeleteTx, pushRows, syncNow, billToRow, currentUser } from "../sync.js";
 import { accountDisplayName } from "../account.js";
 import { showToast } from "../toast.js";
 import { setTab, renderScreen } from "./router.js";
@@ -32,6 +32,7 @@ function goAdd() {
 export function markBillPaid(id) {
   const bill = bills.find((b) => b.id === id);
   if (!bill) return;
+  const prevPaidCycle = bill.lastPaidCycle || null;
   // Stage 4 of docs/specs/multi-account-support.md: this creates a
   // transaction under the hood exactly like the Add screen does, so it
   // needs a real accountId too. Home's currently-selected account when one
@@ -51,8 +52,20 @@ export function markBillPaid(id) {
   saveToStorage();
   saveSettings();
   renderScreen();
-  showToast(checkBudgetAlert(savedTx) || L().toastAdded);
-  Promise.all([pushTx(savedTx), pushRows("bills", [billToRow(bill, false)])]).then(() => syncNow());
+  const forwardPush = Promise.all([pushTx(savedTx), pushRows("bills", [billToRow(bill, false)])]);
+  showToast(checkBudgetAlert(savedTx) || L().toastBillPaid, () => {
+    setTransactions(transactions.filter((t) => t.id !== savedTx.id));
+    bill.lastPaidCycle = prevPaidCycle;
+    savedTx.updatedAt = Date.now();
+    bill.updatedAt = Date.now();
+    saveToStorage();
+    saveSettings();
+    renderScreen();
+    forwardPush
+      .then(() => Promise.all([pushDeleteTx(savedTx), pushRows("bills", [billToRow(bill, false)])]))
+      .then(() => syncNow());
+  });
+  forwardPush.then(() => syncNow());
 }
 
 const HERO_DOTS_HIDE_MS = 1500;
