@@ -156,11 +156,14 @@ mechanical:
 Two constraints specific to this release:
 
 - **`onPop` must be the named close function, never a closure over a captured
-  element.** All four sheets live inside `#screen`'s `innerHTML`, which a
-  background sync tick rebuilds every 25 s (`main.js:97` → `renderScreen`).
+  element.** All four sheets live inside `#screen`'s `innerHTML`, and
+  `renderSettings()` has non-sync callers that can rebuild Settings markup.
   The open state survives via the `state.*SheetOpen` flag and the `hidden`
-  binding, but the DOM node does not. Every close function already looks its
-  backdrop up fresh by id and says so in a comment
+  binding, but the DOM node does not. The 25-second background-sync path is
+  not the reason: every background re-render caller is gated by
+  `hasLiveInputRisk()`, which returns true while any of these four sheets is
+  open. Every close function already looks its backdrop up fresh by id and
+  says so in a comment
   (`transactions.js:304-306`); the history entry must hold that same
   discipline.
 - Insights' Breakdown filter sheet regenerates its markup on nearly every

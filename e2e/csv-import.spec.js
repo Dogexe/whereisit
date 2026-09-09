@@ -3,6 +3,7 @@ import { navBtn, openSettingsSection, createAccount, selectHomeAccount } from ".
 
 test("importing a CSV reports new/duplicate/unreadable counts and lands new rows in the chosen account", async ({ page }) => {
   await page.goto("/");
+  await page.evaluate(() => history.replaceState({ base: true }, ""));
   const acctName = "e2e csv acct " + Date.now();
   await createAccount(page, { name: acctName, openingBalance: 0 });
 
@@ -37,6 +38,7 @@ test("importing a CSV reports new/duplicate/unreadable counts and lands new rows
   await openSettingsSection(page, "sync");
   await page.locator("#openImportSheetBtn").click();
   await expect(page.locator("#importSheetBackdrop")).toBeVisible();
+  expect(await page.evaluate(() => history.state)).toEqual({ overlay: "import" });
 
   // Inline file content -- no fixture file needed, since the duplicate
   // row's date has to be "today" to match the seeded transaction above.
@@ -58,6 +60,7 @@ test("importing a CSV reports new/duplicate/unreadable counts and lands new rows
 
   await page.locator("#importCommitBtn").click();
   await expect(page.locator("#importSheetBackdrop")).toBeHidden();
+  await expect.poll(() => page.evaluate(() => history.state)).toEqual({ base: true });
 
   await navBtn(page, "home").click();
   await selectHomeAccount(page, acctName);

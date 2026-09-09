@@ -11,6 +11,7 @@ import { pillPickerHtml, wirePillPicker } from "./period-picker.js";
 import { setTab } from "./router.js";
 import { openSettingsSubPage } from "./settings.js";
 import { showToast } from "../toast.js";
+import { pushOverlayHistory, releaseOverlayHistory } from "../overlay-history.js";
 
 function todayIso() { return localDateIso(); }
 function pad2(n) { return String(n).padStart(2, "0"); }
@@ -157,7 +158,7 @@ function renderBreakdownToolbar() {
     onClose: () => { state.insightsBreakdownPopoverOpen = false; renderBreakdownToolbar(); }
   });
   const openBtn = $("openInsightsFiltersBtn");
-  if (openBtn) openBtn.addEventListener("click", () => { state.insightsFilterSheetOpen = true; renderBreakdownFilterSheet(); insightsFilterFocusTrap.activate(); });
+  if (openBtn) openBtn.addEventListener("click", () => { state.insightsFilterSheetOpen = true; renderBreakdownFilterSheet(); insightsFilterFocusTrap.activate(); pushOverlayHistory("insights-filters", closeInsightsFilterSheet); });
 }
 
 function breakdownPeriodLabel() {
@@ -244,6 +245,7 @@ function closeInsightsFilterSheet() {
   const backdrop = document.getElementById("insightsFilterSheetBackdrop");
   if (backdrop) backdrop.hidden = true;
   insightsFilterFocusTrap.deactivate();
+  releaseOverlayHistory("insights-filters");
 }
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && state.insightsFilterSheetOpen) closeInsightsFilterSheet(); });
 // Looked up fresh on every Tab keypress -- unlike the Transactions/Add
