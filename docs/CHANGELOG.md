@@ -1454,3 +1454,72 @@ Verified with `npm test` (173 passing), `npm run build`, and
 `npm run test:e2e`, plus `e2e.yml` in CI on PR #8. Releases 2 and 3 (`WI-027`,
 `WI-028`) adopt the remaining sheets against this module's now-real API;
 batching all six was explicitly ruled out in `docs/ROADMAP.md`.
+
+## WI-027: browser Back dismisses the four remaining safe sheets
+
+Release 2 of WS-3, specced in `docs/specs/back-button-dismisses-overlays.md`
+and implemented by Codex (`terra-medium`, deliberately a tier below WI-026's
+`sol-high` — that ticket designed the mechanism, this one copies a mechanism
+already shipped, e2e-covered and verified live). Browser Back now dismisses the
+Transactions Filters, Insights Filters, Export and Import sheets exactly the
+way it already dismissed the Add sheet.
+
+Mechanically it is WI-026's wiring four more times:
+`pushOverlayHistory(key, closeFn)` as the last line of each open path,
+`releaseOverlayHistory(key)` as the last line of each named close function,
+four distinct keys. The reason one release call per sheet is enough is that
+each sheet already funnels every dismissal through a single named function —
+close button, backdrop tap, Escape, swipe-down, **and** the action-completed
+paths (`export-sheet.js`'s CSV/JSON/Sheets handlers, `import-sheet.js`'s
+commit). No per-path calls were added, no new module, no `settings.js` change,
+and nothing visual: no CSS, class, `STRINGS` key, icon, or control.
+
+`onPop` is the bare named close function in all four cases, never a closure
+over a captured backdrop element, because each close function looks its
+backdrop up fresh by id and a re-render replaces that node.
+
+**Independent review found no confirmed defects** — a first for this
+workstream, and the payoff for WI-026 having designed the mechanism carefully.
+What review did produce was five test-coverage suggestions, all applied, and
+one correction to the reasoning both the ticket and the spec carried.
+
+The correction is the part worth remembering. Both documents justified the
+named-`onPop` requirement with "the 25-second background sync tick rebuilds
+`#screen`." That rebuild **cannot reach these four sheets**:
+`hasLiveInputRisk()` (`sync.js:509`, `sync.js:516`) already returns `true` for
+all four, and every background re-render caller is gated on it. The requirement
+itself is still right — `renderSettings()` has non-sync callers — so only the
+stated rationale changed. Left uncorrected, `WI-028` would have inherited a
+reason that does not hold. Second time in this workstream that a confidently
+detailed ticket encoded a wrong claim rather than catching one; WI-026's was an
+impossible acceptance criterion, this one a plausible-sounding rationale.
+
+Three things were verified during review and recorded in the ticket rather than
+changed. `settings.js`'s state-blind `popstate` listener — the hazard the spec
+warns about once a second pusher exists — cannot fire for these four, because
+`sync` is not in `SETTINGS_SUB_PAGE_IDS`, so the Export and Import buttons sit
+on the Settings root with `state.settingsSubPage` null. No two of the five
+sheets can co-open, since `.filter-sheet-backdrop`'s `z-index: 50` sits above
+the tab bar's 30 and the un-z-indexed sidebar, putting every other entry point
+behind the backdrop. And Back on the Insights sheet skips the
+`renderBreakdownFilterSheet()` that its `dismiss` closure runs afterward —
+visually identical, because the close function already hid the live backdrop
+node and every in-sheet filter change re-renders the toolbar itself.
+
+Coverage is a new `e2e/overlay-history.spec.js`, five tests at 390x844 rather
+than the suite's default desktop viewport — deliberately, since that is where
+`settings.js`'s own history mechanism is live and where the audit measured D3
+in the first place. Each asserts one entry with the expected
+`history.state.overlay` tag and an unchanged URL on open, Back closing the
+sheet with the app still rendered, and a restored base state with a stable,
+non-accumulating length across repeated open/close cycles. Non-Back dismissals
+covered include Insights' Escape path and a real CSV export;
+`e2e/csv-import.spec.js` gained the same assertions around its existing import
+commit.
+
+Verified with `npm test` (173 passing), `npm run test:e2e` (42 passing,
+including `nav.spec.js:124`'s Settings sub-page regression guard and WI-026's
+two Add-sheet tests), and `npm run build`. `WI-028` — the Settings sub-page and
+Manage sheet — is the last release of WS-3 and the only one carrying real risk:
+it deletes `settings.js`'s own `popstate` listener and inverts
+`closeSettingsSubPage`'s contract.

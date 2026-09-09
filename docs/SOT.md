@@ -97,9 +97,9 @@ flags what a future agent needs to know exists, not how it works.
 
 ## Active work
 
-- **Five tickets are specified; three of them are built.** `WI-024`,
-  `WI-025`, and `WI-026` have shipped; the other two in
-  `docs/tickets/active/` have not been started. Two workstreams from
+- **Five tickets are specified; four of them are built.** `WI-024`,
+  `WI-025`, `WI-026`, and `WI-027` have shipped; the one remaining in
+  `docs/tickets/active/` (`WI-028`) has not been started. Two workstreams from
   `docs/ROADMAP.md`:
   - **WS-2, reversible actions:** `WI-024` (`Implemented`) added a
     persistent `role="status"` `.sr-only` live region (`#toastLive` in
@@ -115,16 +115,19 @@ flags what a future agent needs to know exists, not how it works.
     `src/overlay-history.js` — a module-level stack with exactly one
     `popstate` listener, exposing `pushOverlayHistory(key, onPop)` and
     `releaseOverlayHistory(key)` — and adopted it for the Add sheet only;
-    `WI-027` and `WI-028` (both now `Ready`) adopt the four other sheets, then
-    migrate Settings' sub-page and the Manage sheet. Spec:
-    `docs/specs/back-button-dismisses-overlays.md`. Both were Draft on ordering
-    only; they moved to `Ready` against the module's real API once `WI-026`
-    shipped, with every file pointer re-verified against merged code.
-    **`WI-027` is the one to dispatch next** — `WI-028` is `Ready` but
-    deliberately sequenced behind it. `WI-028` is the one carrying real risk: it
-    deletes `settings.js`'s `popstate` listener and inverts
+    `WI-027` (`Completed`) adopted it for the Transactions Filters, Insights
+    Filters, Export and Import sheets, so Back now dismisses five of the six
+    surfaces. Spec: `docs/specs/back-button-dismisses-overlays.md`.
+    **`WI-028` is the one remaining release and the one to dispatch next** —
+    the Settings sub-page and the Manage sheet. It carries the workstream's
+    real risk: it deletes `settings.js`'s `popstate` listener and inverts
     `closeSettingsSubPage`'s contract, so `docs/ARCHITECTURE.md:71-73` changes
-    with it.
+    with it. It is also the only release where two entries stack. Its
+    dependency on `WI-027` was sequencing, not code, and is now satisfied.
+    One correction made during `WI-027`'s review carries forward: the spec's
+    named-`onPop` requirement is justified by `renderSettings()`'s non-sync
+    callers, **not** by the 25-second background sync tick — every background
+    re-render caller is gated on `hasLiveInputRisk()`.
 - **WI-023** (`Completed`) — shipped an empty first run: `state.js`'s
   `budgets` and `bills` now initialise to `[]` like `goals`, so a
   never-touched install shows nothing it invented, and the two surfaces that
