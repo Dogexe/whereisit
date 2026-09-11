@@ -1195,8 +1195,8 @@
      -end stops and 135deg angle .hero-card uses (previously this comment
      claimed that consistency but the rule below actually used
      --color-accent/-700, a flatter, less saturated pair -- fixed as part
-     of the post-WI-018 gradient-system pass, see theme.js's ACCENT
-     comment). Padding shrinks the icon's own rendered content within
+     of the post-WI-018 gradient-system pass, see the --hero-gradient-*
+     comment in :root above). Padding shrinks the icon's own rendered content within
      the circle (SVG content box = width/height minus padding under the
      app's global box-sizing:border-box), independent of .icon's own
      18px default, which this selector out-specifies. 60px/16px padding/
@@ -1233,10 +1233,10 @@
   }
   .sidebar-header { display: flex; align-items: center; gap: 10px; padding: 4px 10px 18px; }
   /* Two-tone lockup icon (docs/specs/coral-rebrand-and-logo.md's follow-up):
-     ring uses --logo-ring-color (theme.js -- var(--color-accent) in light,
-     so it still follows the Coral/Purple preference; solid white in dark,
-     matching the design's own "dark lockup" reference exactly, which uses
-     white regardless of hue). Handle+dot use --color-logo-amber always,
+     ring uses --logo-ring-color (var(--color-accent) in light, so it still
+     follows the Coral/Purple preference; solid white in dark via the
+     [data-theme="dark"] block, matching the design's own "dark lockup"
+     reference exactly, which uses white regardless of hue). Handle+dot use --color-logo-amber always,
      in both themes, also matching the reference. No background box here --
      unlike the standalone app icon PNG, the lockup's icon is bare. */
   .sidebar-logo { width: 26px; height: 26px; flex-shrink: 0; }

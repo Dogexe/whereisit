@@ -1,6 +1,6 @@
 # Current State
 
-Last updated: 2026-09-09
+Last updated: 2026-09-12
 
 This file answers one question: **what is actually true about whereisit
 right now?** It is not architecture (`CLAUDE.md`), not history
@@ -173,9 +173,25 @@ flags what a future agent needs to know exists, not how it works.
 
 ## Recently completed
 
+- **WI-033 — one owner for color tokens.** `styles.css` now declares every
+  color token: light/Coral on `:root`, with `:root[data-theme="dark"]` and
+  `:root[data-accent="purple"]` overriding only what differs. `theme.js`
+  writes no colors at all — `applyTheme()` (198 lines → 35) sets `data-theme`
+  and `data-accent` on `<html>` and updates the `theme-color` meta tag, which
+  it reads back out of the stylesheet rather than hardcoding. The old
+  arrangement kept a second copy of the palette in JS with `:root` as a
+  hand-maintained first-paint fallback; the two had drifted
+  (`--hero-gradient-end`), which `docs/UX.md` carried as accepted debt until
+  this pass deleted the mechanism rather than the one symptom. **Where colors
+  live changed — `docs/UX.md`'s "Design-token ownership" is the current rule,
+  and any older note here or in `docs/CHANGELOG.md` pointing at `theme.js`
+  for a color value predates this.** Verified by capturing all 34 tokens plus
+  rendered colors from the built app across all four theme × accent
+  combinations before and after (byte-identical, only `<html>`'s inline style
+  gone), first paint re-checked with JS disabled; 181 unit, 47 e2e, build.
 - **Hero gradient system** (post-WI-018, requested directly by the
   maintainer with a fresh reference screenshot, not its own ticket):
-  `theme.js`'s `ACCENT` map's `heroStart`/`heroEnd` — which feed both the
+  the `heroStart`/`heroEnd` accent values — which feed both the
   Home hero balance card *and*, as of this pass, the mobile tab bar's
   raised Add button (`styles.css`'s `.tabbar button[data-tab="add"]
   .icon`, previously flat `--color-accent`/`-700` despite an existing
@@ -187,7 +203,8 @@ flags what a future agent needs to know exists, not how it works.
   since there was no second reference image for coral. Implemented
   directly by Claude (explicit maintainer instruction to bypass Codex this
   pass, same as WI-016/017/019/018). Full derivation, HSL math, and
-  contrast readings are in `theme.js`'s `ACCENT` comment. Verified: 173/173
+  contrast readings now live in `styles.css` beside the tokens (moved there
+  by WI-033; they were in `theme.js`'s `ACCENT` comment at the time). Verified: 173/173
   unit, 31/31 e2e, real-browser computed-style checks (not just visual)
   confirming `.hero-card` and the Add button render byte-identical
   gradients in both accents and both themes.
@@ -316,8 +333,8 @@ flags what a future agent needs to know exists, not how it works.
   caught two token/pattern violations a build+test pass alone would not
   — an inverted `:has()` selector that silently dropped the divider
   between Language and Hide amounts (the wrong row lost it), and an
-  accent-dot color hardcoded as hex duplicating `theme.js`'s
-  `--color-accent` token instead of just reading the token. Both were
+  accent-dot color hardcoded as hex duplicating the `--color-accent` token
+  instead of just reading the token. Both were
   confirmed by checking real computed styles in a live browser, not by
   reading the CSS. See `docs/CHANGELOG.md`'s WI-010 entry.
 
@@ -362,8 +379,8 @@ flags what a future agent needs to know exists, not how it works.
   preview. **Standing lesson worth carrying forward:** any `*-tint`
   token here mixes toward white in *both* themes, so its foreground must
   be a fixed dark hex (`--color-income-tint-fg`,
-  `--color-chart-5-tint-fg`), never a token `theme.js` brightens for dark
-  mode — doing the latter shipped a 1.66:1 label that looked fine in a
+  `--color-chart-5-tint-fg`), never a token that brightens for dark
+  mode (`styles.css`'s `:root[data-theme="dark"]` block) — doing the latter shipped a 1.66:1 label that looked fine in a
   screenshot. See `docs/specs/type-selector-icon-color.md`.
 - WI-004 — Apple-style swipe actions on transaction rows: 40px circular
   Edit/Delete matching the category icon avatar, whole-row drag surface,
