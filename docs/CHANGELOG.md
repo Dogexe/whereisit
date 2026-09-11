@@ -1619,3 +1619,70 @@ Verified with `npm test` (181 passing), `npm run test:e2e` (47 passing, up from
 `sol-high`; branch, commits, review and docs by Claude, since Codex's sandbox
 could write neither the ticket file nor `.git/refs`. Its reported Playwright
 failures were sandbox-only and do not reproduce. **WS-3 is complete.**
+
+## WI-033 — one owner for color tokens
+
+Originated from an over-engineering audit of the whole repo rather than a
+product need. The finding: every themed color was declared twice — in
+`styles.css`'s `:root` as a pre-JS first-paint fallback, and again in
+`theme.js`'s `light`/`dark`/`ACCENT` objects as the runtime value that
+`applyTheme()` wrote onto `<html>` as 22 inline custom properties. The two
+copies were kept in step by hand, and `styles.css`'s own comment said so
+("kept in sync with theme.js's light object").
+
+They had already drifted. `--hero-gradient-end` was `#74311A` in CSS and
+`#D6A44C` in JS, so every cold load painted the Home hero card and the tab
+bar's Add button brown before repainting them gold. This was *known*:
+`docs/UX.md` carried it in Known UI debt, complete with the prescribed
+one-token fix and a note that it violated the Design-token ownership rule.
+It had been accepted and left. That is the argument for this pass — the rule
+existed, the violation was found and written down, and it still sat there,
+because keeping two files in step by hand is work nobody schedules. Fixing
+the token would have fixed the instance; deleting the second owner fixes the
+class.
+
+`styles.css` is now the sole owner: light/Coral on bare `:root`, with
+`:root[data-theme="dark"]` and `:root[data-accent="purple"]` redeclaring only
+what differs. `color-scheme` moved to CSS too. `applyTheme()` went from 198
+lines to 35 — it sets `data-theme` and `data-accent` on `<html>`, and updates
+the `theme-color` meta tag (the one value CSS cannot reach), reading that back
+out of the stylesheet with `getComputedStyle` rather than hardcoding the two
+background hexes, which would have reintroduced the same duplication in
+miniature.
+
+Two things deliberately did *not* move into the dark block. The `*-tint`
+tokens are `color-mix()` over a base declared on the same element, so they
+re-resolve against the override for free — verified in a browser rather than
+assumed, since the whole approach depended on it. Their `*-tint-fg` partners
+stay theme-invariant for the reason their own comment gives: tints mix toward
+white in both themes, so a foreground that brightens for dark mode is wrong
+there (that mistake once shipped a 1.66:1 label).
+
+The 96-line comment block in `theme.js` documenting the accent palette's
+provenance and its measured contrast ratios was not deleted with the code it
+described. The operative facts moved into `styles.css` beside the values —
+including the deliberate sub-4.5:1 Coral readings, flagged so nobody "fixes"
+them by darkening a hex. `docs/specs/color-palette-refresh.md` and
+`docs/specs/coral-rebrand-and-logo.md` still hold the full narrative.
+
+`docs/UX.md`'s Design-token ownership section was rewritten for the single
+owner — a reversal of a standing documented decision, approved by the
+maintainer before the ticket moved to `Ready`. The resolved debt bullet was
+deleted; the white-on-Coral contrast bullet above it is untouched and still
+real.
+
+Verification was a before/after capture rather than a visual check: all 34
+color tokens plus the rendered body background, the rendered hero gradient,
+`colorScheme` and the `theme-color` meta, read out of the real built app
+across all four theme × accent combinations. Every value byte-identical; the
+only difference is that `<html>` no longer carries inline styles. First paint
+re-checked separately with JavaScript disabled, since both captures ran after
+`applyTheme()` and were blind to the thing being fixed — it now reads
+`#D6A44C`. 181 unit, 47 e2e, build.
+
+`dark-mode.spec.js` gained an assertion that the theme rides on `data-theme`
+with no inline style on `<html>`. Its existing rendered-color assertions pass
+under either arrangement, so they could not have caught a regression to two
+owners; this one can, and was confirmed to fail by temporarily reintroducing a
+`setProperty` call. Implemented directly by Claude at explicit maintainer
+instruction, bypassing Codex as with WI-016/017/018/019.

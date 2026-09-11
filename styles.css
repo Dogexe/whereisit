@@ -51,34 +51,66 @@
     src: url("./fonts/poppins-latin-700.woff2") format("woff2");
     unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
   }
+  /* This block is the ONE owner of every color token in the app: light mode
+     with the Coral accent, the defaults. Dark mode and the Purple accent are
+     two override blocks right after it, each redeclaring only the tokens that
+     actually differ. theme.js picks between them by setting data-theme and
+     data-accent on <html> -- it writes no colors itself. See docs/UX.md's
+     "Design-token ownership". */
   :root {
+    color-scheme: light;
     /* neutrals */
     --gray-900:#15161a;
-    /* brand accent -- coral is the default (docs/specs/coral-rebrand-and-logo.md);
-       these are just the pre-JS first-paint fallback, theme.js's ACCENT
-       map overrides all three per state.accentColor ("coral" | "purple"). */
+    /* Brand accent. Coral is the default (docs/specs/coral-rebrand-and-logo.md,
+       docs/specs/color-palette-refresh.md -- those hold the full provenance;
+       both accents' values are pixel-sampled from the maintainer's reference
+       images via canvas getImageData, never eyeballed or hand-converted).
+       The Purple block below overrides all three.
+
+       Contrast, because these numbers are load-bearing and easy to undo by
+       "tidying" a hex:
+       - The base #D97757 is the un-darkened Claude brand hue and measures
+         **3.12:1 against white text -- below the 4.5:1 floor, deliberately.**
+         The maintainer chose the truer hue over a darker AA-safe one, with a
+         text-shadow fix deferred. Tracked in docs/UX.md's Known UI debt; do
+         not "fix" it by darkening this value.
+       - c600/c700 were NOT relaxed the same way -- they render as colored
+         text on --color-card / --color-accent-tint (badge-brand,
+         .shortcut-btn.active, .kind-toggle button.active, .btn-ghost), never
+         under white text, so they clear their own floor: c700 8.47:1 on the
+         tint, c600 4.53:1 on the tint and 5.11:1 on --color-card in light.
+       - Neither c600 clears --color-card in *dark* mode (~2.2-2.5:1), since
+         --color-accent* deliberately doesn't invert per theme the way
+         income/expense do. Pre-existing, affects .btn-ghost's dark-mode text. */
     --color-accent: #D97757;
     --color-accent-600: #B74D2A;
     --color-accent-700: #74311A;
     --color-accent-tint: color-mix(in srgb, var(--color-accent) 12%, white);
     --shadow-accent: 0 12px 28px color-mix(in srgb, var(--color-accent) 30%, transparent);
-    /* Home hero card's own gradient stops -- same pre-JS fallback pattern
-       as --color-accent above, theme.js's ACCENT map overrides both per
-       state.accentColor. */
+    /* Home hero card's gradient stops, shared with the tab bar's raised Add
+       button -- both render the identical two-stop 135deg gradient. Accent-
+       dependent, so the Purple block overrides both. Start is always the
+       accent base; the end stop rotates hue ~23deg toward a brighter adjacent
+       hue at constant saturation (terracotta -> warm amber). Coral's end is a
+       dedicated color, NOT c700 and not indigo's 42deg rotation transposed --
+       at this hue that lands in mustard, verified by rendering swatches.
+       White text on Coral's gradient tapers 3.12:1 (start) -> ~2.26:1 (end),
+       Indigo's 5.75:1 -> 2.94:1; both below the floor toward the far corner,
+       same deferred text-shadow fix as the base above. The mitigation is
+       positional: large balance text stays over the start corner. */
     --hero-gradient-start: #D97757;
-    --hero-gradient-end: #74311A;
+    --hero-gradient-end: #D6A44C;
     /* Sidebar lockup icon only (see .sidebar-logo below) -- deliberately
        not promoted to a general system color, same reasoning as when the
        coral rebrand spec first considered and rejected that. --logo-ring-color
-       is set by theme.js (light: var(--color-accent), so it still follows
-       the Coral/Purple preference; dark: solid white, pre-JS fallback here
-       matches). */
+       follows the Coral/Purple preference in light mode via var(), and goes
+       solid white in dark mode (see the dark block). --color-logo-amber, the
+       handle+dot, never changes with theme or preference. */
     --color-logo-amber: #f2a618;
     --logo-ring-color: var(--color-accent);
     /* semantic */
     /* -700 pair is the AA-contrast-safe variant for small/bold text on
-       --color-card -- see theme.js, which overrides both per-theme (these
-       are just the light-mode fallback values for the pre-JS first paint). */
+       --color-card. Both are per-theme; the dark block overrides them. */
     --color-income: #1fae71; --color-income-700: #15803D; --color-income-tint: color-mix(in srgb, var(--color-income) 12%, white);
     /* --color-income-tint always mixes toward white regardless of theme
        (measured: light and dark tint end up within ~2 RGB points of each
@@ -107,21 +139,17 @@
        darkened until white clears AA (4.77:1 / 6.89:1) -- and unlike every
        other themed token here, this ONE pair is theme-invariant (verified:
        white-on-gradient contrast doesn't depend on the app's light/dark
-       surroundings, only on these two stops), so theme.js never touches
-       it. */
+       surroundings, only on these two stops), so the dark block leaves it
+       alone. */
     --hero-negative-gradient-start: #cf3f2f; --hero-negative-gradient-end: #a82c1f;
     /* Breakdown chart's 5th/6th rotating colors (derived.js's CHART_COLORS).
        Chosen far apart in hue from both accent options (Coral ~20deg,
        Purple ~250deg -- #a190f7, the value this replaced, sat right on top
        of Purple at ~255deg) so neither can be misread as "the accent" once
-       assigned to a category. theme.js overrides both per-theme -- these
-       are just the pre-JS light-mode fallback, same pattern as
-       --color-income/-expense/-warning above. */
+       assigned to a category. Both are per-theme; the dark block overrides
+       them, same as --color-income/-expense/-warning above. */
     --color-chart-5: #1f7d70; --color-chart-6: #b23a7a;
-    /* surfaces (swapped by applyTheme for dark mode) */
-    /* WI-018: kept in sync with theme.js's light object -- this is only the
-       pre-JS first-paint fallback (see the Design-token ownership rule in
-       docs/UX.md), theme.js's applyTheme() is the runtime owner. */
+    /* surfaces (WI-018) */
     --color-bg: #eef0f4; --color-card: #ffffff; --color-surface: #e5e8ee;
     --color-text: #15161a; --color-muted: #71747f; --color-tertiary: #9497a3; --color-divider: #dde0e7; --color-border: #cfd3dc;
     /* Own token rather than reusing --color-tertiary: that token is shared
@@ -157,6 +185,44 @@
        section below for why plain env(safe-area-inset-bottom) alone isn't
        enough. Must match .tabbar's own height. */
     --tabbar-h: 64px;
+  }
+  /* Dark mode. Set by theme.js from state.dark -- an explicit, persisted user
+     preference, deliberately NOT prefers-color-scheme. Redeclares only the
+     tokens that actually differ; everything else inherits from :root above.
+     The *-tint tokens are absent on purpose: they're color-mix() over a base
+     declared on this same element, so they re-resolve against the overridden
+     base for free. Their *-tint-fg partners are absent for the opposite
+     reason -- tints mix toward white in both themes, so their foregrounds
+     must stay theme-invariant (see --color-income-tint-fg's own note). */
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --color-bg: #111216; --color-card: #1f2027; --color-surface: #282a31;
+    --color-text: #f5f5f7; --color-muted: rgba(245,245,247,0.62);
+    --color-tertiary: rgba(245,245,247,0.42);
+    --color-divider: rgba(255,255,255,0.10); --color-border: rgba(255,255,255,0.16);
+    /* Dark mode's tertiary already clears the tab bar's 3:1 minimum (~3.86:1),
+       so unlike light mode this reuses it rather than needing its own value. */
+    --color-tabbar-inactive: rgba(245,245,247,0.42);
+    --color-income: #34c98a; --color-income-700: #4ADE80;
+    --color-expense: #ff7a68; --color-expense-700: #F87171;
+    --color-warning: #f5b95a;
+    --color-chart-5: #4fd6c4; --color-chart-6: #e768ab;
+    /* Solid white regardless of the Coral/Purple preference -- matching the
+       design's own dark lockup reference, which uses white for the ring
+       independent of hue. */
+    --logo-ring-color: #ffffff;
+  }
+  /* Purple accent (the app's original, kept as an opt-in preference). Coral is
+     the default and lives in :root -- there is deliberately no
+     [data-accent="coral"] block. Theme-independent: both accents look the
+     same in light and dark, so this sits alongside the dark block, not inside
+     it. */
+  :root[data-accent="purple"] {
+    --color-accent: #6247ea;
+    --color-accent-600: #4f34d6;
+    --color-accent-700: #3f28ab;
+    --hero-gradient-start: #6149ea;
+    --hero-gradient-end: #409ce9;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; min-height: 100%; }
@@ -1129,8 +1195,8 @@
      -end stops and 135deg angle .hero-card uses (previously this comment
      claimed that consistency but the rule below actually used
      --color-accent/-700, a flatter, less saturated pair -- fixed as part
-     of the post-WI-018 gradient-system pass, see theme.js's ACCENT
-     comment). Padding shrinks the icon's own rendered content within
+     of the post-WI-018 gradient-system pass, see the --hero-gradient-*
+     comment in :root above). Padding shrinks the icon's own rendered content within
      the circle (SVG content box = width/height minus padding under the
      app's global box-sizing:border-box), independent of .icon's own
      18px default, which this selector out-specifies. 60px/16px padding/
@@ -1167,10 +1233,10 @@
   }
   .sidebar-header { display: flex; align-items: center; gap: 10px; padding: 4px 10px 18px; }
   /* Two-tone lockup icon (docs/specs/coral-rebrand-and-logo.md's follow-up):
-     ring uses --logo-ring-color (theme.js -- var(--color-accent) in light,
-     so it still follows the Coral/Purple preference; solid white in dark,
-     matching the design's own "dark lockup" reference exactly, which uses
-     white regardless of hue). Handle+dot use --color-logo-amber always,
+     ring uses --logo-ring-color (var(--color-accent) in light, so it still
+     follows the Coral/Purple preference; solid white in dark via the
+     [data-theme="dark"] block, matching the design's own "dark lockup"
+     reference exactly, which uses white regardless of hue). Handle+dot use --color-logo-amber always,
      in both themes, also matching the reference. No background box here --
      unlike the standalone app icon PNG, the lockup's icon is bare. */
   .sidebar-logo { width: 26px; height: 26px; flex-shrink: 0; }
