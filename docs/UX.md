@@ -31,10 +31,16 @@ live in `styles.css` and `theme.js`; implementation lessons live in
 
 Governs every color statement below.
 
-- `styles.css`'s `:root` holds the **pre-JS first-paint fallback** only.
-- `theme.js`'s `applyTheme()` is the **runtime owner** of every color that
-  varies by theme or accent preference. Editing a themed color only in `:root`
-  changes the first paint and nothing else.
+- `styles.css` is the **sole owner** of every color token. Light mode with the
+  Coral accent lives on bare `:root`; the two override blocks right after it,
+  `:root[data-theme="dark"]` and `:root[data-accent="purple"]`, redeclare only
+  the tokens that actually differ. A themed color is edited in exactly one
+  place, and there is no first-paint/runtime split to keep in step.
+- `theme.js`'s `applyTheme()` **selects**, and writes no colors. It sets
+  `data-theme` and `data-accent` on `<html>` and updates the `theme-color`
+  meta tag (the one value CSS can't reach, and it reads that back out of the
+  stylesheet rather than hardcoding it). Adding a `setProperty` call there
+  reintroduces a second owner — don't.
 - Derived tokens (`*-tint`, the accent shadow) are `color-mix()` over a base
   token, so they follow it automatically and must not be set from JS. JS
   references colors as `var(--token)` **strings**, never hex — see
@@ -294,16 +300,6 @@ work.
   higher-contrast start corner" mitigation in the meantime. Indigo's hero
   gradient is not exempt either: it now ranges 5.75:1 (start) down to
   2.94:1 (end), so even indigo dips below 4.5:1 toward its far corner.
-- **`styles.css`'s pre-JS `--hero-gradient-end` fallback is stale for
-  Coral** (`#74311A`, the pre-gradient-system value) after the
-  post-WI-018 gradient-system pass moved `theme.js`'s
-  `ACCENT.coral.heroEnd` to `#D6A44C` — the default accent is Coral
-  (`state.accentColor` defaults to `"coral"`), so every fresh load shows
-  the old gradient-end color on the hero card and tab bar Add button for
-  the brief pre-`applyTheme()` window, violating the Design-token
-  ownership sync rule above. Accepted as-is per maintainer decision;
-  fix by updating `styles.css`'s `:root` `--hero-gradient-end` to
-  `#D6A44C` to match, same as the `--color-bg` fallback was kept in sync.
 
 ## Open design decisions
 

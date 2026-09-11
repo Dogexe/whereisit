@@ -25,6 +25,22 @@ test("toggling dark mode in Settings actually changes the rendered theme", async
   await appearanceRow.click();
   await page.locator('label.tab-opt:has(input[name="appearance-switch"][value="light"])').click();
   expect(await bgColor()).toBe(lightBg);
+
+  // WI-033: styles.css owns every color token; applyTheme() only selects
+  // between its blocks. The theme must therefore ride entirely on <html>'s
+  // data-theme attribute, with no inline style written back onto the element
+  // -- an inline custom property here means a second owner has reappeared
+  // (see docs/UX.md's "Design-token ownership"). The rendered-color
+  // assertions above still pass either way, so this is what actually catches
+  // a regression to the old two-owner arrangement.
+  const root = await page.evaluate(() => ({
+    theme: document.documentElement.dataset.theme,
+    accent: document.documentElement.dataset.accent,
+    inlineStyle: document.documentElement.getAttribute("style")
+  }));
+  expect(root.theme).toBe("light");
+  expect(root.accent).toBe("coral");
+  expect(root.inlineStyle).toBeNull();
 });
 
 test("display disclosures are keyboard-operable and update their values on mobile and desktop", async ({ page }) => {
